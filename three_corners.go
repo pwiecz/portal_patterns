@@ -82,17 +82,18 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal) []indexedPortal {
 	}
 
 	numIndexEntries := len(portals0) * len(portals1) * len(portals2)
+	everyNth := numIndexEntries / 1000
+	if everyNth < 50 {
+		everyNth = 2
+	}
 	indexEntriesFilled := 0
 	onFillIndexEntry := func() {
 		indexEntriesFilled++
-		everyNth := numIndexEntries / 1000
-		if everyNth < 2 {
-			everyNth = 2
-		}
-		if indexEntriesFilled%everyNth == 1 {
+		if indexEntriesFilled%everyNth == 0 {
 			printProgressBar(indexEntriesFilled, numIndexEntries)
 		}
 	}
+	printProgressBar(0, numIndexEntries)
 	for _, p0 := range portalsData0 {
 		for _, p1 := range portalsData1 {
 			for _, p2 := range portalsData2 {

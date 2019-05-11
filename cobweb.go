@@ -52,17 +52,18 @@ func LargestCobWeb(portals []Portal) []Portal {
 	}
 
 	numIndexEntries := len(portals) * len(portals) * len(portals)
+	everyNth := numIndexEntries / 1000
+	if everyNth < 50 {
+		everyNth = 2
+	}
 	indexEntriesFilled := 0
 	onFilledIndexEntry := func() {
 		indexEntriesFilled++
-		everyNth := numIndexEntries / 1000
-		if everyNth < 2 {
-			everyNth = 2
-		}
-		if indexEntriesFilled%everyNth == 1 {
+		if indexEntriesFilled%everyNth == 0 {
 			printProgressBar(indexEntriesFilled, numIndexEntries)
 		}
 	}
+	printProgressBar(0, numIndexEntries)
 	var portalsInTriangle []portalData
 	for i, p0 := range portalsData {
 		for j, p1 := range portalsData {

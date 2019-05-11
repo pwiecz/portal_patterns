@@ -106,8 +106,15 @@ func LargestHerringbone(portals []Portal) (Portal, Portal, []Portal) {
 	var bestB0, bestB1 portalData
 	nodesCache := make([]node, 0, len(portals))
 	resultCache := make([]int, 0, len(portals))
+
+	numPairs := len(portals) * (len(portals) - 1) / 2
+	everyNth := numPairs / 1000
+	if everyNth < 50 {
+		everyNth = 2
+	}
+	numProcessedPairs := 0
+	printProgressBar(0, numPairs)
 	for i, b0 := range portalsData {
-		printProgressBar(i, len(portals))
 		for j := i + 1; j < len(portalsData); j++ {
 			b1 := portalsData[j]
 			for k := 0; k < len(index); k++ {
@@ -125,8 +132,13 @@ func LargestHerringbone(portals []Portal) (Portal, Portal, []Portal) {
 				bestB0 = b1
 				bestB1 = b0
 			}
+			numProcessedPairs++
+			if numProcessedPairs%everyNth == 0 {
+				printProgressBar(numProcessedPairs, numPairs)
+			}
 		}
 	}
+	printProgressBar(numPairs, numPairs)
 	fmt.Println("")
 	result := make([]Portal, 0, len(largestHerringbone))
 	for _, portalIx := range largestHerringbone {
