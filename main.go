@@ -2,6 +2,7 @@ package main
 
 import "fmt"
 import "os"
+import "strings"
 
 func main() {
 	if len(os.Args) < 3 {
@@ -97,6 +98,15 @@ func main() {
 			portalList = append(portalList, indexedPortal.Portal)
 		}
 		fmt.Printf("\n[%s]\n", polylineFromPortalList(portalList))
+	} else if os.Args[1] == "homogeneous" || os.Args[1] == "homogenous" {
+		result, depth := DeepestHomogeneous(portals)
+		fmt.Printf("Depth: %d\n", depth+1)
+		for i, portal := range result {
+			fmt.Printf("%d: %s\n", i, portal.Name)
+		}
+		polylines := []string{polylineFromPortalList([]Portal{result[0], result[1], result[2]})}
+		polylines, _ = appendHomogeneousPolylines(result[0], result[1], result[2], depth, polylines, result[3:])
+		fmt.Printf("\n[%s]\n", strings.Join(polylines, ","))
 	} else {
 		fmt.Fprintf(os.Stderr, "Unknown command: \"%s\"\n", os.Args[1])
 		os.Exit(1)

@@ -98,6 +98,20 @@ func (t *triangleWedgeQuery) ContainsPoint(o s2.Point) bool {
 	return t.ccwQuery.Ordered(o)
 }
 
+func portalsInsideWedge(portals []portalData, a portalData, b portalData, c portalData) []portalData {
+	wedge := newTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
+	for i := 0; i < len(portals); {
+		p := portals[i]
+		if p.Index != a.Index && p.Index != b.Index && p.Index != c.Index &&
+			wedge.ContainsPoint(p.LatLng) {
+			i++
+		} else {
+			portals[i], portals[len(portals)-1] = portals[len(portals)-1], p
+			portals = portals[:len(portals)-1]
+		}
+	}
+	return portals
+}
 func keepOnlyContainedPortals(portals []portalData, triangle triangleQuery) []portalData {
 	filteredPortals := portals
 	for i := 0; i < len(filteredPortals); {
@@ -125,6 +139,10 @@ func removeContainedPortals(portals []portalData, ix int, triangle triangleQuery
 	return portals
 }
 
+func triangleArea(p0, p1, p2 portalData) float64 {
+	return s2.GirardArea(p0.LatLng, p1.LatLng, p2.LatLng)
+}
+
 func pointToJSONCoords(point s2.Point) string {
 	latlng := s2.LatLngFromPoint(point)
 	return fmt.Sprintf(`{"lat":%f,"lng":%f}`, latlng.Lat.Degrees(), latlng.Lng.Degrees())
@@ -150,11 +168,15 @@ func printProgressBar(done int, total int) {
 	for i := 1; i < doneWidth; i++ {
 		b.WriteRune('=')
 	}
-	b.WriteRune('>')
+	if done < total {
+		b.WriteRune('>')
+	} else {
+		b.WriteRune('=')
+	}
 	for i := doneWidth; i < maxWidth; i++ {
 		b.WriteRune(' ')
 	}
 	percent := 100. * float32(done) / float32(total)
-	b.WriteString(fmt.Sprintf(" ] %3.2f%% (%d/%d)", percent, done, total))
+	b.WriteString(fmt.Sprintf("] %3.2f%% (%d/%d)", percent, done, total))
 	fmt.Print(b.String())
 }
