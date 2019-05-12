@@ -4,8 +4,9 @@ import "fmt"
 import "math"
 
 func findBestHomogenous(p0, p1, p2 portalData, candidates []portalData, index [][][]bestSolution, onFilledIndexEntry func()) bestSolution {
+	localCandidates := append(make([]portalData, 0, len(candidates)), candidates...)
 	var bestHomogeneous bestSolution
-	for _, portal := range candidates {
+	for _, portal := range localCandidates {
 		minDepth := math.MaxInt32
 		{
 			candidate0 := index[portal.Index][p1.Index][p2.Index]

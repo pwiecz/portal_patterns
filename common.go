@@ -177,6 +177,6 @@ func printProgressBar(done int, total int) {
 		b.WriteRune(' ')
 	}
 	percent := 100. * float32(done) / float32(total)
-	b.WriteString(fmt.Sprintf("] %3.2f%% (%d/%d)", percent, done, total))
+	b.WriteString(fmt.Sprintf("] %3.1f%% (%d/%d)", percent, done, total))
 	fmt.Print(b.String())
 }
