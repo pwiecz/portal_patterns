@@ -6,7 +6,12 @@ import "strings"
 
 func main() {
 	if len(os.Args) < 3 {
-		fmt.Println(os.Args[0] + " <cobweb|three_corners|herringbone|double_hettingbone> <portals.json> [portals2.json portals3.json]")
+		fmt.Println("Usage:\n" +
+		 "  " + os.Args[0] + " cobweb <portals.json>\n" + 
+		 "  " + os.Args[0] + " three_corners <portals1.json> <portals2.json> <portals3.json>\n" +
+		 "  " + os.Args[0] + " herringbone <portals.json>\n" +
+		 "  " + os.Args[0] + " double_herringbone <portals.json>\n" +
+		 "  " + os.Args[0] + " homogeneous <portals.json>")
 		return
 	}
 
