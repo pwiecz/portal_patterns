@@ -7,10 +7,10 @@ func findBestHomogenous(p0, p1, p2 portalData, candidates []portalData, index []
 	localCandidates := append(make([]portalData, 0, len(candidates)), candidates...)
 	var bestHomogeneous bestSolution
 	for _, portal := range localCandidates {
-		minDepth := math.MaxInt32
+		minDepth := uint16(math.MaxUint16)
 		{
 			candidate0 := index[portal.Index][p1.Index][p2.Index]
-			if candidate0.Length < 0 {
+			if candidate0.Length == invalidLength {
 				candidatesInWedge := portalsInsideWedge(candidates, portal, p1, p2)
 				candidate0 = findBestHomogenous(portal, p1, p2, candidatesInWedge, index, onFilledIndexEntry)
 			}
@@ -20,7 +20,7 @@ func findBestHomogenous(p0, p1, p2 portalData, candidates []portalData, index []
 		}
 		{
 			candidate1 := index[portal.Index][p0.Index][p2.Index]
-			if candidate1.Length < 0 {
+			if candidate1.Length == invalidLength {
 				candidatesInWedge := portalsInsideWedge(candidates, portal, p0, p2)
 				candidate1 = findBestHomogenous(portal, p0, p2, candidatesInWedge, index, onFilledIndexEntry)
 			}
@@ -30,7 +30,7 @@ func findBestHomogenous(p0, p1, p2 portalData, candidates []portalData, index []
 		}
 		{
 			candidate2 := index[portal.Index][p0.Index][p1.Index]
-			if candidate2.Length < 0 {
+			if candidate2.Length == invalidLength {
 				candidatesInWedge := portalsInsideWedge(candidates, portal, p0, p1)
 				candidate2 = findBestHomogenous(portal, p0, p1, candidatesInWedge, index, onFilledIndexEntry)
 			}
@@ -38,12 +38,12 @@ func findBestHomogenous(p0, p1, p2 portalData, candidates []portalData, index []
 				minDepth = candidate2.Length
 			}
 		}
-		if minDepth != math.MaxInt32 && minDepth+1 > bestHomogeneous.Length {
+		if minDepth != uint16(math.MaxUint16) && minDepth+1 > bestHomogeneous.Length {
 			bestHomogeneous.Index = portal.Index
 			bestHomogeneous.Length = minDepth + 1
 		}
 	}
-	if index[p0.Index][p1.Index][p2.Index].Length < 0 {
+	if index[p0.Index][p1.Index][p2.Index].Length == invalidLength {
 		onFilledIndexEntry()
 	}
 	index[p0.Index][p1.Index][p2.Index] = bestHomogeneous
@@ -56,7 +56,7 @@ func findBestHomogenous(p0, p1, p2 portalData, candidates []portalData, index []
 }
 
 // DeepestHomogeneous - Find deepest homogeneous field that can be made out of portals
-func DeepestHomogeneous(portals []Portal) ([]Portal, int) {
+func DeepestHomogeneous(portals []Portal) ([]Portal, uint16) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -67,7 +67,7 @@ func DeepestHomogeneous(portals []Portal) ([]Portal, int) {
 		for j := 0; j < len(portals); j++ {
 			index[i] = append(index[i], make([]bestSolution, len(portals)))
 			for k := 0; k < len(portals); k++ {
-				index[i][j][k].Length = -1
+				index[i][j][k].Length = invalidLength
 			}
 		}
 	}
@@ -92,7 +92,7 @@ func DeepestHomogeneous(portals []Portal) ([]Portal, int) {
 			p1 := portalsData[j]
 			for k := j + 1; k < len(portalsData); k++ {
 				p2 := portalsData[k]
-				if index[p0.Index][p1.Index][p2.Index].Length >= 0 {
+				if index[p0.Index][p1.Index][p2.Index].Length != invalidLength {
 					continue
 				}
 				triangle := newTriangleQuery(p1.LatLng, p0.LatLng, p2.LatLng)
@@ -110,7 +110,7 @@ func DeepestHomogeneous(portals []Portal) ([]Portal, int) {
 	printProgressBar(numIndexEntries, numIndexEntries)
 	fmt.Println("")
 
-	bestDepth := -1
+	var bestDepth uint16
 	var bestP0, bestP1, bestP2 portalData
 	var bestArea float64
 	for i, p0 := range portalsData {
@@ -128,7 +128,7 @@ func DeepestHomogeneous(portals []Portal) ([]Portal, int) {
 		}
 	}
 
-	resultIndices := []int{bestP0.Index, bestP1.Index, bestP2.Index}
+	resultIndices := []uint16{bestP0.Index, bestP1.Index, bestP2.Index}
 	resultIndices = appendHomogeneousResult(bestP0.Index, bestP1.Index, bestP2.Index, bestDepth, resultIndices, index)
 	result := []Portal{}
 	for _, index := range resultIndices {
@@ -138,7 +138,7 @@ func DeepestHomogeneous(portals []Portal) ([]Portal, int) {
 	return result, bestDepth
 }
 
-func appendHomogeneousResult(p0, p1, p2 int, maxDepth int, result []int, index [][][]bestSolution) []int {
+func appendHomogeneousResult(p0, p1, p2 uint16, maxDepth uint16, result []uint16, index [][][]bestSolution) []uint16 {
 	if maxDepth == 0 {
 		return result
 	}
@@ -150,7 +150,7 @@ func appendHomogeneousResult(p0, p1, p2 int, maxDepth int, result []int, index [
 	return result
 }
 
-func appendHomogeneousPolylines(p0, p1, p2 Portal, maxDepth int, result []string, portals []Portal) ([]string, []Portal) {
+func appendHomogeneousPolylines(p0, p1, p2 Portal, maxDepth uint16, result []string, portals []Portal) ([]string, []Portal) {
 	if maxDepth == 0 {
 		return result, portals
 	}

@@ -3,13 +3,13 @@ package main
 import "fmt"
 
 type bestTCSolution struct {
-	Index            int
-	Length           int
-	NumCornerChanges int
+	Index            uint16
+	Length           uint16
+	NumCornerChanges uint16
 }
 
-func findBestThreeCorner(p0, p1, p2 portalData, portals0, portals1, portals2 []portalData, index [][][]bestTCSolution, numP0, numP1 int, onIndexEntryFilled func()) bestTCSolution {
-	if index[p0.Index][p1.Index][p2.Index].Length >= 0 {
+func findBestThreeCorner(p0, p1, p2 portalData, portals0, portals1, portals2 []portalData, index [][][]bestTCSolution, numP0, numP1 uint16, onIndexEntryFilled func()) bestTCSolution {
+	if index[p0.Index][p1.Index][p2.Index].Length != invalidLength {
 		return index[p0.Index][p1.Index][p2.Index]
 	}
 	triangle := newTriangleQuery(p0.LatLng, p1.LatLng, p2.LatLng)
@@ -69,14 +69,19 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal) []indexedPortal {
 	portalsData0 := portalsToPortalData(portals0)
 	portalsData1 := portalsToPortalData(portals1)
 	portalsData2 := portalsToPortalData(portals2)
-
-	index := make([][][]bestTCSolution, 0, len(portals0))
+	localPortalsData0 := append(make([]portalData, 0, len(portalsData0)), portalsData0...)
+	localPortalsData1 := append(make([]portalData, 0, len(portalsData1)), portalsData1...)
+	localPortalsData2 := append(make([]portalData, 0, len(portalsData2)), portalsData2...)
+	numPortals0 := uint16(len(portals0))
+	numPortals1 := uint16(len(portals1))
+	numPortals2 := uint16(len(portals2))
+	index := make([][][]bestTCSolution, 0, numPortals0)
 	for i := 0; i < len(portals0); i++ {
-		index = append(index, make([][]bestTCSolution, 0, len(portals1)))
+		index = append(index, make([][]bestTCSolution, 0, numPortals1))
 		for j := 0; j < len(portals1); j++ {
-			index[i] = append(index[i], make([]bestTCSolution, len(portals2)))
+			index[i] = append(index[i], make([]bestTCSolution, numPortals2))
 			for k := 0; k < len(portals2); k++ {
-				index[i][j][k].Length = -1
+				index[i][j][k].Length = invalidLength
 			}
 		}
 	}
@@ -94,13 +99,13 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal) []indexedPortal {
 		}
 	}
 	printProgressBar(0, numIndexEntries)
-	for _, p0 := range portalsData0 {
-		for _, p1 := range portalsData1 {
-			for _, p2 := range portalsData2 {
-				if index[p0.Index][p1.Index][p2.Index].Length >= 0 {
+	for _, p0 := range localPortalsData0 {
+		for _, p1 := range localPortalsData1 {
+			for _, p2 := range localPortalsData2 {
+				if index[p0.Index][p1.Index][p2.Index].Length != invalidLength {
 					continue
 				}
-				findBestThreeCorner(p0, p1, p2, portalsData0, portalsData1, portalsData2, index, len(portals0), len(portals1), onFillIndexEntry)
+				findBestThreeCorner(p0, p1, p2, portalsData0, portalsData1, portalsData2, index, numPortals0, numPortals1, onFillIndexEntry)
 			}
 		}
 	}
@@ -109,9 +114,9 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal) []indexedPortal {
 
 	var largestTC bestTCSolution
 	var bestP0, bestP1, bestP2 portalData
-	for _, p0 := range portalsData0 {
-		for _, p1 := range portalsData1 {
-			for _, p2 := range portalsData2 {
+	for _, p0 := range localPortalsData0 {
+		for _, p1 := range localPortalsData1 {
+			for _, p2 := range localPortalsData2 {
 				solution := index[p0.Index][p1.Index][p2.Index]
 				if solution.Length > largestTC.Length || (solution.Length == largestTC.Length && solution.NumCornerChanges < largestTC.NumCornerChanges) {
 					largestTC = solution
@@ -127,19 +132,19 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal) []indexedPortal {
 		indexedPortal{2, portals2[k2]})
 	for {
 		sol := index[k0][k1][k2]
-		if sol.Length <= 0 {
+		if sol.Length == 0 {
 			break
 		}
-		if sol.Index < len(portals0) {
+		if sol.Index < numPortals0 {
 			result = append(result, indexedPortal{0, portals0[sol.Index]})
 			k0 = sol.Index
 		} else {
-			sol.Index = sol.Index - len(portals0)
-			if sol.Index < len(portals1) {
+			sol.Index = sol.Index - numPortals0
+			if sol.Index < numPortals1 {
 				result = append(result, indexedPortal{1, portals1[sol.Index]})
 				k1 = sol.Index
 			} else {
-				sol.Index = sol.Index - len(portals1)
+				sol.Index = sol.Index - numPortals1
 				result = append(result, indexedPortal{2, portals2[sol.Index]})
 				k2 = sol.Index
 			}

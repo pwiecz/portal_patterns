@@ -7,7 +7,7 @@ func findBestCobWeb(p0, p1, p2 portalData, candidates []portalData, index [][][]
 	var bestCobWeb bestSolution
 	for _, portal := range localCandidates {
 		candidate := index[p1.Index][p2.Index][portal.Index]
-		if candidate.Length < 0 {
+		if candidate.Length == invalidLength {
 			wedge := newTriangleWedgeQuery(portal.LatLng, p1.LatLng, p2.LatLng)
 			candidatesInWedge := candidates
 			for i := 0; i < len(candidatesInWedge); {
@@ -26,7 +26,7 @@ func findBestCobWeb(p0, p1, p2 portalData, candidates []portalData, index [][][]
 			bestCobWeb.Index = portal.Index
 		}
 	}
-	if index[p0.Index][p1.Index][p2.Index].Length < 0 {
+	if index[p0.Index][p1.Index][p2.Index].Length == invalidLength {
 		onFilledIndexEntry()
 	}
 
@@ -46,7 +46,7 @@ func LargestCobWeb(portals []Portal) []Portal {
 		for j := 0; j < len(portals); j++ {
 			index[i] = append(index[i], make([]bestSolution, len(portals)))
 			for k := 0; k < len(portals); k++ {
-				index[i][j][k].Length = -1
+				index[i][j][k].Length = invalidLength
 			}
 		}
 	}
@@ -74,7 +74,7 @@ func LargestCobWeb(portals []Portal) []Portal {
 				if i == k || j == k {
 					continue
 				}
-				if index[p0.Index][p1.Index][p2.Index].Length >= 0 {
+				if index[p0.Index][p1.Index][p2.Index].Length != invalidLength {
 					continue
 				}
 				triangle := newTriangleQuery(p1.LatLng, p0.LatLng, p2.LatLng)
@@ -93,7 +93,7 @@ func LargestCobWeb(portals []Portal) []Portal {
 	fmt.Println("")
 
 	var bestP0, bestP1, bestP2 portalData
-	bestLength := 0
+	var bestLength uint16
 	for i, p0 := range portalsData {
 		for j, p1 := range portalsData {
 			if i == j {
@@ -112,11 +112,11 @@ func LargestCobWeb(portals []Portal) []Portal {
 		}
 	}
 
-	largestCobweb := append(make([]int, 0, bestLength), bestP0.Index, bestP1.Index, bestP2.Index)
+	largestCobweb := append(make([]uint16, 0, bestLength), bestP0.Index, bestP1.Index, bestP2.Index)
 	k0, k1, k2 := bestP0.Index, bestP1.Index, bestP2.Index
 	for {
 		sol := index[k0][k1][k2]
-		if sol.Length <= 0 {
+		if sol.Length == 0 {
 			break
 		}
 		largestCobweb = append(largestCobweb, sol.Index)

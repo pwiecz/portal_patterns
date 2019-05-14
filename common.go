@@ -1,32 +1,37 @@
 package main
 
 import "fmt"
+import "math"
 import "strings"
 
 import "github.com/golang/geo/r3"
 import "github.com/golang/geo/s2"
 
+const invalidPortalIndex uint16 = math.MaxUint16
+
 type portalData struct {
-	Index  int
+	Index  uint16
 	LatLng s2.Point
 }
 
 type indexedPortal struct {
-	Index  int
+	Index  uint16
 	Portal Portal
 }
 
 func portalsToPortalData(portals []Portal) []portalData {
 	portalsData := make([]portalData, 0, len(portals))
 	for i, portal := range portals {
-		portalsData = append(portalsData, portalData{Index: i, LatLng: portal.LatLng})
+		portalsData = append(portalsData, portalData{Index: uint16(i), LatLng: portal.LatLng})
 	}
 	return portalsData
 }
 
+const invalidLength uint16 = math.MaxUint16
+
 type bestSolution struct {
-	Index  int
-	Length int
+	Index  uint16
+	Length uint16
 }
 
 type triangleQuery struct {

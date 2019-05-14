@@ -4,6 +4,7 @@ import "encoding/json"
 import "errors"
 import "fmt"
 import "io/ioutil"
+import "math"
 import "os"
 import "strconv"
 
@@ -56,6 +57,9 @@ func ParseJSONFile(filename string) ([]Portal, error) {
 		}
 		point := s2.PointFromLatLng(s2.LatLngFromDegrees(lat, lng))
 		portals = append(portals, Portal{Name: portal.Name, LatLng: point})
+		if len(portals) >= math.MaxUint16-1 {
+			return portals, errors.New("Too many portals")
+		}
 	}
 	return portals, nil
 }

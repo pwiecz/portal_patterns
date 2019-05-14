@@ -9,18 +9,18 @@ func LargestDoubleHerringbone(portals []Portal) (Portal, Portal, []Portal, []Por
 	}
 	portalsData := make([]portalData, 0, len(portals))
 	for i, portal := range portals {
-		portalsData = append(portalsData, portalData{Index: i, LatLng: portal.LatLng})
+		portalsData = append(portalsData, portalData{Index: uint16(i), LatLng: portal.LatLng})
 	}
 	portalList := make([]portalData, 0, len(portals))
 	for _, p := range portalsData {
 		portalList = append(portalList, p)
 	}
 
-	var largestCCW, largestCW []int
-	var bestB0, bestB1 int
+	var largestCCW, largestCW []uint16
+	var bestB0, bestB1 uint16
 	nodesCache := make([]node, 0, len(portals))
-	resultCacheCCW := make([]int, 0, len(portals))
-	resultCacheCW := make([]int, 0, len(portals))
+	resultCacheCCW := make([]uint16, 0, len(portals))
+	resultCacheCW := make([]uint16, 0, len(portals))
 	numPairs := len(portals) * (len(portals) - 1) / 2
 	everyNth := numPairs / 1000
 	if everyNth < 50 {
