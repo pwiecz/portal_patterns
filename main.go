@@ -1,17 +1,18 @@
 package main
 
 import "fmt"
+import "math"
 import "os"
 import "strings"
 
 func main() {
 	if len(os.Args) < 3 {
 		fmt.Println("Usage:\n" +
-		 "  " + os.Args[0] + " cobweb <portals.json>\n" + 
-		 "  " + os.Args[0] + " three_corners <portals1.json> <portals2.json> <portals3.json>\n" +
-		 "  " + os.Args[0] + " herringbone <portals.json>\n" +
-		 "  " + os.Args[0] + " double_herringbone <portals.json>\n" +
-		 "  " + os.Args[0] + " homogeneous <portals.json>")
+			"  " + os.Args[0] + " cobweb <portals.json>\n" +
+			"  " + os.Args[0] + " three_corners <portals1.json> <portals2.json> <portals3.json>\n" +
+			"  " + os.Args[0] + " herringbone <portals.json>\n" +
+			"  " + os.Args[0] + " double_herringbone <portals.json>\n" +
+			"  " + os.Args[0] + " homogeneous <portals.json>")
 		return
 	}
 
@@ -21,7 +22,7 @@ func main() {
 		os.Exit(1)
 	}
 	if os.Args[1] == "cobweb" {
-		result := LargestCobWeb(portals)
+		result := LargestCobweb(portals)
 		for i, portal := range result {
 			fmt.Printf("%d: %s\n", i, portal.Name)
 		}
@@ -81,7 +82,10 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Could not parse JSON file %s : %v\n", os.Args[4], err)
 			os.Exit(1)
 		}
-
+		if len(portals)+len(portals1)+len(portals2) >= math.MaxUint16-1 {
+			fmt.Fprintf(os.Stderr, "Too many portals")
+			os.Exit(1)
+		}
 		result := LargestThreeCorner(portals, portals1, portals2)
 		for i, indexedPortal := range result {
 			fmt.Printf("%d: %s\n", i, indexedPortal.Portal.Name)

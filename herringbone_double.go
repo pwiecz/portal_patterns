@@ -18,7 +18,6 @@ func LargestDoubleHerringbone(portals []Portal) (Portal, Portal, []Portal, []Por
 
 	var largestCCW, largestCW []uint16
 	var bestB0, bestB1 uint16
-	nodesCache := make([]node, 0, len(portals))
 	resultCacheCCW := make([]uint16, 0, len(portals))
 	resultCacheCW := make([]uint16, 0, len(portals))
 	numPairs := len(portals) * (len(portals) - 1) / 2
@@ -28,11 +27,12 @@ func LargestDoubleHerringbone(portals []Portal) (Portal, Portal, []Portal, []Por
 	}
 	numProcessedPairs := 0
 	printProgressBar(0, numPairs)
+	q := newBestHerringBoneQuery(portalsData)
 	for i, b0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
 			b1 := portalsData[j]
-			bestCCW := findBestHerringbone(b0, b1, portalsData, nodesCache, resultCacheCCW)
-			bestCW := findBestHerringbone(b1, b0, portalsData, nodesCache, resultCacheCW)
+			bestCCW := q.findBestHerringbone(b0, b1, resultCacheCCW)
+			bestCW := q.findBestHerringbone(b1, b0, resultCacheCW)
 			if len(bestCCW)+len(bestCW) > len(largestCCW)+len(largestCW) {
 				largestCCW = append(largestCCW[:0], bestCCW...)
 				largestCW = append(largestCW[:0], bestCW...)

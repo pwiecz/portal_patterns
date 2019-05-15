@@ -35,7 +35,6 @@ type bestSolution struct {
 }
 
 type triangleQuery struct {
-	a, b, c                   s2.Point
 	aCrossB, cCrossA, bCrossC r3.Vector
 }
 
@@ -46,7 +45,7 @@ func newTriangleQuery(a, b, c s2.Point) triangleQuery {
 	aCrossB := a.Cross(b.Vector)
 	cCrossA := c.Cross(a.Vector)
 	bCrossC := b.Cross(c.Vector)
-	return triangleQuery{a, b, c, aCrossB, cCrossA, bCrossC}
+	return triangleQuery{aCrossB, cCrossA, bCrossC}
 }
 
 func sign(aCrossB r3.Vector, c s2.Point) bool {
@@ -67,9 +66,6 @@ type orderedCCWQuery struct {
 }
 
 func newOrderedCCWQuery(a, c, o s2.Point) orderedCCWQuery {
-	////
-
-	////
 	aCrossO := a.Cross(o.Vector)
 	aocSign := sign(aCrossO, c)
 	cCrossO := c.Cross(o.Vector)
@@ -103,7 +99,7 @@ func (t *triangleWedgeQuery) ContainsPoint(o s2.Point) bool {
 	return t.ccwQuery.Ordered(o)
 }
 
-func portalsInsideWedge(portals []portalData, a portalData, b portalData, c portalData) []portalData {
+func portalsInsideWedge(portals []portalData, a, b, c portalData) []portalData {
 	wedge := newTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
 	for i := 0; i < len(portals); {
 		p := portals[i]
@@ -117,28 +113,16 @@ func portalsInsideWedge(portals []portalData, a portalData, b portalData, c port
 	}
 	return portals
 }
-func keepOnlyContainedPortals(portals []portalData, triangle triangleQuery) []portalData {
-	filteredPortals := portals
-	for i := 0; i < len(filteredPortals); {
-		portal := filteredPortals[i]
-		if portal.LatLng == triangle.a || portal.LatLng == triangle.b || portal.LatLng == triangle.c ||
-			!triangle.ContainsPoint(portal.LatLng) {
-			filteredPortals[i], filteredPortals[len(filteredPortals)-1] = filteredPortals[len(filteredPortals)-1], filteredPortals[i]
-			filteredPortals = filteredPortals[:len(filteredPortals)-1]
-			continue
-		}
-		i++
-	}
-	return filteredPortals
-}
-
-func removeContainedPortals(portals []portalData, ix int, triangle triangleQuery) []portalData {
-	for ix < len(portals) {
-		if triangle.ContainsPoint(portals[ix].LatLng) {
-			portals[ix], portals[len(portals)-1] = portals[len(portals)-1], portals[ix]
-			portals = portals[:len(portals)-1]
+func portalsInsideTriangle(portals []portalData, a, b, c portalData) []portalData {
+	triangle := newTriangleQuery(a.LatLng, b.LatLng, c.LatLng)
+	for i := 0; i < len(portals); {
+		p := portals[i]
+		if p.Index != a.Index && p.Index != b.Index && p.Index != c.Index &&
+			triangle.ContainsPoint(p.LatLng) {
+			i++
 		} else {
-			ix++
+			portals[i], portals[len(portals)-1] = portals[len(portals)-1], p
+			portals = portals[:len(portals)-1]
 		}
 	}
 	return portals

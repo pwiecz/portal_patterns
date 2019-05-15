@@ -39,11 +39,23 @@ func angle(a, b s2.Point, v r3.Vector) s1.Angle {
 	return a.PointCross(b).Angle(v)
 }
 
-func findBestHerringbone(b0, b1 portalData, portals []portalData, nodes []node, result []uint16) []uint16 {
-	nodes = nodes[:0]
+type bestHerringBoneQuery struct {
+	portals []portalData
+	nodes   []node
+}
+
+func newBestHerringBoneQuery(portals []portalData) *bestHerringBoneQuery {
+	return &bestHerringBoneQuery{
+		portals: portals,
+		nodes:   make([]node, 0, len(portals)),
+	}
+}
+
+func (q *bestHerringBoneQuery) findBestHerringbone(b0, b1 portalData, result []uint16) []uint16 {
+	q.nodes = q.nodes[:0]
 	v0, v1 := b1.LatLng.PointCross(b0.LatLng).Vector, b0.LatLng.PointCross(b1.LatLng).Vector
 	distQuery := newDistanceQuery(b0.LatLng, b1.LatLng)
-	for _, portal := range portals {
+	for _, portal := range q.portals {
 		if portal == b0 || portal == b1 {
 			continue
 		}
@@ -52,29 +64,29 @@ func findBestHerringbone(b0, b1 portalData, portals []portalData, nodes []node, 
 		}
 		a0, a1 := angle(portal.LatLng, b0.LatLng, v0), angle(portal.LatLng, b1.LatLng, v1)
 		dist := distQuery.Distance(portal.LatLng)
-		nodes = append(nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
+		q.nodes = append(q.nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
 	}
-	sort.Slice(nodes, func(i, j int) bool {
-		return nodes[i].distance < nodes[j].distance
+	sort.Slice(q.nodes, func(i, j int) bool {
+		return q.nodes[i].distance < q.nodes[j].distance
 	})
-	for i, node := range nodes {
+	for i, node := range q.nodes {
 		var bestLength uint16
 		bestNext := invalidPortalIndex
 		for j := 0; j < i; j++ {
-			if nodes[j].start < node.start && nodes[j].end < node.end {
-				if nodes[j].length >= bestLength {
-					bestLength = nodes[j].length + 1
+			if q.nodes[j].start < node.start && q.nodes[j].end < node.end {
+				if q.nodes[j].length >= bestLength {
+					bestLength = q.nodes[j].length + 1
 					bestNext = uint16(j)
 				}
 			}
 		}
-		nodes[i].length = bestLength
-		nodes[i].next = bestNext
+		q.nodes[i].length = bestLength
+		q.nodes[i].next = bestNext
 	}
 
 	start := invalidPortalIndex
 	var length uint16
-	for i, node := range nodes {
+	for i, node := range q.nodes {
 		if node.length > length {
 			length = node.length
 			start = uint16(i)
@@ -85,8 +97,8 @@ func findBestHerringbone(b0, b1 portalData, portals []portalData, nodes []node, 
 		return result
 	}
 	for start != invalidPortalIndex {
-		result = append(result, nodes[start].index)
-		start = nodes[start].next
+		result = append(result, q.nodes[start].index)
+		start = q.nodes[start].next
 	}
 	return result
 }
@@ -104,7 +116,6 @@ func LargestHerringbone(portals []Portal) (Portal, Portal, []Portal) {
 	index := make([]bestSolution, len(portals))
 	var largestHerringbone []uint16
 	var bestB0, bestB1 portalData
-	nodesCache := make([]node, 0, len(portals))
 	resultCache := make([]uint16, 0, len(portals))
 
 	numPairs := len(portals) * (len(portals) - 1) / 2
@@ -114,19 +125,20 @@ func LargestHerringbone(portals []Portal) (Portal, Portal, []Portal) {
 	}
 	numProcessedPairs := 0
 	printProgressBar(0, numPairs)
+	q := newBestHerringBoneQuery(portalsData)
 	for i, b0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
 			b1 := portalsData[j]
 			for k := 0; k < len(index); k++ {
 				index[k].Length = invalidLength
 			}
-			bestCCW := findBestHerringbone(b0, b1, portalsData, nodesCache, resultCache)
+			bestCCW := q.findBestHerringbone(b0, b1, resultCache)
 			if len(bestCCW) > len(largestHerringbone) {
 				largestHerringbone = append(largestHerringbone[:0], bestCCW...)
 				bestB0 = b0
 				bestB1 = b1
 			}
-			bestCW := findBestHerringbone(b1, b0, portalsData, nodesCache, resultCache)
+			bestCW := q.findBestHerringbone(b1, b0, resultCache)
 			if len(bestCW) > len(largestHerringbone) {
 				largestHerringbone = append(largestHerringbone[:0], bestCW...)
 				bestB0 = b1

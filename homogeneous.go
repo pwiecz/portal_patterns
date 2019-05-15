@@ -3,64 +3,14 @@ package main
 import "fmt"
 import "math"
 
-func findBestHomogenous(p0, p1, p2 portalData, candidates []portalData, index [][][]bestSolution, onFilledIndexEntry func()) bestSolution {
-	localCandidates := append(make([]portalData, 0, len(candidates)), candidates...)
-	var bestHomogeneous bestSolution
-	for _, portal := range localCandidates {
-		minDepth := uint16(math.MaxUint16)
-		{
-			candidate0 := index[portal.Index][p1.Index][p2.Index]
-			if candidate0.Length == invalidLength {
-				candidatesInWedge := portalsInsideWedge(candidates, portal, p1, p2)
-				candidate0 = findBestHomogenous(portal, p1, p2, candidatesInWedge, index, onFilledIndexEntry)
-			}
-			if candidate0.Length < minDepth {
-				minDepth = candidate0.Length
-			}
-		}
-		{
-			candidate1 := index[portal.Index][p0.Index][p2.Index]
-			if candidate1.Length == invalidLength {
-				candidatesInWedge := portalsInsideWedge(candidates, portal, p0, p2)
-				candidate1 = findBestHomogenous(portal, p0, p2, candidatesInWedge, index, onFilledIndexEntry)
-			}
-			if candidate1.Length < minDepth {
-				minDepth = candidate1.Length
-			}
-		}
-		{
-			candidate2 := index[portal.Index][p0.Index][p1.Index]
-			if candidate2.Length == invalidLength {
-				candidatesInWedge := portalsInsideWedge(candidates, portal, p0, p1)
-				candidate2 = findBestHomogenous(portal, p0, p1, candidatesInWedge, index, onFilledIndexEntry)
-			}
-			if candidate2.Length < minDepth {
-				minDepth = candidate2.Length
-			}
-		}
-		if minDepth != uint16(math.MaxUint16) && minDepth+1 > bestHomogeneous.Length {
-			bestHomogeneous.Index = portal.Index
-			bestHomogeneous.Length = minDepth + 1
-		}
-	}
-	if index[p0.Index][p1.Index][p2.Index].Length == invalidLength {
-		onFilledIndexEntry()
-	}
-	index[p0.Index][p1.Index][p2.Index] = bestHomogeneous
-	index[p0.Index][p2.Index][p1.Index] = bestHomogeneous
-	index[p1.Index][p0.Index][p2.Index] = bestHomogeneous
-	index[p1.Index][p2.Index][p0.Index] = bestHomogeneous
-	index[p2.Index][p0.Index][p1.Index] = bestHomogeneous
-	index[p2.Index][p1.Index][p0.Index] = bestHomogeneous
-	return bestHomogeneous
+type bestHomogeneousQuery struct {
+	portals            []portalData
+	index              [][][]bestSolution
+	onFilledIndexEntry func()
+	portalsInTriangle  []portalData
 }
 
-// DeepestHomogeneous - Find deepest homogeneous field that can be made out of portals
-func DeepestHomogeneous(portals []Portal) ([]Portal, uint16) {
-	if len(portals) < 3 {
-		panic("Too short portal list")
-	}
-	portalsData := portalsToPortalData(portals)
+func newBestHomogeneousQuery(portals []portalData, onFilledIndexEntry func()) *bestHomogeneousQuery{
 	index := make([][][]bestSolution, 0, len(portals))
 	for i := 0; i < len(portals); i++ {
 		index = append(index, make([][]bestSolution, 0, len(portals)))
@@ -71,6 +21,86 @@ func DeepestHomogeneous(portals []Portal) ([]Portal, uint16) {
 			}
 		}
 	}
+	return &bestHomogeneousQuery{
+		portals:            portals,
+		index:              index,
+		onFilledIndexEntry: onFilledIndexEntry,
+	}
+}
+
+func (q *bestHomogeneousQuery) findBestHomogeneous(p0, p1, p2 portalData) {
+	if q.index[p0.Index][p1.Index][p2.Index].Length != invalidLength {
+		return
+	}
+	triangle := newTriangleQuery(p1.LatLng, p0.LatLng, p2.LatLng)
+	q.portalsInTriangle = q.portalsInTriangle[:0]
+	for _, p := range q.portals {
+		if p.Index != p0.Index && p.Index != p1.Index && p.Index != p2.Index &&
+			triangle.ContainsPoint(p.LatLng) {
+			q.portalsInTriangle = append(q.portalsInTriangle, p)
+		}
+	}
+	q.findBestHomogeneousAux(p0, p1, p2, q.portalsInTriangle)
+}
+
+func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, candidates []portalData) bestSolution {
+	localCandidates := append(make([]portalData, 0, len(candidates)), candidates...)
+	var bestHomogeneous bestSolution
+	for _, portal := range localCandidates {
+		minDepth := uint16(math.MaxUint16)
+		{
+			candidate0 := q.index[portal.Index][p1.Index][p2.Index]
+			if candidate0.Length == invalidLength {
+				candidatesInWedge := portalsInsideWedge(candidates, portal, p1, p2)
+				candidate0 = q.findBestHomogeneousAux(portal, p1, p2, candidatesInWedge)
+			}
+			if candidate0.Length < minDepth {
+				minDepth = candidate0.Length
+			}
+		}
+		{
+			candidate1 := q.index[portal.Index][p0.Index][p2.Index]
+			if candidate1.Length == invalidLength {
+				candidatesInWedge := portalsInsideWedge(candidates, portal, p0, p2)
+				candidate1 = q.findBestHomogeneousAux(portal, p0, p2, candidatesInWedge)
+			}
+			if candidate1.Length < minDepth {
+				minDepth = candidate1.Length
+			}
+		}
+		{
+			candidate2 := q.index[portal.Index][p0.Index][p1.Index]
+			if candidate2.Length == invalidLength {
+				candidatesInWedge := portalsInsideWedge(candidates, portal, p0, p1)
+				candidate2 = q.findBestHomogeneousAux(portal, p0, p1, candidatesInWedge)
+			}
+			if candidate2.Length < minDepth {
+				minDepth = candidate2.Length
+			}
+		}
+		if minDepth != uint16(math.MaxUint16) && minDepth+1 > bestHomogeneous.Length {
+			bestHomogeneous.Index = portal.Index
+			bestHomogeneous.Length = minDepth + 1
+		}
+	}
+	if q.index[p0.Index][p1.Index][p2.Index].Length == invalidLength {
+		q.onFilledIndexEntry()
+	}
+	q.index[p0.Index][p1.Index][p2.Index] = bestHomogeneous
+	q.index[p0.Index][p2.Index][p1.Index] = bestHomogeneous
+	q.index[p1.Index][p0.Index][p2.Index] = bestHomogeneous
+	q.index[p1.Index][p2.Index][p0.Index] = bestHomogeneous
+	q.index[p2.Index][p0.Index][p1.Index] = bestHomogeneous
+	q.index[p2.Index][p1.Index][p0.Index] = bestHomogeneous
+	return bestHomogeneous
+}
+
+// DeepestHomogeneous - Find deepest homogeneous field that can be made out of portals
+func DeepestHomogeneous(portals []Portal) ([]Portal, uint16) {
+	if len(portals) < 3 {
+		panic("Too short portal list")
+	}
+	portalsData := portalsToPortalData(portals)
 
 	numIndexEntries := len(portals) * (len(portals) - 1) * (len(portals) - 2) / 6
 	everyNth := numIndexEntries / 1000
@@ -86,24 +116,13 @@ func DeepestHomogeneous(portals []Portal) ([]Portal, uint16) {
 	}
 
 	printProgressBar(0, numIndexEntries)
-	var portalsInTriangle []portalData
+	q := newBestHomogeneousQuery(portalsData, onFilledIndexEntry)
 	for i, p0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
 			p1 := portalsData[j]
 			for k := j + 1; k < len(portalsData); k++ {
 				p2 := portalsData[k]
-				if index[p0.Index][p1.Index][p2.Index].Length != invalidLength {
-					continue
-				}
-				triangle := newTriangleQuery(p1.LatLng, p0.LatLng, p2.LatLng)
-				portalsInTriangle = portalsInTriangle[:0]
-				for _, p := range portalsData {
-					if p.Index != p0.Index && p.Index != p1.Index && p.Index != p2.Index &&
-						triangle.ContainsPoint(p.LatLng) {
-						portalsInTriangle = append(portalsInTriangle, p)
-					}
-				}
-				findBestHomogenous(p0, p1, p2, portalsInTriangle, index, onFilledIndexEntry)
+				q.findBestHomogeneous(p0, p1, p2)
 			}
 		}
 	}
@@ -118,7 +137,7 @@ func DeepestHomogeneous(portals []Portal) ([]Portal, uint16) {
 			p1 := portalsData[j]
 			for k := j + 1; k < len(portalsData); k++ {
 				p2 := portalsData[k]
-				candidate := index[p0.Index][p1.Index][p2.Index]
+				candidate := q.index[p0.Index][p1.Index][p2.Index]
 				if candidate.Length > bestDepth || (candidate.Length == bestDepth && triangleArea(p0, p1, p2) < bestArea) {
 					bestP0, bestP1, bestP2 = p0, p1, p2
 					bestDepth = candidate.Length
@@ -129,7 +148,7 @@ func DeepestHomogeneous(portals []Portal) ([]Portal, uint16) {
 	}
 
 	resultIndices := []uint16{bestP0.Index, bestP1.Index, bestP2.Index}
-	resultIndices = appendHomogeneousResult(bestP0.Index, bestP1.Index, bestP2.Index, bestDepth, resultIndices, index)
+	resultIndices = appendHomogeneousResult(bestP0.Index, bestP1.Index, bestP2.Index, bestDepth, resultIndices, q.index)
 	result := []Portal{}
 	for _, index := range resultIndices {
 		result = append(result, portals[index])
