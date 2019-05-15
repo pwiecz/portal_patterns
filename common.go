@@ -99,33 +99,28 @@ func (t *triangleWedgeQuery) ContainsPoint(o s2.Point) bool {
 	return t.ccwQuery.Ordered(o)
 }
 
-func portalsInsideWedge(portals []portalData, a, b, c portalData) []portalData {
+func portalsInsideWedge(portals []portalData, a, b, c portalData, result []portalData) []portalData {
 	wedge := newTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
-	for i := 0; i < len(portals); {
-		p := portals[i]
+	result = result[:0]
+	for _, p := range portals {
 		if p.Index != a.Index && p.Index != b.Index && p.Index != c.Index &&
 			wedge.ContainsPoint(p.LatLng) {
-			i++
-		} else {
-			portals[i], portals[len(portals)-1] = portals[len(portals)-1], p
-			portals = portals[:len(portals)-1]
+			result = append(result, p)
 		}
 	}
-	return portals
+	return result
 }
-func portalsInsideTriangle(portals []portalData, a, b, c portalData) []portalData {
+
+func portalsInsideTriangle(portals []portalData, a, b, c portalData, result []portalData) []portalData {
 	triangle := newTriangleQuery(a.LatLng, b.LatLng, c.LatLng)
-	for i := 0; i < len(portals); {
-		p := portals[i]
+	result = result[:0]
+	for _, p := range portals {
 		if p.Index != a.Index && p.Index != b.Index && p.Index != c.Index &&
 			triangle.ContainsPoint(p.LatLng) {
-			i++
-		} else {
-			portals[i], portals[len(portals)-1] = portals[len(portals)-1], p
-			portals = portals[:len(portals)-1]
+			result = append(result, p)
 		}
 	}
-	return portals
+	return result
 }
 
 func triangleArea(p0, p1, p2 portalData) float64 {

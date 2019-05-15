@@ -51,7 +51,7 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 		{
 			candidate0 := q.index[portal.Index][p1.Index][p2.Index]
 			if candidate0.Length == invalidLength {
-				candidatesInWedge := portalsInsideWedge(candidates, portal, p1, p2)
+				candidatesInWedge := portalsInsideWedge(localCandidates, portal, p1, p2, q.portalsInTriangle)
 				candidate0 = q.findBestHomogeneousAux(portal, p1, p2, candidatesInWedge)
 			}
 			if candidate0.Length < minDepth {
@@ -61,7 +61,7 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 		{
 			candidate1 := q.index[portal.Index][p0.Index][p2.Index]
 			if candidate1.Length == invalidLength {
-				candidatesInWedge := portalsInsideWedge(candidates, portal, p0, p2)
+				candidatesInWedge := portalsInsideWedge(localCandidates, portal, p0, p2, q.portalsInTriangle)
 				candidate1 = q.findBestHomogeneousAux(portal, p0, p2, candidatesInWedge)
 			}
 			if candidate1.Length < minDepth {
@@ -71,7 +71,7 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 		{
 			candidate2 := q.index[portal.Index][p0.Index][p1.Index]
 			if candidate2.Length == invalidLength {
-				candidatesInWedge := portalsInsideWedge(candidates, portal, p0, p1)
+				candidatesInWedge := portalsInsideWedge(localCandidates, portal, p0, p1, q.portalsInTriangle)
 				candidate2 = q.findBestHomogeneousAux(portal, p0, p1, candidatesInWedge)
 			}
 			if candidate2.Length < minDepth {

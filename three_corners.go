@@ -10,6 +10,9 @@ type bestThreeCornersQuery struct {
 	portals2           []portalData
 	index              [][][]bestTCSolution
 	onIndexEntryFilled func()
+	filteredPortals0   []portalData
+	filteredPortals1   []portalData
+	filteredPortals2   []portalData
 }
 
 func newBestThreeCornersQuery(portals0, portals1, portals2 []portalData, onIndexEntryFilled func()) *bestThreeCornersQuery {
@@ -31,6 +34,9 @@ func newBestThreeCornersQuery(portals0, portals1, portals2 []portalData, onIndex
 		portals2:           append(make([]portalData, 0, len(portals2)), portals2...),
 		index:              index,
 		onIndexEntryFilled: onIndexEntryFilled,
+		filteredPortals0:   make([]portalData, 0, len(portals0)),
+		filteredPortals1:   make([]portalData, 0, len(portals1)),
+		filteredPortals2:   make([]portalData, 0, len(portals2)),
 	}
 }
 
@@ -44,10 +50,10 @@ func (q *bestThreeCornersQuery) findBestThreeCorner(p0, p1, p2 portalData) {
 	if q.index[p0.Index][p1.Index][p2.Index].Length != invalidLength {
 		return
 	}
-	filteredPortals0 := portalsInsideTriangle(q.portals0, p0, p1, p2)
-	filteredPortals1 := portalsInsideTriangle(q.portals1, p0, p1, p2)
-	filteredPortals2 := portalsInsideTriangle(q.portals2, p0, p1, p2)
-	q.findBestThreeCornerAux(p0, p1, p2, filteredPortals0, filteredPortals1, filteredPortals2)
+	q.filteredPortals0 = portalsInsideTriangle(q.portals0, p0, p1, p2, q.filteredPortals0)
+	q.filteredPortals1 = portalsInsideTriangle(q.portals1, p0, p1, p2, q.filteredPortals0)
+	q.filteredPortals2 = portalsInsideTriangle(q.portals2, p0, p1, p2, q.filteredPortals0)
+	q.findBestThreeCornerAux(p0, p1, p2, q.filteredPortals0, q.filteredPortals1, q.filteredPortals2)
 }
 func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData, portals0, portals1, portals2 []portalData) bestTCSolution {
 	localPortals0 := append(make([]portalData, 0, len(portals0)), portals0...)

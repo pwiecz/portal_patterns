@@ -6,6 +6,7 @@ type bestCobwebQuery struct {
 	portals            []portalData
 	index              [][][]bestSolution
 	onFilledIndexEntry func()
+	filteredPortals    []portalData
 }
 
 func newBestCobwebQuery(portals []portalData, onFilledIndexEntry func()) *bestCobwebQuery {
@@ -24,6 +25,7 @@ func newBestCobwebQuery(portals []portalData, onFilledIndexEntry func()) *bestCo
 		portals:            append(make([]portalData, 0, len(portals)), portals...),
 		index:              index,
 		onFilledIndexEntry: onFilledIndexEntry,
+		filteredPortals:    make([]portalData, 0, len(portals)),
 	}
 }
 
@@ -31,8 +33,8 @@ func (q *bestCobwebQuery) findBestCobweb(p0, p1, p2 portalData) {
 	if q.index[p0.Index][p1.Index][p2.Index].Length != invalidLength {
 		return
 	}
-	filteredPortals := portalsInsideTriangle(q.portals, p0, p1, p2)
-	q.findBestCobwebAux(p0, p1, p2, filteredPortals)
+	q.filteredPortals = portalsInsideTriangle(q.portals, p0, p1, p2, q.filteredPortals)
+	q.findBestCobwebAux(p0, p1, p2, q.filteredPortals)
 }
 
 func (q *bestCobwebQuery) findBestCobwebAux(p0, p1, p2 portalData, candidates []portalData) bestSolution {
@@ -41,17 +43,7 @@ func (q *bestCobwebQuery) findBestCobwebAux(p0, p1, p2 portalData, candidates []
 	for _, portal := range localCandidates {
 		candidate := q.index[p1.Index][p2.Index][portal.Index]
 		if candidate.Length == invalidLength {
-			wedge := newTriangleWedgeQuery(portal.LatLng, p1.LatLng, p2.LatLng)
-			candidatesInWedge := candidates
-			for i := 0; i < len(candidatesInWedge); {
-				cand := candidatesInWedge[i]
-				if cand.Index != portal.Index && wedge.ContainsPoint(cand.LatLng) {
-					i++
-				} else {
-					candidatesInWedge[i], candidatesInWedge[len(candidatesInWedge)-1] = candidatesInWedge[len(candidatesInWedge)-1], cand
-					candidatesInWedge = candidatesInWedge[:len(candidatesInWedge)-1]
-				}
-			}
+			candidatesInWedge := portalsInsideWedge(localCandidates, portal, p1, p2, q.filteredPortals)
 			candidate = q.findBestCobwebAux(p1, p2, portal, candidatesInWedge)
 		}
 		if candidate.Length+1 > bestCobweb.Length {
