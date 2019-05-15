@@ -1,11 +1,23 @@
 package main
 
 import "fmt"
+import "log"
 import "math"
 import "os"
 import "strings"
+import "runtime/pprof"
 
 func main() {
+	f, err := os.Create("cpu.prof")
+	if err != nil {
+		log.Fatal("could not create CPU profile: ", err)
+	}
+	defer f.Close()
+	if err := pprof.StartCPUProfile(f); err != nil {
+		log.Fatal("could not start CPU profile: ", err)
+	}
+	defer pprof.StopCPUProfile()
+
 	if len(os.Args) < 3 {
 		fmt.Println("Usage:\n" +
 			"  " + os.Args[0] + " cobweb <portals.json>\n" +
