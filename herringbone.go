@@ -42,6 +42,7 @@ func angle(a, b s2.Point, v r3.Vector) s1.Angle {
 type bestHerringBoneQuery struct {
 	portals []portalData
 	nodes   []node
+	weights []float32
 }
 
 func newBestHerringBoneQuery(portals []portalData) *bestHerringBoneQuery {
@@ -69,19 +70,31 @@ func (q *bestHerringBoneQuery) findBestHerringbone(b0, b1 portalData, result []u
 	sort.Slice(q.nodes, func(i, j int) bool {
 		return q.nodes[i].distance < q.nodes[j].distance
 	})
+	q.weights = make([]float32, len(q.portals), len(q.portals))
 	for i, node := range q.nodes {
 		var bestLength uint16
 		bestNext := invalidPortalIndex
+		var bestWeight float32
 		for j := 0; j < i; j++ {
 			if q.nodes[j].start < node.start && q.nodes[j].end < node.end {
 				if q.nodes[j].length >= bestLength {
 					bestLength = q.nodes[j].length + 1
 					bestNext = uint16(j)
+					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * 2e+7)
+					bestWeight = q.weights[node.index] + scaledDistance
+				} else if q.nodes[j].length + 1 == bestLength {
+					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * 2e+7)
+					if q.weights[node.index]+scaledDistance < bestWeight {
+						bestLength = q.nodes[j].length + 1
+						bestNext = uint16(j)
+						bestWeight = q.weights[node.index] + scaledDistance
+					}
 				}
 			}
 		}
 		q.nodes[i].length = bestLength
 		q.nodes[i].next = bestNext
+		q.weights[node.index] = bestWeight
 	}
 
 	start := invalidPortalIndex
