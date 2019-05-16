@@ -52,6 +52,8 @@ func newBestHerringBoneQuery(portals []portalData) *bestHerringBoneQuery {
 	}
 }
 
+const distanceMultiplier = 2e+7 / math.Pi
+
 func (q *bestHerringBoneQuery) findBestHerringbone(b0, b1 portalData, result []uint16) []uint16 {
 	q.nodes = q.nodes[:0]
 	v0, v1 := b1.LatLng.PointCross(b0.LatLng).Vector, b0.LatLng.PointCross(b1.LatLng).Vector
@@ -80,14 +82,14 @@ func (q *bestHerringBoneQuery) findBestHerringbone(b0, b1 portalData, result []u
 				if q.nodes[j].length >= bestLength {
 					bestLength = q.nodes[j].length + 1
 					bestNext = uint16(j)
-					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * 2e+7)
-					bestWeight = q.weights[node.index] + scaledDistance
+					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * distanceMultiplier)
+					bestWeight = q.weights[q.nodes[j].index] + scaledDistance
 				} else if q.nodes[j].length + 1 == bestLength {
-					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * 2e+7)
+					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * distanceMultiplier)
 					if q.weights[node.index]+scaledDistance < bestWeight {
 						bestLength = q.nodes[j].length + 1
 						bestNext = uint16(j)
-						bestWeight = q.weights[node.index] + scaledDistance
+						bestWeight = q.weights[q.nodes[j].index] + scaledDistance
 					}
 				}
 			}
