@@ -84,10 +84,10 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 		if minDepth == 0 {
 			minDistance = float32(
 				float64Min(
-					p0p1Distance.Distance(portal.LatLng).Radians()*radiansToMeters,
+					p0p1Distance.Distance(portal.LatLng).Radians(),
 					float64Min(
-						p0p2Distance.Distance(portal.LatLng).Radians()*radiansToMeters,
-						p1p2Distance.Distance(portal.LatLng).Radians()*radiansToMeters)))
+						p0p2Distance.Distance(portal.LatLng).Radians(),
+						p1p2Distance.Distance(portal.LatLng).Radians())) * radiansToMeters)
 		} else {
 			minDistance = float32Min(
 				q.weights[portal.Index][p1.Index][p2.Index],
