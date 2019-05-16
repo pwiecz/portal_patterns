@@ -22,7 +22,7 @@ func newBestCobwebQuery(portals []portalData, onFilledIndexEntry func()) *bestCo
 		}
 	}
 	return &bestCobwebQuery{
-		portals:            append(make([]portalData, 0, len(portals)), portals...),
+		portals:            portals,
 		index:              index,
 		onFilledIndexEntry: onFilledIndexEntry,
 		filteredPortals:    make([]portalData, 0, len(portals)),

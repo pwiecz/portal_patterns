@@ -125,7 +125,7 @@ func main() {
 		for i, portal := range result {
 			fmt.Printf("%d: %s\n", i, portal.Name)
 		}
-		polylines := []string{polylineFromPortalList([]Portal{result[0], result[1], result[2]})}
+		polylines := []string{polylineFromPortalList([]Portal{result[0], result[1], result[2], result[0]})}
 		polylines, _ = appendHomogeneousPolylines(result[0], result[1], result[2], depth, polylines, result[3:])
 		fmt.Printf("\n[%s]\n", strings.Join(polylines, ","))
 	} else {

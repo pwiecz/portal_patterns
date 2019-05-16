@@ -1,7 +1,6 @@
 package main
 
 import "fmt"
-import "math"
 
 type bestHomogeneousQuery struct {
 	portals            []portalData
@@ -10,7 +9,7 @@ type bestHomogeneousQuery struct {
 	portalsInTriangle  []portalData
 }
 
-func newBestHomogeneousQuery(portals []portalData, onFilledIndexEntry func()) *bestHomogeneousQuery{
+func newBestHomogeneousQuery(portals []portalData, onFilledIndexEntry func()) *bestHomogeneousQuery {
 	index := make([][][]bestSolution, 0, len(portals))
 	for i := 0; i < len(portals); i++ {
 		index = append(index, make([][]bestSolution, 0, len(portals)))
@@ -25,6 +24,7 @@ func newBestHomogeneousQuery(portals []portalData, onFilledIndexEntry func()) *b
 		portals:            portals,
 		index:              index,
 		onFilledIndexEntry: onFilledIndexEntry,
+		portalsInTriangle:  make([]portalData, 0, len(portals)),
 	}
 }
 
@@ -32,14 +32,7 @@ func (q *bestHomogeneousQuery) findBestHomogeneous(p0, p1, p2 portalData) {
 	if q.index[p0.Index][p1.Index][p2.Index].Length != invalidLength {
 		return
 	}
-	triangle := newTriangleQuery(p1.LatLng, p0.LatLng, p2.LatLng)
-	q.portalsInTriangle = q.portalsInTriangle[:0]
-	for _, p := range q.portals {
-		if p.Index != p0.Index && p.Index != p1.Index && p.Index != p2.Index &&
-			triangle.ContainsPoint(p.LatLng) {
-			q.portalsInTriangle = append(q.portalsInTriangle, p)
-		}
-	}
+	q.portalsInTriangle = portalsInsideTriangle(q.portals, p0, p1, p2, q.portalsInTriangle)
 	q.findBestHomogeneousAux(p0, p1, p2, q.portalsInTriangle)
 }
 
@@ -47,7 +40,7 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 	localCandidates := append(make([]portalData, 0, len(candidates)), candidates...)
 	var bestHomogeneous bestSolution
 	for _, portal := range localCandidates {
-		minDepth := uint16(math.MaxUint16)
+		minDepth := invalidLength
 		{
 			candidate0 := q.index[portal.Index][p1.Index][p2.Index]
 			if candidate0.Length == invalidLength {
@@ -78,7 +71,7 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 				minDepth = candidate2.Length
 			}
 		}
-		if minDepth != uint16(math.MaxUint16) && minDepth+1 > bestHomogeneous.Length {
+		if minDepth != invalidLength && minDepth+1 > bestHomogeneous.Length {
 			bestHomogeneous.Index = portal.Index
 			bestHomogeneous.Length = minDepth + 1
 		}
