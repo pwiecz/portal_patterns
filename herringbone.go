@@ -2,7 +2,6 @@ package main
 
 import "fmt"
 
-import "math"
 import "sort"
 import "github.com/golang/geo/s1"
 import "github.com/golang/geo/s2"
@@ -14,25 +13,6 @@ type node struct {
 	distance   s1.Angle
 	length     uint16
 	next       uint16
-}
-
-type distanceQuery struct {
-	aCrossB s2.Point
-	c2      float64
-}
-
-func newDistanceQuery(a, b s2.Point) distanceQuery {
-	aCrossB := a.PointCross(b)
-	return distanceQuery{aCrossB, aCrossB.Norm2()}
-}
-
-func (d *distanceQuery) Distance(p s2.Point) s1.Angle {
-	pDotC := p.Dot(d.aCrossB.Vector)
-	pDotC2 := pDotC * pDotC
-	cx := d.aCrossB.Cross(p.Vector)
-	qr := 1 - math.Sqrt(cx.Norm2()/d.c2)
-	return s1.ChordAngle((pDotC2 / d.c2) + (qr * qr)).Angle()
-
 }
 
 func angle(a, b s2.Point, v r3.Vector) s1.Angle {
@@ -51,8 +31,6 @@ func newBestHerringBoneQuery(portals []portalData) *bestHerringBoneQuery {
 		nodes:   make([]node, 0, len(portals)),
 	}
 }
-
-const distanceMultiplier = 2e+7 / math.Pi
 
 func (q *bestHerringBoneQuery) findBestHerringbone(b0, b1 portalData, result []uint16) []uint16 {
 	q.nodes = q.nodes[:0]
@@ -82,10 +60,10 @@ func (q *bestHerringBoneQuery) findBestHerringbone(b0, b1 portalData, result []u
 				if q.nodes[j].length >= bestLength {
 					bestLength = q.nodes[j].length + 1
 					bestNext = uint16(j)
-					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * distanceMultiplier)
+					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * radiansToMeters)
 					bestWeight = q.weights[q.nodes[j].index] + scaledDistance
-				} else if q.nodes[j].length + 1 == bestLength {
-					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * distanceMultiplier)
+				} else if q.nodes[j].length+1 == bestLength {
+					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * radiansToMeters)
 					if q.weights[node.index]+scaledDistance < bestWeight {
 						bestLength = q.nodes[j].length + 1
 						bestNext = uint16(j)

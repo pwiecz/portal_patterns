@@ -5,6 +5,7 @@ import "math"
 import "strings"
 
 import "github.com/golang/geo/r3"
+import "github.com/golang/geo/s1"
 import "github.com/golang/geo/s2"
 
 const invalidPortalIndex uint16 = math.MaxUint16
@@ -99,6 +100,25 @@ func (t *triangleWedgeQuery) ContainsPoint(o s2.Point) bool {
 	return t.ccwQuery.Ordered(o)
 }
 
+type distanceQuery struct {
+	aCrossB s2.Point
+	c2      float64
+}
+
+func newDistanceQuery(a, b s2.Point) distanceQuery {
+	aCrossB := a.PointCross(b)
+	return distanceQuery{aCrossB, aCrossB.Norm2()}
+}
+
+func (d *distanceQuery) Distance(p s2.Point) s1.Angle {
+	pDotC := p.Dot(d.aCrossB.Vector)
+	pDotC2 := pDotC * pDotC
+	cx := d.aCrossB.Cross(p.Vector)
+	qr := 1 - math.Sqrt(cx.Norm2()/d.c2)
+	return s1.ChordAngle((pDotC2 / d.c2) + (qr * qr)).Angle()
+
+}
+
 func portalsInsideWedge(portals []portalData, a, b, c portalData, result []portalData) []portalData {
 	wedge := newTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
 	result = result[:0]
@@ -130,6 +150,21 @@ func triangleArea(p0, p1, p2 portalData) float64 {
 func distance(p0, p1 portalData) float64 {
 	return p0.LatLng.Sub(p1.LatLng.Vector).Norm()
 }
+
+func float64Min(v0, v1 float64) float64 {
+	if v0 < v1 {
+		return v0
+	}
+	return v1
+}
+func float32Min(v0, v1 float32) float32 {
+	if v0 < v1 {
+		return v0
+	}
+	return v1
+}
+
+const radiansToMeters = 2e+7 / math.Pi
 
 func pointToJSONCoords(point s2.Point) string {
 	latlng := s2.LatLngFromPoint(point)
