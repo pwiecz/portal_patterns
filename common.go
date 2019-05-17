@@ -165,6 +165,7 @@ func float32Min(v0, v1 float32) float32 {
 }
 
 const radiansToMeters = 2e+7 / math.Pi
+const unitAreaToSquareMeters = 5.1e+14
 
 func pointToJSONCoords(point s2.Point) string {
 	latlng := s2.LatLngFromPoint(point)

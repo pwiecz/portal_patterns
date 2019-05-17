@@ -140,7 +140,7 @@ func DeepestHomogeneous(portals []Portal) ([]Portal, uint16) {
 		}
 	}
 
-	scorer := newBestTriangleHeightScorer(portalsData)
+	scorer := newAvoidThinTrianglesScorer(portalsData)
 	printProgressBar(0, numIndexEntries)
 	q := newBestHomogeneousQuery(portalsData, scorer, onFilledIndexEntry)
 	for i, p0 := range portalsData {
@@ -155,7 +155,7 @@ func DeepestHomogeneous(portals []Portal) ([]Portal, uint16) {
 	printProgressBar(numIndexEntries, numIndexEntries)
 	fmt.Println("")
 
-	topLevelScorer := scorer.newTopLevelScorer()
+	topLevelScorer := scorer
 	var bestDepth uint16
 	var bestP0, bestP1, bestP2 portalData
 	var bestScore float32

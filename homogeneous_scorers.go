@@ -1,37 +1,53 @@
 package main
 
-type bestTriangleHeightScorer struct {
-	scores [][][]float32
+type avoidThinTrianglesScorer struct {
+	minHeight [][][]float32
 }
-
-type bestTriangleHeightTriangleScorer struct {
-	scores     [][][]float32
+type avoidThinTrianglesTriangleScorer struct {
+	minHeight     [][][]float32
 	a, b, c    portalData
 	abDistance distanceQuery
 	acDistance distanceQuery
 	bcDistance distanceQuery
 }
 
-type bestTriangleHeightTopLevelScorer struct {
-	scores [][][]float32
+type avoidSmallTrianglesScorer struct {
+	minArea [][][]float32
+}
+type avoidSmallTrianglesTriangleScorer struct {
+	minArea [][][]float32
+	a, b, c portalData
 }
 
-func newBestTriangleHeightScorer(portals []portalData) *bestTriangleHeightScorer {
-	scores := make([][][]float32, 0, len(portals))
+func newAvoidThinTrianglesScorer(portals []portalData) *avoidThinTrianglesScorer {
+	minHeight := make([][][]float32, 0, len(portals))
 	for i := 0; i < len(portals); i++ {
-		scores = append(scores, make([][]float32, 0, len(portals)))
-		for j := 0; j < len(portals); j++ {
-			scores[i] = append(scores[i], make([]float32, len(portals)))
+		minHeight = append(minHeight, make([][]float32, 0, len(portals)))
+		for j := 0; j < len(minHeight); j++ {
+			minHeight[i] = append(minHeight[i], make([]float32, len(portals)))
 		}
 	}
-	return &bestTriangleHeightScorer{
-		scores: scores,
+	return &avoidThinTrianglesScorer{
+		minHeight: minHeight,
 	}
 }
 
-func (s *bestTriangleHeightScorer) newTriangleScorer(a, b, c portalData) homogeneousTriangleScorer {
-	return &bestTriangleHeightTriangleScorer{
-		scores:     s.scores,
+func newAvoidSmallTrianglesScorer(portals []portalData) *avoidSmallTrianglesScorer {
+	minArea := make([][][]float32, 0, len(portals))
+	for i := 0; i < len(portals); i++ {
+		minArea = append(minArea, make([][]float32, 0, len(portals)))
+		for j := 0; j < len(portals); j++ {
+			minArea[i] = append(minArea[i], make([]float32, len(portals)))
+		}
+	}
+	return &avoidSmallTrianglesScorer{
+		minArea: minArea,
+	}
+}
+
+func (s *avoidThinTrianglesScorer) newTriangleScorer(a, b, c portalData) homogeneousTriangleScorer {
+	return &avoidThinTrianglesTriangleScorer{
+		minHeight:     s.minHeight,
 		a:          a,
 		b:          b,
 		c:          c,
@@ -40,27 +56,18 @@ func (s *bestTriangleHeightScorer) newTriangleScorer(a, b, c portalData) homogen
 		bcDistance: newDistanceQuery(b.LatLng, c.LatLng),
 	}
 }
-
-func (s *bestTriangleHeightScorer) newTopLevelScorer() homogeneousTopLevelScorer {
-	return &bestTriangleHeightTopLevelScorer{
-		scores: s.scores,
-	}
+func (s *avoidThinTrianglesScorer) setTriangleScore(a, b, c portalData, score float32) {
+	s.minHeight[a.Index][b.Index][c.Index] = score
+	s.minHeight[a.Index][c.Index][b.Index] = score
+	s.minHeight[b.Index][a.Index][c.Index] = score
+	s.minHeight[b.Index][c.Index][a.Index] = score
+	s.minHeight[c.Index][a.Index][b.Index] = score
+	s.minHeight[c.Index][b.Index][a.Index] = score
 }
-
-func (s *bestTriangleHeightScorer) setTriangleScore(a, b, c portalData, score float32) {
-	s.scores[a.Index][b.Index][c.Index] = score
-	s.scores[a.Index][c.Index][b.Index] = score
-	s.scores[b.Index][a.Index][c.Index] = score
-	s.scores[b.Index][c.Index][a.Index] = score
-	s.scores[c.Index][a.Index][b.Index] = score
-	s.scores[c.Index][b.Index][a.Index] = score
+func (s *avoidThinTrianglesScorer) scoreTriangle(a, b, c portalData) float32 {
+	return s.minHeight[a.Index][b.Index][c.Index]
 }
-
-func (s *bestTriangleHeightScorer) scoreTriangle(a, b, c portalData) float32 {
-	return s.scores[a.Index][b.Index][c.Index]
-}
-
-func (s *bestTriangleHeightTriangleScorer) scoreFirstLevelTriangle(p portalData) float32 {
+func (s *avoidThinTrianglesTriangleScorer) scoreFirstLevelTriangle(p portalData) float32 {
 	return float32(
 		float64Min(
 			s.abDistance.Distance(p.LatLng).Radians(),
@@ -68,15 +75,43 @@ func (s *bestTriangleHeightTriangleScorer) scoreFirstLevelTriangle(p portalData)
 				s.acDistance.Distance(p.LatLng).Radians(),
 				s.bcDistance.Distance(p.LatLng).Radians())) * radiansToMeters)
 }
-
-func (s *bestTriangleHeightTriangleScorer) scoreHighLevelTriangle(p portalData) float32 {
+func (s *avoidThinTrianglesTriangleScorer) scoreHighLevelTriangle(p portalData) float32 {
 	return float32Min(
-		s.scores[p.Index][s.a.Index][s.b.Index],
+		s.minHeight[p.Index][s.a.Index][s.b.Index],
 		float32Min(
-			s.scores[p.Index][s.a.Index][s.c.Index],
-			s.scores[p.Index][s.b.Index][s.c.Index]))
+			s.minHeight[p.Index][s.a.Index][s.c.Index],
+			s.minHeight[p.Index][s.b.Index][s.c.Index]))
 }
 
-func (s *bestTriangleHeightTopLevelScorer) scoreTriangle(a, b, c portalData) float32 {
-	return s.scores[a.Index][b.Index][c.Index]
+func (s *avoidSmallTrianglesScorer) newTriangleScorer(a, b, c portalData) homogeneousTriangleScorer {
+	return &avoidSmallTrianglesTriangleScorer{
+		minArea: s.minArea,
+		a:       a,
+		b:       b,
+		c:       c,
+	}
+}
+func (s *avoidSmallTrianglesScorer) setTriangleScore(a, b, c portalData, score float32) {
+	s.minArea[a.Index][b.Index][c.Index] = score
+	s.minArea[a.Index][c.Index][b.Index] = score
+	s.minArea[b.Index][a.Index][c.Index] = score
+	s.minArea[b.Index][c.Index][a.Index] = score
+	s.minArea[c.Index][a.Index][b.Index] = score
+	s.minArea[c.Index][b.Index][a.Index] = score
+}
+func (s *avoidSmallTrianglesScorer) scoreTriangle(a, b, c portalData) float32 {
+	return s.minArea[a.Index][b.Index][c.Index]
+}
+func (s *avoidSmallTrianglesTriangleScorer) scoreFirstLevelTriangle(p portalData) float32 {
+	return float32(
+		float64Min(
+			triangleArea(s.a, s.b, p),
+			float64Min(triangleArea(s.a, s.c, p), triangleArea(s.b, s.c, p))) * unitAreaToSquareMeters)
+}
+func (s *avoidSmallTrianglesTriangleScorer) scoreHighLevelTriangle(p portalData) float32 {
+	return float32Min(
+		s.minArea[p.Index][s.a.Index][s.b.Index],
+		float32Min(
+			s.minArea[p.Index][s.a.Index][s.c.Index],
+			s.minArea[p.Index][s.b.Index][s.c.Index]))
 }
