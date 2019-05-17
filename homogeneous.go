@@ -2,23 +2,34 @@ package main
 
 import "fmt"
 
+type homogeneousTriangleScorer interface {
+	scoreFirstLevelTriangle(p portalData) float32
+	scoreHighLevelTriangle(p portalData) float32
+}
+
+type homogeneousScorer interface {
+	newTriangleScorer(a, b, c portalData) homogeneousTriangleScorer
+	setTriangleScore(a, b, c portalData, score float32)
+}
+
+type homogeneousTopLevelScorer interface {
+	scoreTriangle(a, b, c portalData) float32
+}
+
 type bestHomogeneousQuery struct {
 	portals            []portalData
 	index              [][][]bestSolution
 	onFilledIndexEntry func()
 	portalsInTriangle  []portalData
-	weights            [][][]float32
+	scorer             homogeneousScorer
 }
 
-func newBestHomogeneousQuery(portals []portalData, onFilledIndexEntry func()) *bestHomogeneousQuery {
+func newBestHomogeneousQuery(portals []portalData, scorer homogeneousScorer, onFilledIndexEntry func()) *bestHomogeneousQuery {
 	index := make([][][]bestSolution, 0, len(portals))
-	weights := make([][][]float32, 0, len(portals))
 	for i := 0; i < len(portals); i++ {
 		index = append(index, make([][]bestSolution, 0, len(portals)))
-		weights = append(weights, make([][]float32, 0, len(portals)))
 		for j := 0; j < len(portals); j++ {
 			index[i] = append(index[i], make([]bestSolution, len(portals)))
-			weights[i] = append(weights[i], make([]float32, len(portals)))
 			for k := 0; k < len(portals); k++ {
 				index[i][j][k].Length = invalidLength
 			}
@@ -29,7 +40,7 @@ func newBestHomogeneousQuery(portals []portalData, onFilledIndexEntry func()) *b
 		index:              index,
 		onFilledIndexEntry: onFilledIndexEntry,
 		portalsInTriangle:  make([]portalData, 0, len(portals)),
-		weights:            weights,
+		scorer:             scorer,
 	}
 }
 
@@ -44,10 +55,8 @@ func (q *bestHomogeneousQuery) findBestHomogeneous(p0, p1, p2 portalData) {
 func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, candidates []portalData) bestSolution {
 	localCandidates := append(make([]portalData, 0, len(candidates)), candidates...)
 	var bestHomogeneous bestSolution
-	var bestWeight float32
-	p0p1Distance := newDistanceQuery(p0.LatLng, p1.LatLng)
-	p0p2Distance := newDistanceQuery(p0.LatLng, p2.LatLng)
-	p1p2Distance := newDistanceQuery(p1.LatLng, p2.LatLng)
+	var bestScore float32
+	triangleScorer := q.scorer.newTriangleScorer(p0, p1, p2)
 	for _, portal := range localCandidates {
 		minDepth := invalidLength
 		{
@@ -80,29 +89,22 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 				minDepth = candidate2.Length
 			}
 		}
-		var minDistance float32
-		if minDepth == 0 {
-			minDistance = float32(
-				float64Min(
-					p0p1Distance.Distance(portal.LatLng).Radians(),
-					float64Min(
-						p0p2Distance.Distance(portal.LatLng).Radians(),
-						p1p2Distance.Distance(portal.LatLng).Radians())) * radiansToMeters)
-		} else {
-			minDistance = float32Min(
-				q.weights[portal.Index][p1.Index][p2.Index],
-				float32Min(
-					q.weights[portal.Index][p0.Index][p2.Index],
-					q.weights[portal.Index][p0.Index][p1.Index]))
-		}
-		if minDepth != invalidLength && minDepth+1 > bestHomogeneous.Length {
-			bestHomogeneous.Index = portal.Index
-			bestHomogeneous.Length = minDepth + 1
-			bestWeight = float32(minDistance)
-		} else if minDepth != invalidLength && minDepth+1 == bestHomogeneous.Length && minDistance > bestWeight {
-			bestHomogeneous.Index = portal.Index
-			bestHomogeneous.Length = minDepth + 1
-			bestWeight = float32(minDistance)
+		if minDepth != invalidLength {
+			var score float32
+			if minDepth == 0 {
+				score = triangleScorer.scoreFirstLevelTriangle(portal)
+			} else {
+				score = triangleScorer.scoreHighLevelTriangle(portal)
+			}
+			if minDepth+1 > bestHomogeneous.Length {
+				bestHomogeneous.Index = portal.Index
+				bestHomogeneous.Length = minDepth + 1
+				bestScore = score
+			} else if minDepth+1 == bestHomogeneous.Length && score > bestScore {
+				bestHomogeneous.Index = portal.Index
+				bestHomogeneous.Length = minDepth + 1
+				bestScore = score
+			}
 		}
 	}
 	if q.index[p0.Index][p1.Index][p2.Index].Length == invalidLength {
@@ -114,12 +116,7 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 	q.index[p1.Index][p2.Index][p0.Index] = bestHomogeneous
 	q.index[p2.Index][p0.Index][p1.Index] = bestHomogeneous
 	q.index[p2.Index][p1.Index][p0.Index] = bestHomogeneous
-	q.weights[p0.Index][p1.Index][p2.Index] = bestWeight
-	q.weights[p0.Index][p2.Index][p1.Index] = bestWeight
-	q.weights[p1.Index][p0.Index][p2.Index] = bestWeight
-	q.weights[p1.Index][p2.Index][p0.Index] = bestWeight
-	q.weights[p2.Index][p0.Index][p1.Index] = bestWeight
-	q.weights[p2.Index][p1.Index][p0.Index] = bestWeight
+	q.scorer.setTriangleScore(p0, p1, p2, bestScore)
 	return bestHomogeneous
 }
 
@@ -143,8 +140,9 @@ func DeepestHomogeneous(portals []Portal) ([]Portal, uint16) {
 		}
 	}
 
+	scorer := newBestTriangleHeightScorer(portalsData)
 	printProgressBar(0, numIndexEntries)
-	q := newBestHomogeneousQuery(portalsData, onFilledIndexEntry)
+	q := newBestHomogeneousQuery(portalsData, scorer, onFilledIndexEntry)
 	for i, p0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
 			p1 := portalsData[j]
@@ -157,20 +155,21 @@ func DeepestHomogeneous(portals []Portal) ([]Portal, uint16) {
 	printProgressBar(numIndexEntries, numIndexEntries)
 	fmt.Println("")
 
+	topLevelScorer := scorer.newTopLevelScorer()
 	var bestDepth uint16
 	var bestP0, bestP1, bestP2 portalData
-	var bestWeight float32
+	var bestScore float32
 	for i, p0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
 			p1 := portalsData[j]
 			for k := j + 1; k < len(portalsData); k++ {
 				p2 := portalsData[k]
 				candidate := q.index[p0.Index][p1.Index][p2.Index]
-				weight := q.weights[p0.Index][p1.Index][p2.Index]
-				if candidate.Length > bestDepth || (candidate.Length == bestDepth && weight > bestWeight) {
+				score := topLevelScorer.scoreTriangle(p0, p1, p2)
+				if candidate.Length > bestDepth || (candidate.Length == bestDepth && score > bestScore) {
 					bestP0, bestP1, bestP2 = p0, p1, p2
 					bestDepth = candidate.Length
-					bestWeight = weight
+					bestScore = score
 				}
 			}
 		}
