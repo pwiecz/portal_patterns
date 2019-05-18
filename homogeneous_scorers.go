@@ -4,7 +4,7 @@ type avoidThinTrianglesScorer struct {
 	minHeight [][][]float32
 }
 type avoidThinTrianglesTriangleScorer struct {
-	minHeight     [][][]float32
+	minHeight  [][][]float32
 	a, b, c    portalData
 	abDistance distanceQuery
 	acDistance distanceQuery
@@ -23,7 +23,7 @@ func newAvoidThinTrianglesScorer(portals []portalData) *avoidThinTrianglesScorer
 	minHeight := make([][][]float32, 0, len(portals))
 	for i := 0; i < len(portals); i++ {
 		minHeight = append(minHeight, make([][]float32, 0, len(portals)))
-		for j := 0; j < len(minHeight); j++ {
+		for j := 0; j < len(portals); j++ {
 			minHeight[i] = append(minHeight[i], make([]float32, len(portals)))
 		}
 	}
@@ -31,7 +31,6 @@ func newAvoidThinTrianglesScorer(portals []portalData) *avoidThinTrianglesScorer
 		minHeight: minHeight,
 	}
 }
-
 func newAvoidSmallTrianglesScorer(portals []portalData) *avoidSmallTrianglesScorer {
 	minArea := make([][][]float32, 0, len(portals))
 	for i := 0; i < len(portals); i++ {
@@ -47,7 +46,7 @@ func newAvoidSmallTrianglesScorer(portals []portalData) *avoidSmallTrianglesScor
 
 func (s *avoidThinTrianglesScorer) newTriangleScorer(a, b, c portalData) homogeneousTriangleScorer {
 	return &avoidThinTrianglesTriangleScorer{
-		minHeight:     s.minHeight,
+		minHeight:  s.minHeight,
 		a:          a,
 		b:          b,
 		c:          c,
