@@ -67,12 +67,15 @@ func (s *avoidThinTrianglesScorer) scoreTriangle(a, b, c portalData) float32 {
 	return s.minHeight[a.Index][b.Index][c.Index]
 }
 func (s *avoidThinTrianglesTriangleScorer) scoreFirstLevelTriangle(p portalData) float32 {
+	// We multiply by radiansToMeters not to obtain any meaningful distance measure
+	// (as ChordAngle returns a squared distance anyway), but just to scale the number up
+	// to make it fit in float32 precision range.
 	return float32(
 		float64Min(
-			s.abDistance.Distance(p.LatLng).Radians(),
+			float64(s.abDistance.ChordAngle(p.LatLng)),
 			float64Min(
-				s.acDistance.Distance(p.LatLng).Radians(),
-				s.bcDistance.Distance(p.LatLng).Radians())) * radiansToMeters)
+				float64(s.acDistance.ChordAngle(p.LatLng)),
+				float64(s.bcDistance.ChordAngle(p.LatLng)))) * radiansToMeters)
 }
 func (s *avoidThinTrianglesTriangleScorer) scoreHighLevelTriangle(p portalData) float32 {
 	return float32Min(

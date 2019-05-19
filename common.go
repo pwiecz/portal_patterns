@@ -109,7 +109,13 @@ func newDistanceQuery(a, b s2.Point) distanceQuery {
 	aCrossB := a.PointCross(b)
 	return distanceQuery{aCrossB, aCrossB.Norm2()}
 }
-
+func (d *distanceQuery) ChordAngle(p s2.Point) s1.ChordAngle {
+	pDotC := p.Dot(d.aCrossB.Vector)
+	pDotC2 := pDotC * pDotC
+	cx := d.aCrossB.Cross(p.Vector)
+	qr := 1 - math.Sqrt(cx.Norm2()/d.c2)
+	return s1.ChordAngle((pDotC2 / d.c2) + (qr * qr))
+}
 func (d *distanceQuery) Distance(p s2.Point) s1.Angle {
 	pDotC := p.Dot(d.aCrossB.Vector)
 	pDotC2 := pDotC * pDotC
