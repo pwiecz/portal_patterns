@@ -1,10 +1,12 @@
 package main
 
 import "fmt"
+
 import "log"
 import "math"
 import "os"
 import "strings"
+
 import "runtime/pprof"
 
 func main() {
@@ -120,13 +122,13 @@ func main() {
 		}
 		fmt.Printf("\n[%s]\n", polylineFromPortalList(portalList))
 	} else if os.Args[1] == "homogeneous" || os.Args[1] == "homogenous" {
-		result, depth := DeepestHomogeneous(portals)
+		result, depth := DeepestHomogeneous(portals, 6)
 		fmt.Printf("Depth: %d\n", depth+1)
 		for i, portal := range result {
 			fmt.Printf("%d: %s\n", i, portal.Name)
 		}
 		polylines := []string{polylineFromPortalList([]Portal{result[0], result[1], result[2], result[0]})}
-		polylines, _ = appendHomogeneousPolylines(result[0], result[1], result[2], depth, polylines, result[3:])
+		polylines, _ = appendHomogeneousPolylines(result[0], result[1], result[2], uint16(depth), polylines, result[3:])
 		fmt.Printf("\n[%s]\n", strings.Join(polylines, ","))
 	} else {
 		fmt.Fprintf(os.Stderr, "Unknown command: \"%s\"\n", os.Args[1])

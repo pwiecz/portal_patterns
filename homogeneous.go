@@ -21,10 +21,11 @@ type bestHomogeneousQuery struct {
 	index              [][][]bestSolution
 	onFilledIndexEntry func()
 	portalsInTriangle  []portalData
+	maxDepth           uint16
 	scorer             homogeneousScorer
 }
 
-func newBestHomogeneousQuery(portals []portalData, scorer homogeneousScorer, onFilledIndexEntry func()) *bestHomogeneousQuery {
+func newBestHomogeneousQuery(portals []portalData, scorer homogeneousScorer, maxDepth int, onFilledIndexEntry func()) *bestHomogeneousQuery {
 	index := make([][][]bestSolution, 0, len(portals))
 	for i := 0; i < len(portals); i++ {
 		index = append(index, make([][]bestSolution, 0, len(portals)))
@@ -40,6 +41,7 @@ func newBestHomogeneousQuery(portals []portalData, scorer homogeneousScorer, onF
 		index:              index,
 		onFilledIndexEntry: onFilledIndexEntry,
 		portalsInTriangle:  make([]portalData, 0, len(portals)),
+		maxDepth:           uint16(maxDepth),
 		scorer:             scorer,
 	}
 }
@@ -96,6 +98,9 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 			} else {
 				score = triangleScorer.scoreHighLevelTriangle(portal)
 			}
+			if minDepth+1 > q.maxDepth {
+				minDepth = q.maxDepth - 1
+			}
 			if minDepth+1 > bestHomogeneous.Length {
 				bestHomogeneous.Index = portal.Index
 				bestHomogeneous.Length = minDepth + 1
@@ -121,7 +126,7 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 }
 
 // DeepestHomogeneous - Find deepest homogeneous field that can be made out of portals
-func DeepestHomogeneous(portals []Portal) ([]Portal, uint16) {
+func DeepestHomogeneous(portals []Portal, maxDepth int) ([]Portal, uint16) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -142,7 +147,7 @@ func DeepestHomogeneous(portals []Portal) ([]Portal, uint16) {
 
 	scorer := newAvoidThinTrianglesScorer(portalsData)
 	printProgressBar(0, numIndexEntries)
-	q := newBestHomogeneousQuery(portalsData, scorer, onFilledIndexEntry)
+	q := newBestHomogeneousQuery(portalsData, scorer, maxDepth, onFilledIndexEntry)
 	for i, p0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
 			p1 := portalsData[j]
