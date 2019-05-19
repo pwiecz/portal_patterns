@@ -10,7 +10,7 @@ import "github.com/golang/geo/r3"
 type node struct {
 	index      uint16
 	start, end s1.Angle
-	distance   s1.Angle
+	distance   s1.ChordAngle
 	length     uint16
 	next       uint16
 }
@@ -44,7 +44,7 @@ func (q *bestHerringBoneQuery) findBestHerringbone(b0, b1 portalData, result []u
 			continue
 		}
 		a0, a1 := angle(portal.LatLng, b0.LatLng, v0), angle(portal.LatLng, b1.LatLng, v1)
-		dist := distQuery.Distance(portal.LatLng)
+		dist := distQuery.ChordAngle(portal.LatLng)
 		q.nodes = append(q.nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
 	}
 	sort.Slice(q.nodes, func(i, j int) bool {
