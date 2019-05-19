@@ -11,36 +11,21 @@ type avoidThinTrianglesTriangleScorer struct {
 	bcDistance distanceQuery
 }
 
-type avoidSmallTrianglesScorer struct {
-	minArea [][][]float32
-}
-type avoidSmallTrianglesTriangleScorer struct {
-	minArea [][][]float32
-	a, b, c portalData
-}
+type arbitraryScorer struct{}
 
-func newAvoidThinTrianglesScorer(portals []portalData) *avoidThinTrianglesScorer {
-	minHeight := make([][][]float32, 0, len(portals))
-	for i := 0; i < len(portals); i++ {
-		minHeight = append(minHeight, make([][]float32, 0, len(portals)))
-		for j := 0; j < len(portals); j++ {
-			minHeight[i] = append(minHeight[i], make([]float32, len(portals)))
+type largestTriangleTopLevelScorer struct{}
+type smallestTriangleTopLevelScorer struct{}
+
+func newAvoidThinTrianglesScorer(numPortals int) *avoidThinTrianglesScorer {
+	minHeight := make([][][]float32, 0, numPortals)
+	for i := 0; i < numPortals; i++ {
+		minHeight = append(minHeight, make([][]float32, 0, numPortals))
+		for j := 0; j < numPortals; j++ {
+			minHeight[i] = append(minHeight[i], make([]float32, numPortals))
 		}
 	}
 	return &avoidThinTrianglesScorer{
 		minHeight: minHeight,
-	}
-}
-func newAvoidSmallTrianglesScorer(portals []portalData) *avoidSmallTrianglesScorer {
-	minArea := make([][][]float32, 0, len(portals))
-	for i := 0; i < len(portals); i++ {
-		minArea = append(minArea, make([][]float32, 0, len(portals)))
-		for j := 0; j < len(portals); j++ {
-			minArea[i] = append(minArea[i], make([]float32, len(portals)))
-		}
-	}
-	return &avoidSmallTrianglesScorer{
-		minArea: minArea,
 	}
 }
 
@@ -85,35 +70,18 @@ func (s *avoidThinTrianglesTriangleScorer) scoreHighLevelTriangle(p portalData) 
 			s.minHeight[p.Index][s.b.Index][s.c.Index]))
 }
 
-func (s *avoidSmallTrianglesScorer) newTriangleScorer(a, b, c portalData) homogeneousTriangleScorer {
-	return &avoidSmallTrianglesTriangleScorer{
-		minArea: s.minArea,
-		a:       a,
-		b:       b,
-		c:       c,
-	}
+func (s arbitraryScorer) newTriangleScorer(a, b, c portalData) homogeneousTriangleScorer {
+	return arbitraryScorer{}
 }
-func (s *avoidSmallTrianglesScorer) setTriangleScore(a, b, c portalData, score float32) {
-	s.minArea[a.Index][b.Index][c.Index] = score
-	s.minArea[a.Index][c.Index][b.Index] = score
-	s.minArea[b.Index][a.Index][c.Index] = score
-	s.minArea[b.Index][c.Index][a.Index] = score
-	s.minArea[c.Index][a.Index][b.Index] = score
-	s.minArea[c.Index][b.Index][a.Index] = score
+func (s arbitraryScorer) setTriangleScore(a, b, c portalData, score float32) {}
+func (s arbitraryScorer) scoreTriangle(a, b, c portalData) float32           { return 0 }
+func (s arbitraryScorer) scoreFirstLevelTriangle(p portalData) float32       { return 0 }
+func (s arbitraryScorer) scoreHighLevelTriangle(p portalData) float32        { return 0 }
+
+func (s largestTriangleTopLevelScorer) scoreTriangle(a, b, c portalData) float32 {
+	return float32(triangleArea(a, b, c) * unitAreaToSquareMeters)
 }
-func (s *avoidSmallTrianglesScorer) scoreTriangle(a, b, c portalData) float32 {
-	return s.minArea[a.Index][b.Index][c.Index]
-}
-func (s *avoidSmallTrianglesTriangleScorer) scoreFirstLevelTriangle(p portalData) float32 {
-	return float32(
-		float64Min(
-			triangleArea(s.a, s.b, p),
-			float64Min(triangleArea(s.a, s.c, p), triangleArea(s.b, s.c, p))) * unitAreaToSquareMeters)
-}
-func (s *avoidSmallTrianglesTriangleScorer) scoreHighLevelTriangle(p portalData) float32 {
-	return float32Min(
-		s.minArea[p.Index][s.a.Index][s.b.Index],
-		float32Min(
-			s.minArea[p.Index][s.a.Index][s.c.Index],
-			s.minArea[p.Index][s.b.Index][s.c.Index]))
+
+func (s smallestTriangleTopLevelScorer) scoreTriangle(a, b, c portalData) float32 {
+	return -float32(triangleArea(a, b, c) * unitAreaToSquareMeters)
 }

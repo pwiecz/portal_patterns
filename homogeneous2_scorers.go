@@ -11,12 +11,12 @@ type minHeightVarianceScorer struct {
 	sumHeightSquares [][][]float32
 }
 
-func newAvoidThinTriangles2Scorer(portals []portalData) *avoidThinTriangles2Scorer {
-	minHeight := make([][][]float32, 0, len(portals))
-	for i := 0; i < len(portals); i++ {
-		minHeight = append(minHeight, make([][]float32, 0, len(portals)))
-		for j := 0; j < len(portals); j++ {
-			minHeight[i] = append(minHeight[i], make([]float32, len(portals)))
+func newAvoidThinTriangles2Scorer(numPortals int) *avoidThinTriangles2Scorer {
+	minHeight := make([][][]float32, 0, numPortals)
+	for i := 0; i < numPortals; i++ {
+		minHeight = append(minHeight, make([][]float32, 0, numPortals))
+		for j := 0; j < numPortals; j++ {
+			minHeight[i] = append(minHeight[i], make([]float32, numPortals))
 		}
 	}
 	return &avoidThinTriangles2Scorer{
@@ -24,18 +24,18 @@ func newAvoidThinTriangles2Scorer(portals []portalData) *avoidThinTriangles2Scor
 	}
 }
 
-func newMinHeightVarianceScorer(portals []portalData) *minHeightVarianceScorer {
-	counts := make([][][]uint16, 0, len(portals))
-	sumHeights := make([][][]float32, 0, len(portals))
-	sumHeightSquares := make([][][]float32, 0, len(portals))
-	for i := 0; i < len(portals); i++ {
-		counts = append(counts, make([][]uint16, 0, len(portals)))
-		sumHeights = append(sumHeights, make([][]float32, 0, len(portals)))
-		sumHeightSquares = append(sumHeightSquares, make([][]float32, 0, len(portals)))
-		for j := 0; j < len(portals); j++ {
-			counts[i] = append(counts[i], make([]uint16, len(portals)))
-			sumHeights[i] = append(sumHeights[i], make([]float32, len(portals)))
-			sumHeightSquares[i] = append(sumHeightSquares[i], make([]float32, len(portals)))
+func newMinHeightVarianceScorer(numPortals int) *minHeightVarianceScorer {
+	counts := make([][][]uint16, 0, numPortals)
+	sumHeights := make([][][]float32, 0, numPortals)
+	sumHeightSquares := make([][][]float32, 0, numPortals)
+	for i := 0; i < numPortals; i++ {
+		counts = append(counts, make([][]uint16, 0, numPortals))
+		sumHeights = append(sumHeights, make([][]float32, 0, numPortals))
+		sumHeightSquares = append(sumHeightSquares, make([][]float32, 0, numPortals))
+		for j := 0; j < numPortals; j++ {
+			counts[i] = append(counts[i], make([]uint16, numPortals))
+			sumHeights[i] = append(sumHeights[i], make([]float32, numPortals))
+			sumHeightSquares[i] = append(sumHeightSquares[i], make([]float32, numPortals))
 		}
 	}
 	return &minHeightVarianceScorer{

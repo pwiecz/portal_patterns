@@ -165,7 +165,7 @@ func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, ca
 }
 
 // DeepestHomogeneous2 - Find deepest homogeneous field that can be made out of portals
-func DeepestHomogeneous2(portals []Portal, maxDepth int) ([]Portal, int) {
+func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneous2Scorer, topLevelScorer homogeneous2TopLevelScorer) ([]Portal, uint16) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -184,7 +184,6 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int) ([]Portal, int) {
 		}
 	}
 
-	scorer := newAvoidThinTriangles2Scorer(portalsData)
 	printProgressBar(0, numIndexEntries)
 	q := newBestHomogeneous2Query(portalsData, scorer, maxDepth, onFilledIndexEntry)
 	for i, p0 := range portalsData {
@@ -199,7 +198,6 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int) ([]Portal, int) {
 	printProgressBar(numIndexEntries, numIndexEntries)
 	fmt.Println("")
 
-	topLevelScorer := scorer
 	var bestDepth int
 	var bestP0, bestP1, bestP2 portalData
 	bestScore := float32(-math.MaxFloat32)
@@ -232,7 +230,7 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int) ([]Portal, int) {
 		result = append(result, portals[index])
 	}
 
-	return result, bestDepth + 1
+	return result, (uint16)(bestDepth + 1)
 }
 
 func appendHomogeneous2Result(p0, p1, p2 uint16, maxDepth int, result []uint16, index [][][]uint16) []uint16 {
