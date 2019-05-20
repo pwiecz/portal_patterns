@@ -8,11 +8,11 @@ import "github.com/golang/geo/s2"
 import "github.com/golang/geo/r3"
 
 type node struct {
-	index      uint16
+	index      portalIndex
 	start, end s1.Angle
 	distance   s1.ChordAngle
 	length     uint16
-	next       uint16
+	next       portalIndex
 }
 
 func angle(a, b s2.Point, v r3.Vector) s1.Angle {
@@ -32,7 +32,7 @@ func newBestHerringBoneQuery(portals []portalData) *bestHerringBoneQuery {
 	}
 }
 
-func (q *bestHerringBoneQuery) findBestHerringbone(b0, b1 portalData, result []uint16) []uint16 {
+func (q *bestHerringBoneQuery) findBestHerringbone(b0, b1 portalData, result []portalIndex) []portalIndex {
 	q.nodes = q.nodes[:0]
 	v0, v1 := b1.LatLng.PointCross(b0.LatLng).Vector, b0.LatLng.PointCross(b1.LatLng).Vector
 	distQuery := newDistanceQuery(b0.LatLng, b1.LatLng)
@@ -59,14 +59,14 @@ func (q *bestHerringBoneQuery) findBestHerringbone(b0, b1 portalData, result []u
 			if q.nodes[j].start < node.start && q.nodes[j].end < node.end {
 				if q.nodes[j].length >= bestLength {
 					bestLength = q.nodes[j].length + 1
-					bestNext = uint16(j)
+					bestNext = portalIndex(j)
 					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * radiansToMeters)
 					bestWeight = q.weights[q.nodes[j].index] + scaledDistance
 				} else if q.nodes[j].length+1 == bestLength {
 					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * radiansToMeters)
 					if q.weights[node.index]+scaledDistance < bestWeight {
 						bestLength = q.nodes[j].length + 1
-						bestNext = uint16(j)
+						bestNext = portalIndex(j)
 						bestWeight = q.weights[q.nodes[j].index] + scaledDistance
 					}
 				}
@@ -88,7 +88,7 @@ func (q *bestHerringBoneQuery) findBestHerringbone(b0, b1 portalData, result []u
 	for i, node := range q.nodes {
 		if node.length > length {
 			length = node.length
-			start = uint16(i)
+			start = portalIndex(i)
 		}
 	}
 	result = result[:0]
@@ -109,13 +109,13 @@ func LargestHerringbone(portals []Portal) (Portal, Portal, []Portal) {
 	}
 	portalsData := make([]portalData, 0, len(portals))
 	for i, portal := range portals {
-		portalsData = append(portalsData, portalData{Index: uint16(i), LatLng: portal.LatLng})
+		portalsData = append(portalsData, portalData{Index: portalIndex(i), LatLng: portal.LatLng})
 	}
 
 	index := make([]bestSolution, len(portals))
-	var largestHerringbone []uint16
+	var largestHerringbone []portalIndex
 	var bestB0, bestB1 portalData
-	resultCache := make([]uint16, 0, len(portals))
+	resultCache := make([]portalIndex, 0, len(portals))
 
 	numPairs := len(portals) * (len(portals) - 1) / 2
 	everyNth := numPairs / 1000

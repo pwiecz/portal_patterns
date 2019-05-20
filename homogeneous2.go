@@ -3,40 +3,40 @@ package main
 import "fmt"
 import "math"
 
-type homogeneous2TriangleScorer interface {
+type homogeneousTriangleScorer interface {
 	scoreCandidate(p portalData)
-	bestMidpoints() [6]uint16
+	bestMidpoints() [6]portalIndex
 }
 
-type homogeneous2Scorer interface {
-	newTriangleScorer(a, b, c portalData, maxDepth int) homogeneous2TriangleScorer
+type homogeneousScorer interface {
+	newTriangleScorer(a, b, c portalData, maxDepth int) homogeneousTriangleScorer
 }
 
-type homogeneous2TopLevelScorer interface {
+type homogeneousTopLevelScorer interface {
 	scoreTriangle(a, b, c portalData) float32
 }
 
 type bestHomogeneous2Query struct {
 	portals            []portalData
-	index              [][][]uint16
+	index              [][][]portalIndex
 	onFilledIndexEntry func()
 	portalsInTriangle  []portalData
 	maxDepth           int
-	scorer             homogeneous2Scorer
+	scorer             homogeneousScorer
 }
 
-func newBestHomogeneous2Query(portals []portalData, scorer homogeneous2Scorer, maxDepth int, onFilledIndexEntry func()) *bestHomogeneous2Query {
+func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, maxDepth int, onFilledIndexEntry func()) *bestHomogeneous2Query {
 	if maxDepth > 6 {
 		panic("Max depth too high")
 	}
 	if maxDepth <= 0 {
 		panic("Max depth too low")
 	}
-	index := make([][][]uint16, 0, len(portals))
+	index := make([][][]portalIndex, 0, len(portals))
 	for i := 0; i < len(portals); i++ {
-		index = append(index, make([][]uint16, 0, len(portals)))
+		index = append(index, make([][]portalIndex, 0, len(portals)))
 		for j := 0; j < len(portals); j++ {
-			index[i] = append(index[i], make([]uint16, len(portals)))
+			index[i] = append(index[i], make([]portalIndex, len(portals)))
 			for k := 0; k < len(portals); k++ {
 				index[i][j][k] = invalidPortalIndex
 			}
@@ -53,7 +53,7 @@ func newBestHomogeneous2Query(portals []portalData, scorer homogeneous2Scorer, m
 }
 
 func (q *bestHomogeneous2Query) findBestHomogeneous(p0, p1, p2 portalData) {
-	if q.index[p0.Index][p1.Index][p2.Index] != invalidLength {
+	if q.index[p0.Index][p1.Index][p2.Index] != invalidPortalIndex {
 		return
 	}
 	q.portalsInTriangle = portalsInsideTriangle(q.portals, p0, p1, p2, q.portalsInTriangle)
@@ -79,7 +79,7 @@ func sorted(a, b, c portalData) (portalData, portalData, portalData) {
 	return c, b, a
 }
 
-func sortedIndices(a, b, c uint16) (uint16, uint16, uint16) {
+func sortedIndices(a, b, c portalIndex) (portalIndex, portalIndex, portalIndex) {
 	if a < b {
 		if a < c {
 			if b < c {
@@ -99,55 +99,51 @@ func sortedIndices(a, b, c uint16) (uint16, uint16, uint16) {
 }
 
 func ordering(p0, p1, p2 portalData, index int) (portalData, portalData, portalData) {
-	if index == 0 {
+	switch index {
+	case 0:
 		return p0, p1, p2
-	}
-	if index == 1 {
+	case 1:
 		return p0, p2, p1
-	}
-	if index == 2 {
+	case 2:
 		return p1, p0, p2
-	}
-	if index == 3 {
+	case 3:
 		return p1, p2, p0
-	}
-	if index == 4 {
+	case 4:
 		return p2, p0, p1
+	default:
+		return p2, p1, p0
 	}
-	return p2, p1, p0
 }
-func indexOrdering(p0, p1, p2 uint16, index int) (uint16, uint16, uint16) {
-	if index == 0 {
+func indexOrdering(p0, p1, p2 portalIndex, index int) (portalIndex, portalIndex, portalIndex) {
+	switch index {
+	case 0:
 		return p0, p1, p2
-	}
-	if index == 1 {
+	case 1:
 		return p0, p2, p1
-	}
-	if index == 2 {
+	case 2:
 		return p1, p0, p2
-	}
-	if index == 3 {
+	case 3:
 		return p1, p2, p0
-	}
-	if index == 4 {
+	case 4:
 		return p2, p0, p1
+	default:
+		return p2, p1, p0
 	}
-	return p2, p1, p0
 }
 
 func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, candidates []portalData) {
 	localCandidates := append(make([]portalData, 0, len(candidates)), candidates...)
 	triangleScorer := q.scorer.newTriangleScorer(p0, p1, p2, q.maxDepth)
 	for _, portal := range localCandidates {
-		if q.index[portal.Index][p1.Index][p2.Index] == invalidLength {
+		if q.index[portal.Index][p1.Index][p2.Index] == invalidPortalIndex {
 			candidatesInWedge := portalsInsideWedge(localCandidates, portal, p1, p2, q.portalsInTriangle)
 			q.findBestHomogeneousAux(portal, p1, p2, candidatesInWedge)
 		}
-		if q.index[portal.Index][p0.Index][p2.Index] == invalidLength {
+		if q.index[portal.Index][p0.Index][p2.Index] == invalidPortalIndex {
 			candidatesInWedge := portalsInsideWedge(localCandidates, portal, p0, p2, q.portalsInTriangle)
 			q.findBestHomogeneousAux(portal, p0, p2, candidatesInWedge)
 		}
-		if q.index[portal.Index][p0.Index][p1.Index] == invalidLength {
+		if q.index[portal.Index][p0.Index][p1.Index] == invalidPortalIndex {
 			candidatesInWedge := portalsInsideWedge(localCandidates, portal, p0, p1, q.portalsInTriangle)
 			q.findBestHomogeneousAux(portal, p0, p1, candidatesInWedge)
 		}
@@ -165,7 +161,7 @@ func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, ca
 }
 
 // DeepestHomogeneous2 - Find deepest homogeneous field that can be made out of portals
-func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneous2Scorer, topLevelScorer homogeneous2TopLevelScorer) ([]Portal, uint16) {
+func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScorer, topLevelScorer homogeneousTopLevelScorer) ([]Portal, uint16) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -223,7 +219,7 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneous2Scor
 	}
 	fmt.Printf("Best depth: %d\n", bestDepth)
 
-	resultIndices := []uint16{bestP0.Index, bestP1.Index, bestP2.Index}
+	resultIndices := []portalIndex{bestP0.Index, bestP1.Index, bestP2.Index}
 	resultIndices = appendHomogeneous2Result(bestP0.Index, bestP1.Index, bestP2.Index, bestDepth+1, resultIndices, q.index)
 	result := []Portal{}
 	for _, index := range resultIndices {
@@ -233,7 +229,7 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneous2Scor
 	return result, (uint16)(bestDepth + 1)
 }
 
-func appendHomogeneous2Result(p0, p1, p2 uint16, maxDepth int, result []uint16, index [][][]uint16) []uint16 {
+func appendHomogeneous2Result(p0, p1, p2 portalIndex, maxDepth int, result []portalIndex, index [][][]portalIndex) []portalIndex {
 	if maxDepth == 0 {
 		return result
 	}

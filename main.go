@@ -4,6 +4,7 @@ import "flag"
 import "fmt"
 import "log"
 import "math"
+
 import "os"
 import "strings"
 
@@ -21,41 +22,54 @@ func main() {
 	defer pprof.StopCPUProfile()
 
 	cobwebCmd := flag.NewFlagSet("cobweb", flag.ExitOnError)
+	cobwebCmd.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "%s cobweb <portals.json>\n", os.Args[0])
+	}
 	threeCornersCmd := flag.NewFlagSet("three_corners", flag.ExitOnError)
+	threeCornersCmd.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "%s three_corners <portals1.json> <portals2.json> <portals3.json>\n", os.Args[0])
+	}
 	herringboneCmd := flag.NewFlagSet("herringbone", flag.ExitOnError)
+	herringboneCmd.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "%s herringbone <portals.json>\n", os.Args[0])
+	}
 	doubleHerringboneCmd := flag.NewFlagSet("double_herringbone", flag.ExitOnError)
+	doubleHerringboneCmd.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "%s double_herringbone <portals.json>\n", os.Args[0])
+	}
 	homogeneousCmd := flag.NewFlagSet("homogeneous", flag.ExitOnError)
-	homogeneousMaxDepth := homogeneousCmd.Int("max_depth", 6, "Don't return homogenous fields with depth larger than max_depth")
-	homogeneousTrianglulationStrategy := homogeneousCmd.String("triangulation_strategy", "arbitrary", "{arbitrary|avoid_thin_triangles|maximize_min_triangle_height|minimize_triangle_height_variance} - strategy of choosing middle points.")
-	homogeneousTopLevelStrategy := homogeneousCmd.String("top_level_strategy", "triangulation", "{triangulation|largest|smallest} - strategy of choosing hightest level triangle")
-
-	if len(os.Args) == 0 {
-		fmt.Println("Usage:\n" +
-			"  " + os.Args[0] + " cobweb <portals.json>\n" +
-			"  " + os.Args[0] + " three_corners <portals1.json> <portals2.json> <portals3.json>\n" +
-			"  " + os.Args[0] + " herringbone <portals.json>\n" +
-			"  " + os.Args[0] + " double_herringbone <portals.json>\n" +
-			"  " + os.Args[0] + " homogeneous <portals.json>")
-		return
+	homogeneousMaxDepth := homogeneousCmd.Int("max_depth", 6, "don't return homogenous fields with depth larger than max_depth")
+	homogeneousLargeTriangles := homogeneousCmd.Bool("nice", false, "try to split main triangle into nice large similar triangles (slow)")
+	homogeneousLargestArea := homogeneousCmd.Bool("largest_area", false, "pick the top triangle having the largest possible area")
+	homogeneousSmallestArea := homogeneousCmd.Bool("smallest_area", false, "pick the top triangle having the smallest possible area")
+	homogeneousCmd.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [--max_depth=<n>] [--thick_triangles] [--largest_area|--smallest_area] <portals.json>\n", os.Args[0])
+		homogeneousCmd.PrintDefaults()
+	}
+	flag.Usage = func() {
+		fmt.Println("Usage:")
+		cobwebCmd.Usage()
+		threeCornersCmd.Usage()
+		herringboneCmd.Usage()
+		doubleHerringboneCmd.Usage()
+		homogeneousCmd.Usage()
+	}
+	if len(os.Args) == 1 {
+		flag.Usage()
+		os.Exit(0)
 	}
 
-	/*	portals, err := ParseJSONFile(os.Args[2])
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Could not parse JSON file %s : %v\n", os.Args[2], err)
-			os.Exit(1)
-		}*/
 	if os.Args[1] == "cobweb" {
 		cobwebCmd.Parse(os.Args[2:])
 		fileArgs := cobwebCmd.Args()
 		if len(fileArgs) != 1 {
-			fmt.Fprintln(os.Stderr, "cobweb command requires exactly one file argument")
-			os.Exit(1)
+			log.Fatalln("cobweb command requires exactly one file argument")
 		}
 		portals, err := ParseJSONFile(fileArgs[0])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Could not parse JSON file %s : %v\n", fileArgs[0], err)
-			os.Exit(1)
+			log.Fatalf("Could not parse JSON file %s : %v\n", fileArgs[0], err)
 		}
+
 		result := LargestCobweb(portals)
 		for i, portal := range result {
 			fmt.Printf("%d: %s\n", i, portal.Name)
@@ -69,13 +83,11 @@ func main() {
 		herringboneCmd.Parse(os.Args[2:])
 		fileArgs := herringboneCmd.Args()
 		if len(fileArgs) != 1 {
-			fmt.Fprintln(os.Stderr, "herringbone command exactly one file argument")
-			os.Exit(1)
+			log.Fatalln("herringbone command requires exactly one file argument")
 		}
 		portals, err := ParseJSONFile(fileArgs[0])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Could not parse JSON file %s : %v\n", fileArgs[0], err)
-			os.Exit(1)
+			log.Fatalf("Could not parse JSON file %s : %v\n", fileArgs[0], err)
 		}
 		b0, b1, result := LargestHerringbone(portals)
 		fmt.Printf("Base (%s) (%s)\n", b0.Name, b1.Name)
@@ -93,13 +105,11 @@ func main() {
 		doubleHerringboneCmd.Parse(os.Args[2:])
 		fileArgs := doubleHerringboneCmd.Args()
 		if len(fileArgs) != 1 {
-			fmt.Fprintln(os.Stderr, "double_herringbone command exactly one file argument")
-			os.Exit(1)
+			log.Fatalln("double_herringbone command requires exactly one file argument")
 		}
 		portals, err := ParseJSONFile(fileArgs[0])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Could not parse JSON file %s : %v\n", fileArgs[0], err)
-			os.Exit(1)
+			log.Fatalf("Could not parse JSON file %s : %v\n", fileArgs[0], err)
 		}
 		b0, b1, result0, result1 := LargestDoubleHerringbone(portals)
 		fmt.Printf("Base (%s) (%s)\n", b0.Name, b1.Name)
@@ -127,27 +137,22 @@ func main() {
 		threeCornersCmd.Parse(os.Args[2:])
 		fileArgs := threeCornersCmd.Args()
 		if len(fileArgs) != 3 {
-			fmt.Fprintln(os.Stderr, "double_herringbone command exactly three file argument")
-			os.Exit(1)
+			log.Fatalln("three_corners command requires exactly three file argument")
 		}
 		portals1, err := ParseJSONFile(fileArgs[0])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Could not parse JSON file %s : %v\n", fileArgs[0], err)
-			os.Exit(1)
+			log.Fatalf("Could not parse JSON file %s : %v\n", fileArgs[0], err)
 		}
 		portals2, err := ParseJSONFile(fileArgs[1])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Could not parse JSON file %s : %v\n", fileArgs[1], err)
-			os.Exit(1)
+			log.Fatalf("Could not parse JSON file %s : %v\n", fileArgs[1], err)
 		}
 		portals3, err := ParseJSONFile(fileArgs[2])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Could not parse JSON file %s : %v\n", fileArgs[3], err)
-			os.Exit(1)
+			log.Fatalf("Could not parse JSON file %s : %v\n", fileArgs[3], err)
 		}
 		if len(portals1)+len(portals2)+len(portals3) >= math.MaxUint16-1 {
-			fmt.Fprintf(os.Stderr, "Too many portals")
-			os.Exit(1)
+			log.Fatalln("Too many portals")
 		}
 		result := LargestThreeCorner(portals1, portals2, portals3)
 		for i, indexedPortal := range result {
@@ -173,72 +178,40 @@ func main() {
 	} else if os.Args[1] == "homogeneous" || os.Args[1] == "homogenous" {
 		homogeneousCmd.Parse(os.Args[2:])
 		if *homogeneousMaxDepth < 1 {
-			fmt.Fprintln(os.Stderr, "max_depth must by at least 1")
-			os.Exit(1)
+			log.Fatalln("--max_depth must by at least 1")
+		}
+		if *homogeneousLargestArea && *homogeneousSmallestArea {
+			log.Fatalln("--largest_area and --smallest_area cannot be both specified at the same time")
 		}
 		fileArgs := homogeneousCmd.Args()
 		if len(fileArgs) != 1 {
-			fmt.Fprintln(os.Stderr, "herringbone command exactly one file argument")
-			os.Exit(1)
+			log.Fatalln("homogeneous command requires exactly one file argument")
 		}
 		portals, err := ParseJSONFile(fileArgs[0])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Could not parse JSON file %s : %v\n", fileArgs[0], err)
-			os.Exit(1)
+			log.Fatalf("Could not parse JSON file %s : %v\n", fileArgs[0], err)
 		}
 		var result []Portal
 		var depth uint16
-		if *homogeneousTrianglulationStrategy == "arbitrary" || *homogeneousTrianglulationStrategy == "avoid_thin_triangles" {
-			var scorer homogeneousScorer
-			var topLevelScorer homogeneousTopLevelScorer
-			switch *homogeneousTrianglulationStrategy {
-			case "arbitrary":
-				scorer = arbitraryScorer{}
-				topLevelScorer = arbitraryScorer{}
-			case "avoid_thin_triangles":
-				s := newAvoidThinTrianglesScorer(len(portals))
-				scorer = s
-				topLevelScorer = s
-			}
-			switch *homogeneousTopLevelStrategy {
-			case "triangulation":
-			case "largest":
-				topLevelScorer = largestTriangleTopLevelScorer{}
-			case "smallest":
-				topLevelScorer = smallestTriangleTopLevelScorer{}
-			default:
-				fmt.Fprintf(os.Stderr, "Unknown top_level_strategy %f\n", *homogeneousTopLevelStrategy)
-				os.Exit(1)
-			}
-			result, depth = DeepestHomogeneous(portals, *homogeneousMaxDepth, scorer, topLevelScorer)
-		} else if *homogeneousTrianglulationStrategy == "maximize_min_triangle_height" || *homogeneousTrianglulationStrategy == "minimize_triangle_height_variance" {
+		var topLevelScorer topLevelTriangleScorer = arbitraryScorer{}
+		var scorer homogeneousScorer
+		if *homogeneousLargeTriangles {
 			if *homogeneousMaxDepth > 6 {
-				fmt.Fprintf(os.Stderr, "%s strategy support max_depth at most 6\n", *homogeneousTrianglulationStrategy)
-				os.Exit(1)
+				log.Fatalln("if --nice is specified --max_depth must be at most 6")
 			}
-			var scorer homogeneous2Scorer
-			var topLevelScorer homogeneous2TopLevelScorer
-			switch *homogeneousTrianglulationStrategy {
-			case "maximize_min_triangle_height":
-				s := newAvoidThinTriangles2Scorer(len(portals))
-				scorer = s
-				topLevelScorer = s
-			case "minimize_triangle_height_variance":
-				s := newMinHeightVarianceScorer(len(portals))
-				scorer = s
-				topLevelScorer = s
-			}
-			switch *homogeneousTopLevelStrategy {
-			case "triangulation":
-			case "largest":
-				topLevelScorer = largestTriangleTopLevelScorer{}
-			case "smallest":
-				topLevelScorer = smallestTriangleTopLevelScorer{}
-			default:
-				fmt.Fprintf(os.Stderr, "Unknown top_level_strategy %f\n", *homogeneousTopLevelStrategy)
-				os.Exit(1)
-			}
-			result, depth = DeepestHomogeneous2(portals, 6, scorer, topLevelScorer)
+			largeTrianglesScorer := newThickTrianglesScorer(len(portals))
+			scorer = largeTrianglesScorer
+			topLevelScorer = largeTrianglesScorer
+		}
+		if *homogeneousLargestArea {
+			topLevelScorer = largestTriangleScorer{}
+		} else if *homogeneousSmallestArea {
+			topLevelScorer = smallestTriangleScorer{}
+		}
+		if *homogeneousLargeTriangles {
+			result, depth = DeepestHomogeneous2(portals, *homogeneousMaxDepth, scorer, topLevelScorer)
+		} else {
+			result, depth = DeepestHomogeneous(portals, *homogeneousMaxDepth, topLevelScorer)
 		}
 		fmt.Printf("Depth: %d\n", depth+1)
 		for i, portal := range result {
@@ -248,7 +221,6 @@ func main() {
 		polylines, _ = appendHomogeneousPolylines(result[0], result[1], result[2], uint16(depth), polylines, result[3:])
 		fmt.Printf("\n[%s]\n", strings.Join(polylines, ","))
 	} else {
-		fmt.Fprintf(os.Stderr, "Unknown command: \"%s\"\n", os.Args[1])
-		os.Exit(1)
+		log.Fatalf("Unknown command: \"%s\"\n", os.Args[1])
 	}
 }

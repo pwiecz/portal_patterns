@@ -4,9 +4,9 @@ import "fmt"
 
 type bestThreeCornersQuery struct {
 	portals0           []portalData
-	numPortals0        uint16
+	numPortals0        portalIndex
 	portals1           []portalData
-	numPortals1        uint16
+	numPortals1        portalIndex
 	portals2           []portalData
 	index              [][][]bestTCSolution
 	onIndexEntryFilled func()
@@ -28,9 +28,9 @@ func newBestThreeCornersQuery(portals0, portals1, portals2 []portalData, onIndex
 	}
 	return &bestThreeCornersQuery{
 		portals0:           append(make([]portalData, 0, len(portals0)), portals0...),
-		numPortals0:        uint16(len(portals0)),
+		numPortals0:        portalIndex(len(portals0)),
 		portals1:           append(make([]portalData, 0, len(portals1)), portals1...),
-		numPortals1:        uint16(len(portals1)),
+		numPortals1:        portalIndex(len(portals1)),
 		portals2:           append(make([]portalData, 0, len(portals2)), portals2...),
 		index:              index,
 		onIndexEntryFilled: onIndexEntryFilled,
@@ -41,7 +41,7 @@ func newBestThreeCornersQuery(portals0, portals1, portals2 []portalData, onIndex
 }
 
 type bestTCSolution struct {
-	Index            uint16
+	Index            portalIndex
 	Length           uint16
 	NumCornerChanges uint16
 }
@@ -118,8 +118,6 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal) []indexedPortal {
 	portalsData0 := portalsToPortalData(portals0)
 	portalsData1 := portalsToPortalData(portals1)
 	portalsData2 := portalsToPortalData(portals2)
-	numPortals0 := uint16(len(portals0))
-	numPortals1 := uint16(len(portals1))
 
 	numIndexEntries := len(portals0) * len(portals1) * len(portals2)
 	everyNth := numIndexEntries / 1000
@@ -158,6 +156,8 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal) []indexedPortal {
 			}
 		}
 	}
+	numPortals0 := portalIndex(len(portals0))
+	numPortals1 := portalIndex(len(portals1))
 	k0, k1, k2 := bestP0.Index, bestP1.Index, bestP2.Index
 	result := append(make([]indexedPortal, 0, largestTC.Length+3),
 		indexedPortal{0, portals0[k0]},

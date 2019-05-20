@@ -8,22 +8,24 @@ import "github.com/golang/geo/r3"
 import "github.com/golang/geo/s1"
 import "github.com/golang/geo/s2"
 
-const invalidPortalIndex uint16 = math.MaxUint16
+type portalIndex uint16
+
+const invalidPortalIndex portalIndex = math.MaxUint16
 
 type portalData struct {
-	Index  uint16
+	Index  portalIndex
 	LatLng s2.Point
 }
 
 type indexedPortal struct {
-	Index  uint16
+	Index  portalIndex
 	Portal Portal
 }
 
 func portalsToPortalData(portals []Portal) []portalData {
 	portalsData := make([]portalData, 0, len(portals))
 	for i, portal := range portals {
-		portalsData = append(portalsData, portalData{Index: uint16(i), LatLng: portal.LatLng})
+		portalsData = append(portalsData, portalData{Index: portalIndex(i), LatLng: portal.LatLng})
 	}
 	return portalsData
 }
@@ -31,7 +33,7 @@ func portalsToPortalData(portals []Portal) []portalData {
 const invalidLength uint16 = math.MaxUint16
 
 type bestSolution struct {
-	Index  uint16
+	Index  portalIndex
 	Length uint16
 }
 
@@ -117,11 +119,7 @@ func (d *distanceQuery) ChordAngle(p s2.Point) s1.ChordAngle {
 	return s1.ChordAngle((pDotC2 / d.c2) + (qr * qr))
 }
 func (d *distanceQuery) Distance(p s2.Point) s1.Angle {
-	pDotC := p.Dot(d.aCrossB.Vector)
-	pDotC2 := pDotC * pDotC
-	cx := d.aCrossB.Cross(p.Vector)
-	qr := 1 - math.Sqrt(cx.Norm2()/d.c2)
-	return s1.ChordAngle((pDotC2 / d.c2) + (qr * qr)).Angle()
+	return d.ChordAngle(p).Angle()
 
 }
 

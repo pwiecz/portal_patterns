@@ -116,7 +116,7 @@ func LargestCobweb(portals []Portal) []Portal {
 		}
 	}
 
-	largestCobweb := append(make([]uint16, 0, bestLength), bestP0.Index, bestP1.Index, bestP2.Index)
+	largestCobweb := append(make([]portalIndex, 0, bestLength), bestP0.Index, bestP1.Index, bestP2.Index)
 	k0, k1, k2 := bestP0.Index, bestP1.Index, bestP2.Index
 	for {
 		sol := q.index[k0][k1][k2]

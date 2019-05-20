@@ -3,17 +3,7 @@ package main
 import "fmt"
 import "math"
 
-type homogeneousTriangleScorer interface {
-	scoreFirstLevelTriangle(p portalData) float32
-	scoreHighLevelTriangle(p portalData) float32
-}
-
-type homogeneousScorer interface {
-	newTriangleScorer(a, b, c portalData) homogeneousTriangleScorer
-	setTriangleScore(a, b, c portalData, score float32)
-}
-
-type homogeneousTopLevelScorer interface {
+type topLevelTriangleScorer interface {
 	scoreTriangle(a, b, c portalData) float32
 }
 
@@ -23,10 +13,9 @@ type bestHomogeneousQuery struct {
 	onFilledIndexEntry func()
 	portalsInTriangle  []portalData
 	maxDepth           uint16
-	scorer             homogeneousScorer
 }
 
-func newBestHomogeneousQuery(portals []portalData, scorer homogeneousScorer, maxDepth int, onFilledIndexEntry func()) *bestHomogeneousQuery {
+func newBestHomogeneousQuery(portals []portalData, maxDepth int, onFilledIndexEntry func()) *bestHomogeneousQuery {
 	index := make([][][]bestSolution, 0, len(portals))
 	for i := 0; i < len(portals); i++ {
 		index = append(index, make([][]bestSolution, 0, len(portals)))
@@ -43,7 +32,6 @@ func newBestHomogeneousQuery(portals []portalData, scorer homogeneousScorer, max
 		onFilledIndexEntry: onFilledIndexEntry,
 		portalsInTriangle:  make([]portalData, 0, len(portals)),
 		maxDepth:           uint16(maxDepth),
-		scorer:             scorer,
 	}
 }
 
@@ -58,8 +46,6 @@ func (q *bestHomogeneousQuery) findBestHomogeneous(p0, p1, p2 portalData) {
 func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, candidates []portalData) bestSolution {
 	localCandidates := append(make([]portalData, 0, len(candidates)), candidates...)
 	var bestHomogeneous bestSolution
-	var bestScore float32
-	triangleScorer := q.scorer.newTriangleScorer(p0, p1, p2)
 	for _, portal := range localCandidates {
 		minDepth := invalidLength
 		{
@@ -93,23 +79,12 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 			}
 		}
 		if minDepth != invalidLength {
-			var score float32
-			if minDepth == 0 {
-				score = triangleScorer.scoreFirstLevelTriangle(portal)
-			} else {
-				score = triangleScorer.scoreHighLevelTriangle(portal)
-			}
 			if minDepth+1 > q.maxDepth {
 				minDepth = q.maxDepth - 1
 			}
 			if minDepth+1 > bestHomogeneous.Length {
 				bestHomogeneous.Index = portal.Index
 				bestHomogeneous.Length = minDepth + 1
-				bestScore = score
-			} else if minDepth+1 == bestHomogeneous.Length && score > bestScore {
-				bestHomogeneous.Index = portal.Index
-				bestHomogeneous.Length = minDepth + 1
-				bestScore = score
 			}
 		}
 	}
@@ -122,12 +97,11 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 	q.index[p1.Index][p2.Index][p0.Index] = bestHomogeneous
 	q.index[p2.Index][p0.Index][p1.Index] = bestHomogeneous
 	q.index[p2.Index][p1.Index][p0.Index] = bestHomogeneous
-	q.scorer.setTriangleScore(p0, p1, p2, bestScore)
 	return bestHomogeneous
 }
 
 // DeepestHomogeneous - Find deepest homogeneous field that can be made out of portals
-func DeepestHomogeneous(portals []Portal, maxDepth int, scorer homogeneousScorer, topLevelScorer homogeneousTopLevelScorer) ([]Portal, uint16) {
+func DeepestHomogeneous(portals []Portal, maxDepth int, topLevelScorer topLevelTriangleScorer) ([]Portal, uint16) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -147,7 +121,7 @@ func DeepestHomogeneous(portals []Portal, maxDepth int, scorer homogeneousScorer
 	}
 
 	printProgressBar(0, numIndexEntries)
-	q := newBestHomogeneousQuery(portalsData, scorer, maxDepth, onFilledIndexEntry)
+	q := newBestHomogeneousQuery(portalsData, maxDepth, onFilledIndexEntry)
 	for i, p0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
 			p1 := portalsData[j]
@@ -179,7 +153,7 @@ func DeepestHomogeneous(portals []Portal, maxDepth int, scorer homogeneousScorer
 		}
 	}
 
-	resultIndices := []uint16{bestP0.Index, bestP1.Index, bestP2.Index}
+	resultIndices := []portalIndex{bestP0.Index, bestP1.Index, bestP2.Index}
 	resultIndices = appendHomogeneousResult(bestP0.Index, bestP1.Index, bestP2.Index, bestDepth, resultIndices, q.index)
 	result := []Portal{}
 	for _, index := range resultIndices {
@@ -189,7 +163,7 @@ func DeepestHomogeneous(portals []Portal, maxDepth int, scorer homogeneousScorer
 	return result, bestDepth
 }
 
-func appendHomogeneousResult(p0, p1, p2 uint16, maxDepth uint16, result []uint16, index [][][]bestSolution) []uint16 {
+func appendHomogeneousResult(p0, p1, p2 portalIndex, maxDepth uint16, result []portalIndex, index [][][]bestSolution) []portalIndex {
 	if maxDepth == 0 {
 		return result
 	}
