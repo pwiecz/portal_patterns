@@ -70,7 +70,7 @@ func merge(p, a, b portalIndex) (portalIndex, portalIndex, portalIndex) {
 	return a, b, p
 }
 func (s *thickTrianglesTriangleScorer) scoreCandidate(p portalData) {
-	for level := 0; level < s.maxDepth; level++ {
+	for level := 0; level < s.maxDepth-1; level++ {
 		var minHeight float32
 		if level == 0 {
 			// We multiply by radiansToMeters not to obtain any meaningful distance measure

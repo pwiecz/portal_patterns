@@ -79,8 +79,8 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 			}
 		}
 		if minDepth != invalidLength {
-			if minDepth+1 > q.maxDepth {
-				minDepth = q.maxDepth - 1
+			if minDepth+2 > q.maxDepth {
+				minDepth = q.maxDepth - 2
 			}
 			if minDepth+1 > bestHomogeneous.Length {
 				bestHomogeneous.Index = portal.Index

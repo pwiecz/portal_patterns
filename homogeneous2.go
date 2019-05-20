@@ -217,16 +217,20 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScore
 			}
 		}
 	}
-	fmt.Printf("Best depth: %d\n", bestDepth)
+	// Handle the case maxDepth=1 specially
+	if maxDepth > 1 {
+		bestDepth++
+	}
 
 	resultIndices := []portalIndex{bestP0.Index, bestP1.Index, bestP2.Index}
-	resultIndices = appendHomogeneous2Result(bestP0.Index, bestP1.Index, bestP2.Index, bestDepth+1, resultIndices, q.index)
+	resultIndices = appendHomogeneous2Result(bestP0.Index, bestP1.Index, bestP2.Index, bestDepth, resultIndices, q.index)
+
 	result := []Portal{}
 	for _, index := range resultIndices {
 		result = append(result, portals[index])
 	}
 
-	return result, (uint16)(bestDepth + 1)
+	return result, (uint16)(bestDepth)
 }
 
 func appendHomogeneous2Result(p0, p1, p2 portalIndex, maxDepth int, result []portalIndex, index [][][]portalIndex) []portalIndex {
