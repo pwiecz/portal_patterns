@@ -26,12 +26,6 @@ type bestHomogeneous2Query struct {
 }
 
 func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, maxDepth int, onFilledIndexEntry func()) *bestHomogeneous2Query {
-	if maxDepth > 6 {
-		panic("Max depth too high")
-	}
-	if maxDepth <= 0 {
-		panic("Max depth too low")
-	}
 	index := make([][][]portalIndex, 0, len(portals))
 	for i := 0; i < len(portals); i++ {
 		index = append(index, make([][]portalIndex, 0, len(portals)))
@@ -100,15 +94,15 @@ func sortedIndices(a, b, c portalIndex) (portalIndex, portalIndex, portalIndex) 
 
 func ordering(p0, p1, p2 portalData, index int) (portalData, portalData, portalData) {
 	switch index {
-	case 0:
-		return p0, p1, p2
-	case 1:
-		return p0, p2, p1
 	case 2:
-		return p1, p0, p2
+		return p0, p1, p2
 	case 3:
-		return p1, p2, p0
+		return p0, p2, p1
 	case 4:
+		return p1, p0, p2
+	case 5:
+		return p1, p2, p0
+	case 6:
 		return p2, p0, p1
 	default:
 		return p2, p1, p0
@@ -116,15 +110,15 @@ func ordering(p0, p1, p2 portalData, index int) (portalData, portalData, portalD
 }
 func indexOrdering(p0, p1, p2 portalIndex, index int) (portalIndex, portalIndex, portalIndex) {
 	switch index {
-	case 0:
-		return p0, p1, p2
-	case 1:
-		return p0, p2, p1
 	case 2:
-		return p1, p0, p2
+		return p0, p1, p2
 	case 3:
-		return p1, p2, p0
+		return p0, p2, p1
 	case 4:
+		return p1, p0, p2
+	case 5:
+		return p1, p2, p0
+	case 6:
 		return p2, p0, p1
 	default:
 		return p2, p1, p0
@@ -194,7 +188,7 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScore
 	printProgressBar(numIndexEntries, numIndexEntries)
 	fmt.Println("")
 
-	var bestDepth int
+	bestDepth := 1
 	var bestP0, bestP1, bestP2 portalData
 	bestScore := float32(-math.MaxFloat32)
 	for i, p0 := range portalsData {
@@ -202,10 +196,13 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScore
 			p1 := portalsData[j]
 			for k := j + 1; k < len(portalsData); k++ {
 				p2 := portalsData[k]
-				for depth := q.maxDepth - 1; depth >= bestDepth; depth-- {
-					s0, s1, s2 := ordering(p0, p1, p2, depth)
-					if depth > 0 && q.index[s0.Index][s1.Index][s2.Index] >= invalidPortalIndex-1 {
-						continue
+				for depth := q.maxDepth; depth >= bestDepth; depth-- {
+					s0, s1, s2 := p0, p1, p2
+					if depth >= 2 {
+						s0, s1, s2 = ordering(p0, p1, p2, depth)
+						if q.index[s0.Index][s1.Index][s2.Index] >= invalidPortalIndex-1 {
+							continue
+						}
 					}
 					score := topLevelScorer.scoreTriangle(s0, s1, s2)
 					if depth > bestDepth || (depth == bestDepth && score > bestScore) {
@@ -216,10 +213,6 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScore
 				}
 			}
 		}
-	}
-	// Handle the case maxDepth=1 specially
-	if maxDepth > 1 {
-		bestDepth++
 	}
 
 	resultIndices := []portalIndex{bestP0.Index, bestP1.Index, bestP2.Index}
@@ -234,11 +227,11 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScore
 }
 
 func appendHomogeneous2Result(p0, p1, p2 portalIndex, maxDepth int, result []portalIndex, index [][][]portalIndex) []portalIndex {
-	if maxDepth == 0 {
+	if maxDepth == 1 {
 		return result
 	}
 	s0, s1, s2 := sortedIndices(p0, p1, p2)
-	s0, s1, s2 = indexOrdering(s0, s1, s2, maxDepth-1)
+	s0, s1, s2 = indexOrdering(s0, s1, s2, maxDepth)
 	bestP := index[s0][s1][s2]
 	result = append(result, bestP)
 	result = appendHomogeneous2Result(bestP, p1, p2, maxDepth-1, result, index)

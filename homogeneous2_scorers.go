@@ -31,9 +31,9 @@ type thickTrianglesTriangleScorer struct {
 func (s *thickTrianglesScorer) newTriangleScorer(a, b, c portalData, maxDepth int) homogeneousTriangleScorer {
 	a, b, c = sorted(a, b, c)
 	var scorePtrs [6]*float32
-	for level := 0; level < maxDepth; level++ {
+	for level := 2; level <= maxDepth; level++ {
 		i, j, k := indexOrdering(a.Index, b.Index, c.Index, level)
-		scorePtrs[level] = &s.minHeight[i][j][k]
+		scorePtrs[level-2] = &s.minHeight[i][j][k]
 	}
 	candidates := [6]portalIndex{
 		invalidPortalIndex - 1,
@@ -70,9 +70,9 @@ func merge(p, a, b portalIndex) (portalIndex, portalIndex, portalIndex) {
 	return a, b, p
 }
 func (s *thickTrianglesTriangleScorer) scoreCandidate(p portalData) {
-	for level := 0; level < s.maxDepth-1; level++ {
+	for level := 2; level <= s.maxDepth; level++ {
 		var minHeight float32
-		if level == 0 {
+		if level == 2 {
 			// We multiply by radiansToMeters not to obtain any meaningful distance measure
 			// (as ChordAngle returns a squared distance anyway), but just to scale the number up
 			// to make it fit in float32 precision range.
@@ -98,9 +98,9 @@ func (s *thickTrianglesTriangleScorer) scoreCandidate(p portalData) {
 		if minHeight == 0 {
 			break
 		}
-		if minHeight > *s.scorePtrs[level] {
-			*s.scorePtrs[level] = minHeight
-			s.candidates[level] = p.Index
+		if minHeight > *s.scorePtrs[level-2] {
+			*s.scorePtrs[level-2] = minHeight
+			s.candidates[level-2] = p.Index
 		}
 	}
 }

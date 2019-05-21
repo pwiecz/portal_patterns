@@ -39,11 +39,11 @@ func main() {
 	}
 	homogeneousCmd := flag.NewFlagSet("homogeneous", flag.ExitOnError)
 	homogeneousMaxDepth := homogeneousCmd.Int("max_depth", 6, "don't return homogenous fields with depth larger than max_depth")
-	homogeneousLargeTriangles := homogeneousCmd.Bool("nice", false, "try to split main triangle into nice large similar triangles (slow)")
+	homogeneousLargeTriangles := homogeneousCmd.Bool("pretty", false, "try to split the top triangle into large regular triangles (slow)")
 	homogeneousLargestArea := homogeneousCmd.Bool("largest_area", false, "pick the top triangle having the largest possible area")
 	homogeneousSmallestArea := homogeneousCmd.Bool("smallest_area", false, "pick the top triangle having the smallest possible area")
 	homogeneousCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [--max_depth=<n>] [--thick_triangles] [--largest_area|--smallest_area] <portals.json>\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [--max_depth=<n>] [--pretty] [--largest_area|--smallest_area] <portals.json>\n", os.Args[0])
 		homogeneousCmd.PrintDefaults()
 	}
 	flag.Usage = func() {
@@ -197,8 +197,8 @@ func main() {
 		var topLevelScorer topLevelTriangleScorer = arbitraryScorer{}
 		var scorer homogeneousScorer
 		if *homogeneousLargeTriangles {
-			if *homogeneousMaxDepth > 6 {
-				log.Fatalln("if --nice is specified --max_depth must be at most 6")
+			if *homogeneousMaxDepth > 7 {
+				log.Fatalln("if --pretty is specified --max_depth must be at most 7")
 			}
 			largeTrianglesScorer := newThickTrianglesScorer(len(portals))
 			scorer = largeTrianglesScorer
@@ -214,7 +214,7 @@ func main() {
 		} else {
 			result, depth = DeepestHomogeneous(portals, *homogeneousMaxDepth, topLevelScorer)
 		}
-		fmt.Printf("Depth: %d\n", depth+1)
+		fmt.Printf("Depth: %d\n", depth)
 		for i, portal := range result {
 			fmt.Printf("%d: %s\n", i, portal.Name)
 		}

@@ -45,7 +45,7 @@ func (q *bestHomogeneousQuery) findBestHomogeneous(p0, p1, p2 portalData) {
 
 func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, candidates []portalData) bestSolution {
 	localCandidates := append(make([]portalData, 0, len(candidates)), candidates...)
-	var bestHomogeneous bestSolution
+	bestMidpoint := bestSolution{Index: invalidPortalIndex, Length: 1}
 	for _, portal := range localCandidates {
 		minDepth := invalidLength
 		{
@@ -79,25 +79,25 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 			}
 		}
 		if minDepth != invalidLength {
-			if minDepth+2 > q.maxDepth {
-				minDepth = q.maxDepth - 2
+			if minDepth+1 > q.maxDepth {
+				minDepth = q.maxDepth - 1
 			}
-			if minDepth+1 > bestHomogeneous.Length {
-				bestHomogeneous.Index = portal.Index
-				bestHomogeneous.Length = minDepth + 1
+			if minDepth+1 > bestMidpoint.Length {
+				bestMidpoint.Index = portal.Index
+				bestMidpoint.Length = minDepth + 1
 			}
 		}
 	}
 	if q.index[p0.Index][p1.Index][p2.Index].Length == invalidLength {
 		q.onFilledIndexEntry()
 	}
-	q.index[p0.Index][p1.Index][p2.Index] = bestHomogeneous
-	q.index[p0.Index][p2.Index][p1.Index] = bestHomogeneous
-	q.index[p1.Index][p0.Index][p2.Index] = bestHomogeneous
-	q.index[p1.Index][p2.Index][p0.Index] = bestHomogeneous
-	q.index[p2.Index][p0.Index][p1.Index] = bestHomogeneous
-	q.index[p2.Index][p1.Index][p0.Index] = bestHomogeneous
-	return bestHomogeneous
+	q.index[p0.Index][p1.Index][p2.Index] = bestMidpoint
+	q.index[p0.Index][p2.Index][p1.Index] = bestMidpoint
+	q.index[p1.Index][p0.Index][p2.Index] = bestMidpoint
+	q.index[p1.Index][p2.Index][p0.Index] = bestMidpoint
+	q.index[p2.Index][p0.Index][p1.Index] = bestMidpoint
+	q.index[p2.Index][p1.Index][p0.Index] = bestMidpoint
+	return bestMidpoint
 }
 
 // DeepestHomogeneous - Find deepest homogeneous field that can be made out of portals
@@ -164,7 +164,7 @@ func DeepestHomogeneous(portals []Portal, maxDepth int, topLevelScorer topLevelT
 }
 
 func appendHomogeneousResult(p0, p1, p2 portalIndex, maxDepth uint16, result []portalIndex, index [][][]bestSolution) []portalIndex {
-	if maxDepth == 0 {
+	if maxDepth == 1 {
 		return result
 	}
 	bestP := index[p0][p1][p2].Index
@@ -176,7 +176,7 @@ func appendHomogeneousResult(p0, p1, p2 portalIndex, maxDepth uint16, result []p
 }
 
 func appendHomogeneousPolylines(p0, p1, p2 Portal, maxDepth uint16, result []string, portals []Portal) ([]string, []Portal) {
-	if maxDepth == 0 {
+	if maxDepth == 1 {
 		return result, portals
 	}
 	portal := portals[0]
