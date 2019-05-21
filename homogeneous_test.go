@@ -1,7 +1,6 @@
 package main
 
 import "math"
-import "os"
 import "testing"
 
 var portals []Portal
@@ -40,10 +39,13 @@ func checkValidHomogeneousResult(expectedDepth uint16, portals []Portal, depth u
 	}
 	if _, ok := isCorrectHomogeneous(portals[0], portals[1], portals[2], depth, portals[3:]); !ok {
 		t.Errorf("Result is not correct homogeneous fielding")
-		return
 	}
 }
 func TestPretty(t *testing.T) {
+	portals, err := ParseJSONFile("portals_test_homogeneous.json")
+	if err != nil {
+		panic(err)
+	}
 	if testing.Short() {
 		t.Skip()
 	}
@@ -53,13 +55,4 @@ func TestPretty(t *testing.T) {
 	scorer := newThickTrianglesScorer(len(portals))
 	result, depth := DeepestHomogeneous2(portals, 6, scorer, scorer)
 	checkValidHomogeneousResult(5, result, depth, t)
-}
-
-func TestMain(m *testing.M) {
-	var err error
-	portals, err = ParseJSONFile("portals_test_homogeneous.json")
-	if err != nil {
-		panic(err)
-	}
-	os.Exit(m.Run())
 }
