@@ -23,7 +23,7 @@ func checkValidHerringboneResult(expectedLength int, b0, b1 Portal, backbone []P
 }
 
 func TestHerringbone(t *testing.T) {
-	portals, err := ParseJSONFile("portals_test_herringbone.json")
+	portals, err := ParseJSONFile("portals_test.json")
 	if err != nil {
 		panic(err)
 	}
@@ -34,5 +34,5 @@ func TestHerringbone(t *testing.T) {
 		t.FailNow()
 	}
 	b0, b1, backbone := LargestHerringbone(portals)
-	checkValidHerringboneResult(32, b0, b1, backbone, t)
+	checkValidHerringboneResult(19, b0, b1, backbone, t)
 }

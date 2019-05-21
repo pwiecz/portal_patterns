@@ -23,7 +23,7 @@ func checkValidCobwebResult(expectedLength int, portals []Portal, t *testing.T) 
 }
 
 func TestCobweb(t *testing.T) {
-	portals, err := ParseJSONFile("portals_test_cobweb.json")
+	portals, err := ParseJSONFile("portals_test.json")
 	if err != nil {
 		panic(err)
 	}
@@ -34,5 +34,5 @@ func TestCobweb(t *testing.T) {
 		t.FailNow()
 	}
 	cobweb := LargestCobweb(portals)
-	checkValidCobwebResult(34, cobweb, t)
+	checkValidCobwebResult(22, cobweb, t)
 }

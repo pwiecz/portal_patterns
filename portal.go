@@ -23,7 +23,6 @@ type portalCoordinates struct {
 
 type portalInfo struct {
 	Name        string            `json:"title"`
-	GUID        string            `json:"guid"`
 	Coordinates portalCoordinates `json:"coordinates"`
 }
 
