@@ -18,7 +18,9 @@ type homogeneousTopLevelScorer interface {
 
 type bestHomogeneous2Query struct {
 	portals            []portalData
-	index              [][][]portalIndex
+	index              []portalIndex
+	numPortals int64
+	numPortalsSq int64
 	onFilledIndexEntry func()
 	portalsInTriangle  []portalData
 	maxDepth           int
@@ -26,19 +28,16 @@ type bestHomogeneous2Query struct {
 }
 
 func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, maxDepth int, onFilledIndexEntry func()) *bestHomogeneous2Query {
-	index := make([][][]portalIndex, 0, len(portals))
-	for i := 0; i < len(portals); i++ {
-		index = append(index, make([][]portalIndex, 0, len(portals)))
-		for j := 0; j < len(portals); j++ {
-			index[i] = append(index[i], make([]portalIndex, len(portals)))
-			for k := 0; k < len(portals); k++ {
-				index[i][j][k] = invalidPortalIndex
-			}
-		}
+	numPortals := int64(len(portals))
+	index := make([]portalIndex, numPortals*numPortals*numPortals)
+	for i := 0; i < len(index); i++ {
+		index[i] = invalidPortalIndex
 	}
 	return &bestHomogeneous2Query{
 		portals:            portals,
 		index:              index,
+		numPortals: numPortals,
+		numPortalsSq: numPortals*numPortals,
 		onFilledIndexEntry: onFilledIndexEntry,
 		portalsInTriangle:  make([]portalData, 0, len(portals)),
 		maxDepth:           maxDepth,
@@ -46,8 +45,15 @@ func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, ma
 	}
 }
 
+func (q *bestHomogeneous2Query) getIndex(i, j, k portalIndex) portalIndex {
+	return q.index[int64(i) * q.numPortalsSq + int64(j) * q.numPortals + int64(k)]
+}
+func (q *bestHomogeneous2Query) setIndex(i, j, k portalIndex, index portalIndex) {
+	q.index[int64(i) * q.numPortalsSq + int64(j) * q.numPortals + int64(k)] = index
+}
+
 func (q *bestHomogeneous2Query) findBestHomogeneous(p0, p1, p2 portalData) {
-	if q.index[p0.Index][p1.Index][p2.Index] != invalidPortalIndex {
+	if q.getIndex(p0.Index, p1.Index, p2.Index) != invalidPortalIndex {
 		return
 	}
 	q.portalsInTriangle = portalsInsideTriangle(q.portals, p0, p1, p2, q.portalsInTriangle)
@@ -129,15 +135,15 @@ func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, ca
 	localCandidates := append(make([]portalData, 0, len(candidates)), candidates...)
 	triangleScorer := q.scorer.newTriangleScorer(p0, p1, p2, q.maxDepth)
 	for _, portal := range localCandidates {
-		if q.index[portal.Index][p1.Index][p2.Index] == invalidPortalIndex {
+		if q.getIndex(portal.Index, p1.Index, p2.Index) == invalidPortalIndex {
 			candidatesInWedge := portalsInsideWedge(localCandidates, portal, p1, p2, q.portalsInTriangle)
 			q.findBestHomogeneousAux(portal, p1, p2, candidatesInWedge)
 		}
-		if q.index[portal.Index][p0.Index][p2.Index] == invalidPortalIndex {
+		if q.getIndex(portal.Index, p0.Index, p2.Index) == invalidPortalIndex {
 			candidatesInWedge := portalsInsideWedge(localCandidates, portal, p0, p2, q.portalsInTriangle)
 			q.findBestHomogeneousAux(portal, p0, p2, candidatesInWedge)
 		}
-		if q.index[portal.Index][p0.Index][p1.Index] == invalidPortalIndex {
+		if q.getIndex(portal.Index, p0.Index, p1.Index) == invalidPortalIndex {
 			candidatesInWedge := portalsInsideWedge(localCandidates, portal, p0, p1, q.portalsInTriangle)
 			q.findBestHomogeneousAux(portal, p0, p1, candidatesInWedge)
 		}
@@ -146,12 +152,12 @@ func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, ca
 	q.onFilledIndexEntry()
 	bestMidpoints := triangleScorer.bestMidpoints()
 	s0, s1, s2 := sortedIndices(p0.Index, p1.Index, p2.Index)
-	q.index[s0][s1][s2] = bestMidpoints[0]
-	q.index[s0][s2][s1] = bestMidpoints[1]
-	q.index[s1][s0][s2] = bestMidpoints[2]
-	q.index[s1][s2][s0] = bestMidpoints[3]
-	q.index[s2][s0][s1] = bestMidpoints[4]
-	q.index[s2][s1][s0] = bestMidpoints[5]
+	q.setIndex(s0, s1, s2, bestMidpoints[0])
+	q.setIndex(s0, s2, s1, bestMidpoints[1])
+	q.setIndex(s1, s0, s2,  bestMidpoints[2])
+	q.setIndex(s1, s2, s0,  bestMidpoints[3])
+	q.setIndex(s2, s0, s1,  bestMidpoints[4])
+	q.setIndex(s2, s1, s0, bestMidpoints[5])
 }
 
 // DeepestHomogeneous2 - Find deepest homogeneous field that can be made out of portals
@@ -200,7 +206,7 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScore
 					s0, s1, s2 := p0, p1, p2
 					if depth >= 2 {
 						s0, s1, s2 = ordering(p0, p1, p2, depth)
-						if q.index[s0.Index][s1.Index][s2.Index] >= invalidPortalIndex-1 {
+						if q.getIndex(s0.Index, s1.Index, s2.Index) >= invalidPortalIndex-1 {
 							continue
 						}
 					}
@@ -216,7 +222,7 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScore
 	}
 
 	resultIndices := []portalIndex{bestP0.Index, bestP1.Index, bestP2.Index}
-	resultIndices = appendHomogeneous2Result(bestP0.Index, bestP1.Index, bestP2.Index, bestDepth, resultIndices, q.index)
+	resultIndices = q.appendHomogeneous2Result(bestP0.Index, bestP1.Index, bestP2.Index, bestDepth, resultIndices)
 
 	result := []Portal{}
 	for _, index := range resultIndices {
@@ -226,16 +232,16 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScore
 	return result, (uint16)(bestDepth)
 }
 
-func appendHomogeneous2Result(p0, p1, p2 portalIndex, maxDepth int, result []portalIndex, index [][][]portalIndex) []portalIndex {
+func (q* bestHomogeneous2Query) appendHomogeneous2Result(p0, p1, p2 portalIndex, maxDepth int, result []portalIndex) []portalIndex {
 	if maxDepth == 1 {
 		return result
 	}
 	s0, s1, s2 := sortedIndices(p0, p1, p2)
 	s0, s1, s2 = indexOrdering(s0, s1, s2, maxDepth)
-	bestP := index[s0][s1][s2]
+	bestP := q.getIndex(s0, s1, s2)
 	result = append(result, bestP)
-	result = appendHomogeneous2Result(bestP, p1, p2, maxDepth-1, result, index)
-	result = appendHomogeneous2Result(p0, bestP, p2, maxDepth-1, result, index)
-	result = appendHomogeneous2Result(p0, p1, bestP, maxDepth-1, result, index)
+	result = q.appendHomogeneous2Result(bestP, p1, p2, maxDepth-1, result)
+	result = q.appendHomogeneous2Result(p0, bestP, p2, maxDepth-1, result)
+	result = q.appendHomogeneous2Result(p0, p1, bestP, maxDepth-1, result)
 	return result
 }
