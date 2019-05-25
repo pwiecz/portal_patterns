@@ -148,7 +148,7 @@ func main() {
 			fmt.Printf("%d: %s\n", i, indexedPortal.Portal.Name)
 		}
 		indexedPortalList := []indexedPortal{result[0], result[1]}
-		lastIndexPortal := [3]indexedPortal{result[0], result[1], indexedPortal{}}
+		lastIndexPortal := [3]indexedPortal{result[0], result[1], {}}
 		for _, indexedPortal := range result[2:] {
 			lastIndex := indexedPortalList[len(indexedPortalList)-1].Index
 			if indexedPortal.Index == lastIndex {

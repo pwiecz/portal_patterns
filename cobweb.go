@@ -4,33 +4,36 @@ import "fmt"
 
 type bestCobwebQuery struct {
 	portals            []portalData
-	index              [][][]bestSolution
+	index              []bestSolution
+	numPortals         int64
+	numPortalsSq       int64
 	onFilledIndexEntry func()
 	filteredPortals    []portalData
 }
 
 func newBestCobwebQuery(portals []portalData, onFilledIndexEntry func()) *bestCobwebQuery {
-	numPortals := len(portals)
-	index := make([][][]bestSolution, 0, numPortals)
-	for i := 0; i < numPortals; i++ {
-		index = append(index, make([][]bestSolution, 0, numPortals))
-		for j := 0; j < numPortals; j++ {
-			index[i] = append(index[i], make([]bestSolution, numPortals))
-			for k := 0; k < numPortals; k++ {
-				index[i][j][k].Length = invalidLength
-			}
-		}
+	numPortals := int64(len(portals))
+	index := make([]bestSolution, numPortals*numPortals*numPortals)
+	for i := 0; i < len(index); i++ {
+		index[i].Length = invalidLength
 	}
 	return &bestCobwebQuery{
 		portals:            portals,
+		numPortals:         numPortals,
+		numPortalsSq:       numPortals * numPortals,
 		index:              index,
 		onFilledIndexEntry: onFilledIndexEntry,
 		filteredPortals:    make([]portalData, 0, len(portals)),
 	}
 }
-
+func (q *bestCobwebQuery) getIndex(i, j, k portalIndex) bestSolution {
+	return q.index[int64(i)*q.numPortalsSq+int64(j)*q.numPortals+int64(k)]
+}
+func (q *bestCobwebQuery) setIndex(i, j, k portalIndex, s bestSolution) {
+	q.index[int64(i)*q.numPortalsSq+int64(j)*q.numPortals+int64(k)] = s
+}
 func (q *bestCobwebQuery) findBestCobweb(p0, p1, p2 portalData) {
-	if q.index[p0.Index][p1.Index][p2.Index].Length != invalidLength {
+	if q.getIndex(p0.Index, p1.Index, p2.Index).Length != invalidLength {
 		return
 	}
 	q.filteredPortals = portalsInsideTriangle(q.portals, p0, p1, p2, q.filteredPortals)
@@ -41,7 +44,7 @@ func (q *bestCobwebQuery) findBestCobwebAux(p0, p1, p2 portalData, candidates []
 	localCandidates := append(make([]portalData, 0, len(candidates)), candidates...)
 	var bestCobweb bestSolution
 	for _, portal := range localCandidates {
-		candidate := q.index[p1.Index][p2.Index][portal.Index]
+		candidate := q.getIndex(p1.Index, p2.Index, portal.Index)
 		if candidate.Length == invalidLength {
 			candidatesInWedge := portalsInsideWedge(localCandidates, portal, p1, p2, q.filteredPortals)
 			candidate = q.findBestCobwebAux(p1, p2, portal, candidatesInWedge)
@@ -51,11 +54,9 @@ func (q *bestCobwebQuery) findBestCobwebAux(p0, p1, p2 portalData, candidates []
 			bestCobweb.Index = portal.Index
 		}
 	}
-	if q.index[p0.Index][p1.Index][p2.Index].Length == invalidLength {
-		q.onFilledIndexEntry()
-	}
+	q.onFilledIndexEntry()
 
-	q.index[p0.Index][p1.Index][p2.Index] = bestCobweb
+	q.setIndex(p0.Index, p1.Index, p2.Index, bestCobweb)
 	return bestCobweb
 }
 
@@ -107,7 +108,7 @@ func LargestCobweb(portals []Portal) []Portal {
 				if i == k || j == k {
 					continue
 				}
-				candidate := q.index[p0.Index][p1.Index][p2.Index]
+				candidate := q.getIndex(p0.Index, p1.Index, p2.Index)
 				if candidate.Length+3 > bestLength {
 					bestP0, bestP1, bestP2 = p0, p1, p2
 					bestLength = candidate.Length + 3
@@ -119,7 +120,7 @@ func LargestCobweb(portals []Portal) []Portal {
 	largestCobweb := append(make([]portalIndex, 0, bestLength), bestP0.Index, bestP1.Index, bestP2.Index)
 	k0, k1, k2 := bestP0.Index, bestP1.Index, bestP2.Index
 	for {
-		sol := q.index[k0][k1][k2]
+		sol := q.getIndex(k0, k1, k2)
 		if sol.Length == 0 {
 			break
 		}

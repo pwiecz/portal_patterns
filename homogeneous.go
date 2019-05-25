@@ -9,34 +9,39 @@ type topLevelTriangleScorer interface {
 
 type bestHomogeneousQuery struct {
 	portals            []portalData
-	index              [][][]bestSolution
+	index              []bestSolution
+	numPortals         int64
+	numPortalsSq       int64
 	onFilledIndexEntry func()
 	portalsInTriangle  []portalData
 	maxDepth           uint16
 }
 
 func newBestHomogeneousQuery(portals []portalData, maxDepth int, onFilledIndexEntry func()) *bestHomogeneousQuery {
-	index := make([][][]bestSolution, 0, len(portals))
-	for i := 0; i < len(portals); i++ {
-		index = append(index, make([][]bestSolution, 0, len(portals)))
-		for j := 0; j < len(portals); j++ {
-			index[i] = append(index[i], make([]bestSolution, len(portals)))
-			for k := 0; k < len(portals); k++ {
-				index[i][j][k].Length = invalidLength
-			}
-		}
+	numPortals := int64(len(portals))
+	index := make([]bestSolution, numPortals*numPortals*numPortals)
+	for i := 0; i < len(index); i++ {
+		index[i].Length = invalidLength
 	}
 	return &bestHomogeneousQuery{
 		portals:            portals,
 		index:              index,
+		numPortals:         numPortals,
+		numPortalsSq:       numPortals * numPortals,
 		onFilledIndexEntry: onFilledIndexEntry,
 		portalsInTriangle:  make([]portalData, 0, len(portals)),
 		maxDepth:           uint16(maxDepth),
 	}
 }
 
+func (q *bestHomogeneousQuery) getIndex(i, j, k portalIndex) bestSolution {
+	return q.index[int64(i)*q.numPortalsSq+int64(j)*q.numPortals+int64(k)]
+}
+func (q *bestHomogeneousQuery) setIndex(i, j, k portalIndex, s bestSolution) {
+	q.index[int64(i)*q.numPortalsSq+int64(j)*q.numPortals+int64(k)] = s
+}
 func (q *bestHomogeneousQuery) findBestHomogeneous(p0, p1, p2 portalData) {
-	if q.index[p0.Index][p1.Index][p2.Index].Length != invalidLength {
+	if q.getIndex(p0.Index, p1.Index, p2.Index).Length != invalidLength {
 		return
 	}
 	q.portalsInTriangle = portalsInsideTriangle(q.portals, p0, p1, p2, q.portalsInTriangle)
@@ -49,7 +54,7 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 	for _, portal := range localCandidates {
 		minDepth := invalidLength
 		{
-			candidate0 := q.index[portal.Index][p1.Index][p2.Index]
+			candidate0 := q.getIndex(portal.Index, p1.Index, p2.Index)
 			if candidate0.Length == invalidLength {
 				candidatesInWedge := portalsInsideWedge(localCandidates, portal, p1, p2, q.portalsInTriangle)
 				candidate0 = q.findBestHomogeneousAux(portal, p1, p2, candidatesInWedge)
@@ -59,7 +64,7 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 			}
 		}
 		{
-			candidate1 := q.index[portal.Index][p0.Index][p2.Index]
+			candidate1 := q.getIndex(portal.Index, p0.Index, p2.Index)
 			if candidate1.Length == invalidLength {
 				candidatesInWedge := portalsInsideWedge(localCandidates, portal, p0, p2, q.portalsInTriangle)
 				candidate1 = q.findBestHomogeneousAux(portal, p0, p2, candidatesInWedge)
@@ -69,7 +74,7 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 			}
 		}
 		{
-			candidate2 := q.index[portal.Index][p0.Index][p1.Index]
+			candidate2 := q.getIndex(portal.Index, p0.Index, p1.Index)
 			if candidate2.Length == invalidLength {
 				candidatesInWedge := portalsInsideWedge(localCandidates, portal, p0, p1, q.portalsInTriangle)
 				candidate2 = q.findBestHomogeneousAux(portal, p0, p1, candidatesInWedge)
@@ -88,15 +93,13 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 			}
 		}
 	}
-	if q.index[p0.Index][p1.Index][p2.Index].Length == invalidLength {
-		q.onFilledIndexEntry()
-	}
-	q.index[p0.Index][p1.Index][p2.Index] = bestMidpoint
-	q.index[p0.Index][p2.Index][p1.Index] = bestMidpoint
-	q.index[p1.Index][p0.Index][p2.Index] = bestMidpoint
-	q.index[p1.Index][p2.Index][p0.Index] = bestMidpoint
-	q.index[p2.Index][p0.Index][p1.Index] = bestMidpoint
-	q.index[p2.Index][p1.Index][p0.Index] = bestMidpoint
+	q.onFilledIndexEntry()
+	q.setIndex(p0.Index, p1.Index, p2.Index, bestMidpoint)
+	q.setIndex(p0.Index, p2.Index, p1.Index, bestMidpoint)
+	q.setIndex(p1.Index, p0.Index, p2.Index, bestMidpoint)
+	q.setIndex(p1.Index, p2.Index, p0.Index, bestMidpoint)
+	q.setIndex(p2.Index, p0.Index, p1.Index, bestMidpoint)
+	q.setIndex(p2.Index, p1.Index, p0.Index, bestMidpoint)
 	return bestMidpoint
 }
 
@@ -142,7 +145,7 @@ func DeepestHomogeneous(portals []Portal, maxDepth int, topLevelScorer topLevelT
 			p1 := portalsData[j]
 			for k := j + 1; k < len(portalsData); k++ {
 				p2 := portalsData[k]
-				candidate := q.index[p0.Index][p1.Index][p2.Index]
+				candidate := q.getIndex(p0.Index, p1.Index, p2.Index)
 				score := topLevelScorer.scoreTriangle(p0, p1, p2)
 				if candidate.Length > bestDepth || (candidate.Length == bestDepth && score > bestScore) {
 					bestP0, bestP1, bestP2 = p0, p1, p2
@@ -154,7 +157,7 @@ func DeepestHomogeneous(portals []Portal, maxDepth int, topLevelScorer topLevelT
 	}
 
 	resultIndices := []portalIndex{bestP0.Index, bestP1.Index, bestP2.Index}
-	resultIndices = appendHomogeneousResult(bestP0.Index, bestP1.Index, bestP2.Index, bestDepth, resultIndices, q.index)
+	resultIndices = q.appendHomogeneousResult(bestP0.Index, bestP1.Index, bestP2.Index, bestDepth, resultIndices)
 	result := []Portal{}
 	for _, index := range resultIndices {
 		result = append(result, portals[index])
@@ -163,15 +166,15 @@ func DeepestHomogeneous(portals []Portal, maxDepth int, topLevelScorer topLevelT
 	return result, bestDepth
 }
 
-func appendHomogeneousResult(p0, p1, p2 portalIndex, maxDepth uint16, result []portalIndex, index [][][]bestSolution) []portalIndex {
+func (q *bestHomogeneousQuery) appendHomogeneousResult(p0, p1, p2 portalIndex, maxDepth uint16, result []portalIndex) []portalIndex {
 	if maxDepth == 1 {
 		return result
 	}
-	bestP := index[p0][p1][p2].Index
+	bestP := q.getIndex(p0, p1, p2).Index
 	result = append(result, bestP)
-	result = appendHomogeneousResult(bestP, p1, p2, maxDepth-1, result, index)
-	result = appendHomogeneousResult(p0, bestP, p2, maxDepth-1, result, index)
-	result = appendHomogeneousResult(p0, p1, bestP, maxDepth-1, result, index)
+	result = q.appendHomogeneousResult(bestP, p1, p2, maxDepth-1, result)
+	result = q.appendHomogeneousResult(p0, bestP, p2, maxDepth-1, result)
+	result = q.appendHomogeneousResult(p0, p1, bestP, maxDepth-1, result)
 	return result
 }
 
