@@ -36,19 +36,30 @@ func (q *bestCobwebQuery) findBestCobweb(p0, p1, p2 portalData) {
 	if q.getIndex(p0.Index, p1.Index, p2.Index).Length != invalidLength {
 		return
 	}
-	q.filteredPortals = portalsInsideTriangle(q.portals, p0, p1, p2, q.filteredPortals)
-	q.findBestCobwebAux(p0, p1, p2, q.filteredPortals)
+	filteredPortals := portalsInsideTriangle(q.portals, p0, p1, p2, q.filteredPortals)
+	q.findBestCobwebAux(p0, p1, p2, filteredPortals)
+	q.findBestCobwebAux(p0, p2, p1, filteredPortals)
+	q.findBestCobwebAux(p1, p0, p2, filteredPortals)
+	q.findBestCobwebAux(p1, p2, p0, filteredPortals)
+	q.findBestCobwebAux(p2, p0, p1, filteredPortals)
+	q.findBestCobwebAux(p2, p1, p0, filteredPortals)
 }
 
 func (q *bestCobwebQuery) findBestCobwebAux(p0, p1, p2 portalData, candidates []portalData) bestSolution {
 	localCandidates := append(make([]portalData, 0, len(candidates)), candidates...)
 	var bestCobweb bestSolution
 	for _, portal := range localCandidates {
-		candidate := q.getIndex(p1.Index, p2.Index, portal.Index)
-		if candidate.Length == invalidLength {
-			candidatesInWedge := portalsInsideWedge(localCandidates, portal, p1, p2, q.filteredPortals)
-			candidate = q.findBestCobwebAux(p1, p2, portal, candidatesInWedge)
+		if q.getIndex(portal.Index, p1.Index, p2.Index).Length == invalidLength {
+			candidatesInWedge := partitionPortalsInsideWedge(candidates, portal, p1, p2)
+			q.findBestCobwebAux(portal, p1, p2, candidatesInWedge)
+			q.findBestCobwebAux(portal, p2, p1, candidatesInWedge)
+			q.findBestCobwebAux(p1, portal, p2, candidatesInWedge)
+			q.findBestCobwebAux(p1, p2, portal, candidatesInWedge)
+			q.findBestCobwebAux(p2, portal, p1, candidatesInWedge)
+			q.findBestCobwebAux(p2, p1, portal, candidatesInWedge)
 		}
+
+		candidate := q.getIndex(p1.Index, p2.Index, portal.Index)
 		if candidate.Length+1 > bestCobweb.Length {
 			bestCobweb.Length = candidate.Length + 1
 			bestCobweb.Index = portal.Index
@@ -82,14 +93,10 @@ func LargestCobweb(portals []Portal) []Portal {
 	printProgressBar(0, numIndexEntries)
 	q := newBestCobwebQuery(portalsData, onFilledIndexEntry)
 	for i, p0 := range portalsData {
-		for j, p1 := range portalsData {
-			if i == j {
-				continue
-			}
-			for k, p2 := range portalsData {
-				if i == k || j == k {
-					continue
-				}
+		for j := i + 1; j < len(portalsData); j++ {
+			p1 := portalsData[j]
+			for k := j + 1; k < len(portalsData); k++ {
+				p2 := portalsData[k]
 				q.findBestCobweb(p0, p1, p2)
 			}
 		}

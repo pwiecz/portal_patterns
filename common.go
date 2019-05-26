@@ -134,6 +134,21 @@ func portalsInsideWedge(portals []portalData, a, b, c portalData, result []porta
 	}
 	return result
 }
+func partitionPortalsInsideWedge(portals []portalData, a, b, c portalData) []portalData {
+	wedge := newTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
+	length := len(portals)
+	for i := 0; i < length; {
+		p := portals[i]
+		if p.Index != a.Index && p.Index != b.Index && p.Index != c.Index &&
+			wedge.ContainsPoint(p.LatLng) {
+			i++
+		} else {
+			portals[i], portals[length-1] = portals[length-1], portals[i]
+			length--
+		}
+	}
+	return portals[:length]
+}
 
 func portalsInsideTriangle(portals []portalData, a, b, c portalData, result []portalData) []portalData {
 	triangle := newTriangleQuery(a.LatLng, b.LatLng, c.LatLng)
