@@ -17,7 +17,6 @@ type bestThreeCornersQuery struct {
 }
 
 func newBestThreeCornersQuery(portals0, portals1, portals2 []portalData, onIndexEntryFilled func()) *bestThreeCornersQuery {
-	fmt.Println("Lengths:", len(portals0), ",", len(portals1), ",", len(portals2))
 	index := make([][][]bestSolution, 0, len(portals0))
 	numCornerChanges := make([][][]uint16, 0, len(portals0))
 	for i := 0; i < len(portals0); i++ {
@@ -56,7 +55,6 @@ func (q *bestThreeCornersQuery) findBestThreeCorner(p0, p1, p2 portalData) {
 	q.findBestThreeCornerAux(p0, p1, p2, q.filteredPortals0, q.filteredPortals1, q.filteredPortals2)
 }
 func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData, portals0, portals1, portals2 []portalData) (bestSolution, uint16) {
-	fmt.Println("Local lengths:", len(portals0), ",", len(portals1), ",", len(portals2))
 	localPortals0 := append(make([]portalData, 0, len(portals0)), portals0...)
 	localPortals1 := append(make([]portalData, 0, len(portals1)), portals1...)
 	localPortals2 := append(make([]portalData, 0, len(portals2)), portals2...)
@@ -104,7 +102,6 @@ func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData, po
 	}
 	for i := 0; i < len(localPortals2); i++ {
 		portal := localPortals2[i]
-		fmt.Println(p0.Index, ",", p1.Index, ",", portal.Index)
 		candidate := q.index[p0.Index][p1.Index][portal.Index]
 		numCornerChanges := q.numCornerChanges[p0.Index][p1.Index][portal.Index]
 		if candidate.Length == invalidLength {
