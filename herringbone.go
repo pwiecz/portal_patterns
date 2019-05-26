@@ -29,6 +29,7 @@ func newBestHerringBoneQuery(portals []portalData) *bestHerringBoneQuery {
 	return &bestHerringBoneQuery{
 		portals: portals,
 		nodes:   make([]node, 0, len(portals)),
+		weights: make([]float32, len(portals)),
 	}
 }
 
@@ -50,7 +51,9 @@ func (q *bestHerringBoneQuery) findBestHerringbone(b0, b1 portalData, result []p
 	sort.Slice(q.nodes, func(i, j int) bool {
 		return q.nodes[i].distance < q.nodes[j].distance
 	})
-	q.weights = make([]float32, len(q.portals), len(q.portals))
+	for i := 0; i < len(q.weights); i++ {
+		q.weights[i] = 0
+	}
 	for i, node := range q.nodes {
 		var bestLength uint16
 		bestNext := invalidPortalIndex
