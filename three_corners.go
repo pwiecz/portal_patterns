@@ -8,7 +8,8 @@ type bestThreeCornersQuery struct {
 	portals1           []portalData
 	numPortals1        portalIndex
 	portals2           []portalData
-	index              [][][]bestTCSolution
+	index              [][][]bestSolution
+	numCornerChanges   [][][]uint16
 	onIndexEntryFilled func()
 	filteredPortals0   []portalData
 	filteredPortals1   []portalData
@@ -16,11 +17,15 @@ type bestThreeCornersQuery struct {
 }
 
 func newBestThreeCornersQuery(portals0, portals1, portals2 []portalData, onIndexEntryFilled func()) *bestThreeCornersQuery {
-	index := make([][][]bestTCSolution, 0, len(portals0))
+	fmt.Println("Lengths:", len(portals0), ",", len(portals1), ",", len(portals2))
+	index := make([][][]bestSolution, 0, len(portals0))
+	numCornerChanges := make([][][]uint16, 0, len(portals0))
 	for i := 0; i < len(portals0); i++ {
-		index = append(index, make([][]bestTCSolution, 0, len(portals1)))
+		index = append(index, make([][]bestSolution, 0, len(portals1)))
+		numCornerChanges = append(numCornerChanges, make([][]uint16, 0, len(portals1)))
 		for j := 0; j < len(portals1); j++ {
-			index[i] = append(index[i], make([]bestTCSolution, len(portals2)))
+			index[i] = append(index[i], make([]bestSolution, len(portals2)))
+			numCornerChanges[i] = append(numCornerChanges[i], make([]uint16, len(portals2)))
 			for k := 0; k < len(portals2); k++ {
 				index[i][j][k].Length = invalidLength
 			}
@@ -33,6 +38,7 @@ func newBestThreeCornersQuery(portals0, portals1, portals2 []portalData, onIndex
 		numPortals1:        portalIndex(len(portals1)),
 		portals2:           append(make([]portalData, 0, len(portals2)), portals2...),
 		index:              index,
+		numCornerChanges:   numCornerChanges,
 		onIndexEntryFilled: onIndexEntryFilled,
 		filteredPortals0:   make([]portalData, 0, len(portals0)),
 		filteredPortals1:   make([]portalData, 0, len(portals1)),
@@ -40,77 +46,86 @@ func newBestThreeCornersQuery(portals0, portals1, portals2 []portalData, onIndex
 	}
 }
 
-type bestTCSolution struct {
-	Index            portalIndex
-	Length           uint16
-	NumCornerChanges uint16
-}
-
 func (q *bestThreeCornersQuery) findBestThreeCorner(p0, p1, p2 portalData) {
 	if q.index[p0.Index][p1.Index][p2.Index].Length != invalidLength {
 		return
 	}
 	q.filteredPortals0 = portalsInsideTriangle(q.portals0, p0, p1, p2, q.filteredPortals0)
-	q.filteredPortals1 = portalsInsideTriangle(q.portals1, p0, p1, p2, q.filteredPortals0)
-	q.filteredPortals2 = portalsInsideTriangle(q.portals2, p0, p1, p2, q.filteredPortals0)
+	q.filteredPortals1 = portalsInsideTriangle(q.portals1, p0, p1, p2, q.filteredPortals1)
+	q.filteredPortals2 = portalsInsideTriangle(q.portals2, p0, p1, p2, q.filteredPortals2)
 	q.findBestThreeCornerAux(p0, p1, p2, q.filteredPortals0, q.filteredPortals1, q.filteredPortals2)
 }
-func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData, portals0, portals1, portals2 []portalData) bestTCSolution {
+func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData, portals0, portals1, portals2 []portalData) (bestSolution, uint16) {
+	fmt.Println("Local lengths:", len(portals0), ",", len(portals1), ",", len(portals2))
 	localPortals0 := append(make([]portalData, 0, len(portals0)), portals0...)
 	localPortals1 := append(make([]portalData, 0, len(portals1)), portals1...)
 	localPortals2 := append(make([]portalData, 0, len(portals2)), portals2...)
-	var bestTC bestTCSolution
+	var bestTC bestSolution
+	var bestNumCornerChanges uint16
 	for i := 0; i < len(localPortals0); i++ {
 		portal := localPortals0[i]
 		candidate := q.index[portal.Index][p1.Index][p2.Index]
+		numCornerChanges := q.numCornerChanges[portal.Index][p1.Index][p2.Index]
 		if candidate.Length == invalidLength {
-			candidate = q.findBestThreeCornerAux(portal, p1, p2, portals0, portals1, portals2)
+			filteredPortals0 := portalsInsideWedge(localPortals0, portal, p1, p2, q.filteredPortals0)
+			filteredPortals1 := portalsInsideWedge(localPortals1, portal, p1, p2, q.filteredPortals1)
+			filteredPortals2 := portalsInsideWedge(localPortals2, portal, p1, p2, q.filteredPortals2)
+			candidate, numCornerChanges = q.findBestThreeCornerAux(portal, p1, p2, filteredPortals0, filteredPortals1, filteredPortals2)
 			candidate.Length = candidate.Length + 1
 			if candidate.Length > 0 && candidate.Index >= q.numPortals0 {
-				candidate.NumCornerChanges = candidate.NumCornerChanges + 1
+				numCornerChanges = numCornerChanges + 1
 			}
 		}
-		if candidate.Length > bestTC.Length || (candidate.Length == bestTC.Length && candidate.NumCornerChanges < bestTC.NumCornerChanges) {
+		if candidate.Length > bestTC.Length || (candidate.Length == bestTC.Length && numCornerChanges < bestNumCornerChanges) {
 			bestTC.Length = candidate.Length
 			bestTC.Index = portal.Index
-			bestTC.NumCornerChanges = candidate.NumCornerChanges
+			bestNumCornerChanges = numCornerChanges
 		}
 	}
 	for i := 0; i < len(localPortals1); i++ {
 		portal := localPortals1[i]
 		candidate := q.index[p0.Index][portal.Index][p2.Index]
+		numCornerChanges := q.numCornerChanges[p0.Index][portal.Index][p2.Index]
 		if candidate.Length == invalidLength {
-			candidate = q.findBestThreeCornerAux(p0, portal, p2, portals0, portals1, portals2)
+			filteredPortals0 := portalsInsideWedge(localPortals0, portal, p0, p2, q.filteredPortals0)
+			filteredPortals1 := portalsInsideWedge(localPortals1, portal, p0, p2, q.filteredPortals1)
+			filteredPortals2 := portalsInsideWedge(localPortals2, portal, p0, p2, q.filteredPortals2)
+			candidate, numCornerChanges = q.findBestThreeCornerAux(p0, portal, p2, filteredPortals0, filteredPortals1, filteredPortals2)
 			candidate.Length = candidate.Length + 1
 			if candidate.Length > 0 && (candidate.Index < q.numPortals0 || candidate.Index >= q.numPortals0+q.numPortals1) {
-				candidate.NumCornerChanges = candidate.NumCornerChanges + 1
+				numCornerChanges = numCornerChanges + 1
 			}
 		}
-		if candidate.Length > bestTC.Length || (candidate.Length == bestTC.Length && candidate.NumCornerChanges < bestTC.NumCornerChanges) {
+		if candidate.Length > bestTC.Length || (candidate.Length == bestTC.Length && numCornerChanges < bestNumCornerChanges) {
 			bestTC.Length = candidate.Length
 			bestTC.Index = portal.Index + q.numPortals0
-			bestTC.NumCornerChanges = candidate.NumCornerChanges
+			bestNumCornerChanges = numCornerChanges
 		}
 	}
 	for i := 0; i < len(localPortals2); i++ {
 		portal := localPortals2[i]
+		fmt.Println(p0.Index, ",", p1.Index, ",", portal.Index)
 		candidate := q.index[p0.Index][p1.Index][portal.Index]
+		numCornerChanges := q.numCornerChanges[p0.Index][p1.Index][portal.Index]
 		if candidate.Length == invalidLength {
-			candidate = q.findBestThreeCornerAux(p0, p1, portal, portals0, portals1, portals2)
+			filteredPortals0 := portalsInsideWedge(localPortals0, portal, p0, p1, q.filteredPortals0)
+			filteredPortals1 := portalsInsideWedge(localPortals1, portal, p0, p1, q.filteredPortals1)
+			filteredPortals2 := portalsInsideWedge(localPortals2, portal, p0, p1, q.filteredPortals2)
+			candidate, numCornerChanges = q.findBestThreeCornerAux(p0, p1, portal, filteredPortals0, filteredPortals1, filteredPortals2)
 			candidate.Length = candidate.Length + 1
 			if candidate.Length > 0 && candidate.Index < q.numPortals0+q.numPortals1 {
-				candidate.NumCornerChanges = candidate.NumCornerChanges + 1
+				numCornerChanges = numCornerChanges + 1
 			}
 		}
-		if candidate.Length > bestTC.Length || (candidate.Length == bestTC.Length && candidate.NumCornerChanges < bestTC.NumCornerChanges) {
+		if candidate.Length > bestTC.Length || (candidate.Length == bestTC.Length && numCornerChanges < bestNumCornerChanges) {
 			bestTC.Length = candidate.Length
 			bestTC.Index = portal.Index + q.numPortals0 + q.numPortals1
-			bestTC.NumCornerChanges = candidate.NumCornerChanges
+			bestNumCornerChanges = numCornerChanges
 		}
 	}
 	q.index[p0.Index][p1.Index][p2.Index] = bestTC
 	q.onIndexEntryFilled()
-	return bestTC
+	return bestTC, bestNumCornerChanges
 }
 
 // LargestThreeCorner - Find best way to connect three groups of portals
@@ -143,14 +158,17 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal) []indexedPortal {
 	printProgressBar(numIndexEntries, numIndexEntries)
 	fmt.Println("")
 
-	var largestTC bestTCSolution
+	var largestTC bestSolution
+	var bestNumCornerChanges uint16
 	var bestP0, bestP1, bestP2 portalData
 	for _, p0 := range portalsData0 {
 		for _, p1 := range portalsData1 {
 			for _, p2 := range portalsData2 {
 				solution := q.index[p0.Index][p1.Index][p2.Index]
-				if solution.Length > largestTC.Length || (solution.Length == largestTC.Length && solution.NumCornerChanges < largestTC.NumCornerChanges) {
+				numCornerChanges := q.numCornerChanges[p0.Index][p1.Index][p2.Index]
+				if solution.Length > largestTC.Length || (solution.Length == largestTC.Length && numCornerChanges < bestNumCornerChanges) {
 					largestTC = solution
+					bestNumCornerChanges = numCornerChanges
 					bestP0, bestP1, bestP2 = p0, p1, p2
 				}
 			}
