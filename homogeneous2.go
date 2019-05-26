@@ -19,8 +19,8 @@ type homogeneousTopLevelScorer interface {
 type bestHomogeneous2Query struct {
 	portals            []portalData
 	index              []portalIndex
-	numPortals int64
-	numPortalsSq int64
+	numPortals         int64
+	numPortalsSq       int64
 	onFilledIndexEntry func()
 	portalsInTriangle  []portalData
 	maxDepth           int
@@ -36,8 +36,8 @@ func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, ma
 	return &bestHomogeneous2Query{
 		portals:            portals,
 		index:              index,
-		numPortals: numPortals,
-		numPortalsSq: numPortals*numPortals,
+		numPortals:         numPortals,
+		numPortalsSq:       numPortals * numPortals,
 		onFilledIndexEntry: onFilledIndexEntry,
 		portalsInTriangle:  make([]portalData, 0, len(portals)),
 		maxDepth:           maxDepth,
@@ -46,10 +46,10 @@ func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, ma
 }
 
 func (q *bestHomogeneous2Query) getIndex(i, j, k portalIndex) portalIndex {
-	return q.index[int64(i) * q.numPortalsSq + int64(j) * q.numPortals + int64(k)]
+	return q.index[int64(i)*q.numPortalsSq+int64(j)*q.numPortals+int64(k)]
 }
 func (q *bestHomogeneous2Query) setIndex(i, j, k portalIndex, index portalIndex) {
-	q.index[int64(i) * q.numPortalsSq + int64(j) * q.numPortals + int64(k)] = index
+	q.index[int64(i)*q.numPortalsSq+int64(j)*q.numPortals+int64(k)] = index
 }
 
 func (q *bestHomogeneous2Query) findBestHomogeneous(p0, p1, p2 portalData) {
@@ -154,9 +154,9 @@ func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, ca
 	s0, s1, s2 := sortedIndices(p0.Index, p1.Index, p2.Index)
 	q.setIndex(s0, s1, s2, bestMidpoints[0])
 	q.setIndex(s0, s2, s1, bestMidpoints[1])
-	q.setIndex(s1, s0, s2,  bestMidpoints[2])
-	q.setIndex(s1, s2, s0,  bestMidpoints[3])
-	q.setIndex(s2, s0, s1,  bestMidpoints[4])
+	q.setIndex(s1, s0, s2, bestMidpoints[2])
+	q.setIndex(s1, s2, s0, bestMidpoints[3])
+	q.setIndex(s2, s0, s1, bestMidpoints[4])
 	q.setIndex(s2, s1, s0, bestMidpoints[5])
 }
 
@@ -232,7 +232,7 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScore
 	return result, (uint16)(bestDepth)
 }
 
-func (q* bestHomogeneous2Query) appendHomogeneous2Result(p0, p1, p2 portalIndex, maxDepth int, result []portalIndex) []portalIndex {
+func (q *bestHomogeneous2Query) appendHomogeneous2Result(p0, p1, p2 portalIndex, maxDepth int, result []portalIndex) []portalIndex {
 	if maxDepth == 1 {
 		return result
 	}

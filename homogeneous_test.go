@@ -41,7 +41,23 @@ func checkValidHomogeneousResult(expectedDepth uint16, portals []Portal, depth u
 		t.Errorf("Result is not correct homogeneous fielding")
 	}
 }
-func TestPretty(t *testing.T) {
+func TestHomogeneous(t *testing.T) {
+	portals, err := ParseJSONFile("portals_test.json")
+	if err != nil {
+		panic(err)
+	}
+	if testing.Short() {
+		t.Skip()
+	}
+	if len(portals) < 3 {
+		t.FailNow()
+	}
+	scorer := largestTriangleScorer{}
+	result, depth := DeepestHomogeneous(portals, 6, scorer)
+	checkValidHomogeneousResult(5, result, depth, t)
+}
+
+func TestHomogeneousPretty(t *testing.T) {
 	portals, err := ParseJSONFile("portals_test.json")
 	if err != nil {
 		panic(err)
