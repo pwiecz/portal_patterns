@@ -60,8 +60,7 @@ func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData, po
 	localPortals2 := append(make([]portalData, 0, len(portals2)), portals2...)
 	var bestTC bestSolution
 	var bestNumCornerChanges uint16
-	for i := 0; i < len(localPortals0); i++ {
-		portal := localPortals0[i]
+	for _, portal := range localPortals0 {
 		candidate := q.index[portal.Index][p1.Index][p2.Index]
 		numCornerChanges := q.numCornerChanges[portal.Index][p1.Index][p2.Index]
 		if candidate.Length == invalidLength {
@@ -80,8 +79,7 @@ func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData, po
 			bestNumCornerChanges = numCornerChanges
 		}
 	}
-	for i := 0; i < len(localPortals1); i++ {
-		portal := localPortals1[i]
+	for _, portal := range localPortals1 {
 		candidate := q.index[p0.Index][portal.Index][p2.Index]
 		numCornerChanges := q.numCornerChanges[p0.Index][portal.Index][p2.Index]
 		if candidate.Length == invalidLength {
@@ -100,8 +98,7 @@ func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData, po
 			bestNumCornerChanges = numCornerChanges
 		}
 	}
-	for i := 0; i < len(localPortals2); i++ {
-		portal := localPortals2[i]
+	for _, portal := range localPortals2 {
 		candidate := q.index[p0.Index][p1.Index][portal.Index]
 		numCornerChanges := q.numCornerChanges[p0.Index][p1.Index][portal.Index]
 		if candidate.Length == invalidLength {
