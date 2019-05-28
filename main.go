@@ -8,7 +8,10 @@ import "math"
 import "os"
 import "strings"
 
+import "runtime/pprof"
+
 func main() {
+	cpuprofile := flag.String("cpuprofile", "", "write CPU profile to this file")
 	cobwebCmd := flag.NewFlagSet("cobweb", flag.ExitOnError)
 	cobwebCmd.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s cobweb <portals.json>\n", os.Args[0])
@@ -48,6 +51,17 @@ func main() {
 		os.Exit(0)
 	}
 
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
 	if os.Args[1] == "cobweb" {
 		cobwebCmd.Parse(os.Args[2:])
 		fileArgs := cobwebCmd.Args()
