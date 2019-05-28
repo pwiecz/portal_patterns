@@ -52,27 +52,27 @@ func (q *bestThreeCornersQuery) findBestThreeCorner(p0, p1, p2 portalData) {
 	q.filteredPortals0 = portalsInsideTriangle(q.portals0, p0, p1, p2, q.filteredPortals0)
 	q.filteredPortals1 = portalsInsideTriangle(q.portals1, p0, p1, p2, q.filteredPortals1)
 	q.filteredPortals2 = portalsInsideTriangle(q.portals2, p0, p1, p2, q.filteredPortals2)
-	q.findBestThreeCornerAux(p0, p1, p2, q.filteredPortals0, q.filteredPortals1, q.filteredPortals2)
+	q.findBestThreeCornerAux(p0, p1, p2)
 }
-func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData, portals0, portals1, portals2 []portalData) (bestSolution, uint16) {
-	localPortals0 := append(make([]portalData, 0, len(portals0)), portals0...)
-	localPortals1 := append(make([]portalData, 0, len(portals1)), portals1...)
-	localPortals2 := append(make([]portalData, 0, len(portals2)), portals2...)
+func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData) (bestSolution, uint16) {
+	localPortals0 := append(make([]portalData, 0, len(q.filteredPortals0)), q.filteredPortals0...)
+	localPortals1 := append(make([]portalData, 0, len(q.filteredPortals1)), q.filteredPortals1...)
+	localPortals2 := append(make([]portalData, 0, len(q.filteredPortals2)), q.filteredPortals2...)
 	var bestTC bestSolution
 	var bestNumCornerChanges uint16
 	for _, portal := range localPortals0 {
 		candidate := q.index[portal.Index][p1.Index][p2.Index]
 		numCornerChanges := q.numCornerChanges[portal.Index][p1.Index][p2.Index]
 		if candidate.Length == invalidLength {
-			filteredPortals0 := portalsInsideWedge(localPortals0, portal, p1, p2, q.filteredPortals0)
-			filteredPortals1 := portalsInsideWedge(localPortals1, portal, p1, p2, q.filteredPortals1)
-			filteredPortals2 := portalsInsideWedge(localPortals2, portal, p1, p2, q.filteredPortals2)
-			candidate, numCornerChanges = q.findBestThreeCornerAux(portal, p1, p2, filteredPortals0, filteredPortals1, filteredPortals2)
-			candidate.Length = candidate.Length + 1
+			q.filteredPortals0 = portalsInsideWedge(localPortals0, portal, p1, p2, q.filteredPortals0)
+			q.filteredPortals1 = portalsInsideWedge(localPortals1, portal, p1, p2, q.filteredPortals1)
+			q.filteredPortals2 = portalsInsideWedge(localPortals2, portal, p1, p2, q.filteredPortals2)
+			candidate, numCornerChanges = q.findBestThreeCornerAux(portal, p1, p2)
 			if candidate.Length > 0 && candidate.Index >= q.numPortals0 {
 				numCornerChanges = numCornerChanges + 1
 			}
 		}
+		candidate.Length = candidate.Length + 1
 		if candidate.Length > bestTC.Length || (candidate.Length == bestTC.Length && numCornerChanges < bestNumCornerChanges) {
 			bestTC.Length = candidate.Length
 			bestTC.Index = portal.Index
@@ -83,15 +83,15 @@ func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData, po
 		candidate := q.index[p0.Index][portal.Index][p2.Index]
 		numCornerChanges := q.numCornerChanges[p0.Index][portal.Index][p2.Index]
 		if candidate.Length == invalidLength {
-			filteredPortals0 := portalsInsideWedge(localPortals0, portal, p0, p2, q.filteredPortals0)
-			filteredPortals1 := portalsInsideWedge(localPortals1, portal, p0, p2, q.filteredPortals1)
-			filteredPortals2 := portalsInsideWedge(localPortals2, portal, p0, p2, q.filteredPortals2)
-			candidate, numCornerChanges = q.findBestThreeCornerAux(p0, portal, p2, filteredPortals0, filteredPortals1, filteredPortals2)
-			candidate.Length = candidate.Length + 1
+			q.filteredPortals0 = portalsInsideWedge(localPortals0, portal, p0, p2, q.filteredPortals0)
+			q.filteredPortals1 = portalsInsideWedge(localPortals1, portal, p0, p2, q.filteredPortals1)
+			q.filteredPortals2 = portalsInsideWedge(localPortals2, portal, p0, p2, q.filteredPortals2)
+			candidate, numCornerChanges = q.findBestThreeCornerAux(p0, portal, p2)
 			if candidate.Length > 0 && (candidate.Index < q.numPortals0 || candidate.Index >= q.numPortals0+q.numPortals1) {
 				numCornerChanges = numCornerChanges + 1
 			}
 		}
+		candidate.Length = candidate.Length + 1
 		if candidate.Length > bestTC.Length || (candidate.Length == bestTC.Length && numCornerChanges < bestNumCornerChanges) {
 			bestTC.Length = candidate.Length
 			bestTC.Index = portal.Index + q.numPortals0
@@ -102,15 +102,15 @@ func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData, po
 		candidate := q.index[p0.Index][p1.Index][portal.Index]
 		numCornerChanges := q.numCornerChanges[p0.Index][p1.Index][portal.Index]
 		if candidate.Length == invalidLength {
-			filteredPortals0 := portalsInsideWedge(localPortals0, portal, p0, p1, q.filteredPortals0)
-			filteredPortals1 := portalsInsideWedge(localPortals1, portal, p0, p1, q.filteredPortals1)
-			filteredPortals2 := portalsInsideWedge(localPortals2, portal, p0, p1, q.filteredPortals2)
-			candidate, numCornerChanges = q.findBestThreeCornerAux(p0, p1, portal, filteredPortals0, filteredPortals1, filteredPortals2)
-			candidate.Length = candidate.Length + 1
+			q.filteredPortals0 = portalsInsideWedge(localPortals0, portal, p0, p1, q.filteredPortals0)
+			q.filteredPortals1 = portalsInsideWedge(localPortals1, portal, p0, p1, q.filteredPortals1)
+			q.filteredPortals2 = portalsInsideWedge(localPortals2, portal, p0, p1, q.filteredPortals2)
+			candidate, numCornerChanges = q.findBestThreeCornerAux(p0, p1, portal)
 			if candidate.Length > 0 && candidate.Index < q.numPortals0+q.numPortals1 {
 				numCornerChanges = numCornerChanges + 1
 			}
 		}
+		candidate.Length = candidate.Length + 1
 		if candidate.Length > bestTC.Length || (candidate.Length == bestTC.Length && numCornerChanges < bestNumCornerChanges) {
 			bestTC.Length = candidate.Length
 			bestTC.Index = portal.Index + q.numPortals0 + q.numPortals1

@@ -46,5 +46,5 @@ func TestThreeCorner(t *testing.T) {
 		t.FailNow()
 	}
 	threeCorner := LargestThreeCorner(portals0, portals1, portals2)
-	checkValidThreeCornerResult(13, threeCorner, t)
+	checkValidThreeCornerResult(16, threeCorner, t)
 }
