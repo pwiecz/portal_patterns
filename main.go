@@ -37,6 +37,7 @@ func main() {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [--max_depth=<n>] [--pretty] [--largest_area|--smallest_area] <portals.json>\n", os.Args[0])
 		homogeneousCmd.PrintDefaults()
 	}
+
 	flag.Usage = func() {
 		fmt.Println("Usage:")
 		cobwebCmd.Usage()
@@ -46,7 +47,7 @@ func main() {
 		homogeneousCmd.Usage()
 	}
 	flag.Parse()
-	if len(os.Args) == 1 {
+	if len(flag.Args()) == 1 {
 		flag.Usage()
 		os.Exit(0)
 	}
@@ -62,8 +63,9 @@ func main() {
 		}
 		defer pprof.StopCPUProfile()
 	}
-	if os.Args[1] == "cobweb" {
-		cobwebCmd.Parse(os.Args[2:])
+	switch flag.Args()[0] {
+	case "cobweb":
+		cobwebCmd.Parse(flag.Args()[1:])
 		fileArgs := cobwebCmd.Args()
 		if len(fileArgs) != 1 {
 			log.Fatalln("cobweb command requires exactly one file argument")
@@ -82,8 +84,8 @@ func main() {
 			portalList = append(portalList, portal, portalList[len(portalList)-2])
 		}
 		fmt.Printf("\n[%s]\n", polylineFromPortalList(portalList))
-	} else if os.Args[1] == "herringbone" {
-		herringboneCmd.Parse(os.Args[2:])
+	case "herringbone":
+		herringboneCmd.Parse(flag.Args()[1:])
 		fileArgs := herringboneCmd.Args()
 		if len(fileArgs) != 1 {
 			log.Fatalln("herringbone command requires exactly one file argument")
@@ -104,8 +106,8 @@ func main() {
 			atIndex = 1 - atIndex
 		}
 		fmt.Printf("\n[%s]\n", polylineFromPortalList(portalList))
-	} else if os.Args[1] == "double_herringbone" {
-		doubleHerringboneCmd.Parse(os.Args[2:])
+	case "double_herringbone":
+		doubleHerringboneCmd.Parse(flag.Args()[1:])
 		fileArgs := doubleHerringboneCmd.Args()
 		if len(fileArgs) != 1 {
 			log.Fatalln("double_herringbone command requires exactly one file argument")
@@ -136,8 +138,8 @@ func main() {
 			atIndex = 1 - atIndex
 		}
 		fmt.Printf("\n[%s]\n", polylineFromPortalList(portalList))
-	} else if os.Args[1] == "three_corners" {
-		threeCornersCmd.Parse(os.Args[2:])
+	case "three_corners":
+		threeCornersCmd.Parse(flag.Args()[1:])
 		fileArgs := threeCornersCmd.Args()
 		if len(fileArgs) != 3 {
 			log.Fatalln("three_corners command requires exactly three file argument")
@@ -178,8 +180,10 @@ func main() {
 			portalList = append(portalList, indexedPortal.Portal)
 		}
 		fmt.Printf("\n[%s]\n", polylineFromPortalList(portalList))
-	} else if os.Args[1] == "homogeneous" || os.Args[1] == "homogenous" {
-		homogeneousCmd.Parse(os.Args[2:])
+	case "homogeneous":
+		fallthrough
+	case "homogenous":
+		homogeneousCmd.Parse(flag.Args()[1:])
 		if *homogeneousMaxDepth < 1 {
 			log.Fatalln("--max_depth must by at least 1")
 		}
@@ -223,7 +227,7 @@ func main() {
 		polylines := []string{polylineFromPortalList([]Portal{result[0], result[1], result[2], result[0]})}
 		polylines, _ = appendHomogeneousPolylines(result[0], result[1], result[2], uint16(depth), polylines, result[3:])
 		fmt.Printf("\n[%s]\n", strings.Join(polylines, ","))
-	} else {
-		log.Fatalf("Unknown command: \"%s\"\n", os.Args[1])
+	default:
+		log.Fatalf("Unknown command: \"%s\"\n", flag.Args()[0])
 	}
 }
