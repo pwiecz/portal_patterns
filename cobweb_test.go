@@ -23,7 +23,7 @@ func checkValidCobwebResult(expectedLength int, portals []Portal, t *testing.T) 
 }
 
 func TestCobweb(t *testing.T) {
-	portals, err := ParseJSONFile("portals_test.json")
+	portals, err := ParseJSONFile("testdata/portals_test.json")
 	if err != nil {
 		panic(err)
 	}
