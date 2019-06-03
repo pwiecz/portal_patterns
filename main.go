@@ -47,11 +47,10 @@ func main() {
 		homogeneousCmd.Usage()
 	}
 	flag.Parse()
-	if len(flag.Args()) == 1 {
+	if len(flag.Args()) <= 1 {
 		flag.Usage()
 		os.Exit(0)
 	}
-
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
