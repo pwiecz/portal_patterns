@@ -8,38 +8,41 @@ import "math"
 import "os"
 import "strings"
 
+import "path/filepath"
 import "runtime/pprof"
 
 func main() {
+	fileBase := filepath.Base(os.Args[0])
 	cpuprofile := flag.String("cpuprofile", "", "write CPU profile to this file")
 	cobwebCmd := flag.NewFlagSet("cobweb", flag.ExitOnError)
 	cobwebCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s cobweb <portals.json>\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "%s cobweb <portals.json>\n", fileBase)
 	}
 	threeCornersCmd := flag.NewFlagSet("three_corners", flag.ExitOnError)
 	threeCornersCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s three_corners <portals1.json> <portals2.json> <portals3.json>\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "%s three_corners <portals1.json> <portals2.json> <portals3.json>\n", fileBase)
 	}
 	herringboneCmd := flag.NewFlagSet("herringbone", flag.ExitOnError)
 	herringboneCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s herringbone <portals.json>\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "%s herringbone <portals.json>\n", fileBase)
 	}
 	doubleHerringboneCmd := flag.NewFlagSet("double_herringbone", flag.ExitOnError)
 	doubleHerringboneCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s double_herringbone <portals.json>\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "%s double_herringbone <portals.json>\n", fileBase)
 	}
 	homogeneousCmd := flag.NewFlagSet("homogeneous", flag.ExitOnError)
 	homogeneousMaxDepth := homogeneousCmd.Int("max_depth", 6, "don't return homogenous fields with depth larger than max_depth")
-	homogeneousLargeTriangles := homogeneousCmd.Bool("pretty", false, "try to split the top triangle into large regular triangles (slow)")
+	homogeneousLargeTriangles := homogeneousCmd.Bool("pretty", false, "try to split the top triangle into large regular web of triangles (slow)")
 	homogeneousLargestArea := homogeneousCmd.Bool("largest_area", false, "pick the top triangle having the largest possible area")
 	homogeneousSmallestArea := homogeneousCmd.Bool("smallest_area", false, "pick the top triangle having the smallest possible area")
 	homogeneousCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [--max_depth=<n>] [--pretty] [--largest_area|--smallest_area] <portals.json>\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [-max_depth=<n>] [-pretty] [-largest_area|-smallest_area] <portals.json>\n", fileBase)
 		homogeneousCmd.PrintDefaults()
 	}
 
+	defaultUsage := flag.Usage
 	flag.Usage = func() {
-		fmt.Println("Usage:")
+		defaultUsage()
 		cobwebCmd.Usage()
 		threeCornersCmd.Usage()
 		herringboneCmd.Usage()
