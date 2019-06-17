@@ -16,19 +16,19 @@ func main() {
 	cpuprofile := flag.String("cpuprofile", "", "write CPU profile to this file")
 	cobwebCmd := flag.NewFlagSet("cobweb", flag.ExitOnError)
 	cobwebCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s cobweb <portals.json>\n", fileBase)
+		fmt.Fprintf(flag.CommandLine.Output(), "%s cobweb <portals>\n", fileBase)
 	}
 	threeCornersCmd := flag.NewFlagSet("three_corners", flag.ExitOnError)
 	threeCornersCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s three_corners <portals1.json> <portals2.json> <portals3.json>\n", fileBase)
+		fmt.Fprintf(flag.CommandLine.Output(), "%s three_corners <portals1> <portals2> <portals3>\n", fileBase)
 	}
 	herringboneCmd := flag.NewFlagSet("herringbone", flag.ExitOnError)
 	herringboneCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s herringbone <portals.json>\n", fileBase)
+		fmt.Fprintf(flag.CommandLine.Output(), "%s herringbone <portals>\n", fileBase)
 	}
 	doubleHerringboneCmd := flag.NewFlagSet("double_herringbone", flag.ExitOnError)
 	doubleHerringboneCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s double_herringbone <portals.json>\n", fileBase)
+		fmt.Fprintf(flag.CommandLine.Output(), "%s double_herringbone <portals>\n", fileBase)
 	}
 	homogeneousCmd := flag.NewFlagSet("homogeneous", flag.ExitOnError)
 	homogeneousMaxDepth := homogeneousCmd.Int("max_depth", 6, "don't return homogenous fields with depth larger than max_depth")
@@ -36,8 +36,12 @@ func main() {
 	homogeneousLargestArea := homogeneousCmd.Bool("largest_area", false, "pick the top triangle having the largest possible area")
 	homogeneousSmallestArea := homogeneousCmd.Bool("smallest_area", false, "pick the top triangle having the smallest possible area")
 	homogeneousCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [-max_depth=<n>] [-pretty] [-largest_area|-smallest_area] <portals.json>\n", fileBase)
+		fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [-max_depth=<n>] [-pretty] [-largest_area|-smallest_area] <portals>\n", fileBase)
 		homogeneousCmd.PrintDefaults()
+	}
+	colinearCmd := flag.NewFlagSet("colinear", flag.ExitOnError)
+	colinearCmd.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "%s colinear <portals>\n", fileBase)
 	}
 
 	defaultUsage := flag.Usage
@@ -48,6 +52,7 @@ func main() {
 		herringboneCmd.Usage()
 		doubleHerringboneCmd.Usage()
 		homogeneousCmd.Usage()
+		colinearCmd.Usage()
 	}
 	flag.Parse()
 	if len(flag.Args()) <= 1 {
@@ -72,9 +77,9 @@ func main() {
 		if len(fileArgs) != 1 {
 			log.Fatalln("cobweb command requires exactly one file argument")
 		}
-		portals, err := ParseJSONFile(fileArgs[0])
+		portals, err := ParseFile(fileArgs[0])
 		if err != nil {
-			log.Fatalf("Could not parse JSON file %s : %v\n", fileArgs[0], err)
+			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
 
 		result := LargestCobweb(portals)
@@ -92,9 +97,9 @@ func main() {
 		if len(fileArgs) != 1 {
 			log.Fatalln("herringbone command requires exactly one file argument")
 		}
-		portals, err := ParseJSONFile(fileArgs[0])
+		portals, err := ParseFile(fileArgs[0])
 		if err != nil {
-			log.Fatalf("Could not parse JSON file %s : %v\n", fileArgs[0], err)
+			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
 		b0, b1, result := LargestHerringbone(portals)
 		fmt.Printf("Base (%s) (%s)\n", b0.Name, b1.Name)
@@ -114,9 +119,9 @@ func main() {
 		if len(fileArgs) != 1 {
 			log.Fatalln("double_herringbone command requires exactly one file argument")
 		}
-		portals, err := ParseJSONFile(fileArgs[0])
+		portals, err := ParseFile(fileArgs[0])
 		if err != nil {
-			log.Fatalf("Could not parse JSON file %s : %v\n", fileArgs[0], err)
+			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
 		b0, b1, result0, result1 := LargestDoubleHerringbone(portals)
 		fmt.Printf("Base (%s) (%s)\n", b0.Name, b1.Name)
@@ -146,17 +151,17 @@ func main() {
 		if len(fileArgs) != 3 {
 			log.Fatalln("three_corners command requires exactly three file argument")
 		}
-		portals1, err := ParseJSONFile(fileArgs[0])
+		portals1, err := ParseFile(fileArgs[0])
 		if err != nil {
-			log.Fatalf("Could not parse JSON file %s : %v\n", fileArgs[0], err)
+			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
-		portals2, err := ParseJSONFile(fileArgs[1])
+		portals2, err := ParseFile(fileArgs[1])
 		if err != nil {
-			log.Fatalf("Could not parse JSON file %s : %v\n", fileArgs[1], err)
+			log.Fatalf("Could not parse file %s : %v\n", fileArgs[1], err)
 		}
-		portals3, err := ParseJSONFile(fileArgs[2])
+		portals3, err := ParseFile(fileArgs[2])
 		if err != nil {
-			log.Fatalf("Could not parse JSON file %s : %v\n", fileArgs[3], err)
+			log.Fatalf("Could not parse file %s : %v\n", fileArgs[3], err)
 		}
 		if len(portals1)+len(portals2)+len(portals3) >= math.MaxUint16-1 {
 			log.Fatalln("Too many portals")
@@ -196,9 +201,9 @@ func main() {
 		if len(fileArgs) != 1 {
 			log.Fatalln("homogeneous command requires exactly one file argument")
 		}
-		portals, err := ParseJSONFile(fileArgs[0])
+		portals, err := ParseFile(fileArgs[0])
 		if err != nil {
-			log.Fatalf("Could not parse JSON file %s : %v\n", fileArgs[0], err)
+			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
 		var result []Portal
 		var depth uint16
@@ -229,6 +234,17 @@ func main() {
 		polylines := []string{polylineFromPortalList([]Portal{result[0], result[1], result[2], result[0]})}
 		polylines, _ = appendHomogeneousPolylines(result[0], result[1], result[2], uint16(depth), polylines, result[3:])
 		fmt.Printf("\n[%s]\n", strings.Join(polylines, ","))
+	case "colinear":
+		colinearCmd.Parse(flag.Args()[1:])
+		fileArgs := colinearCmd.Args()
+		if len(fileArgs) != 1 {
+			log.Fatalln("colinear command requires exactly one file argument")
+		}
+		portals, err := ParseFileAsPortalInfo(fileArgs[0])
+		if err != nil {
+			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
+		}
+		FindColinear(portals)
 	default:
 		log.Fatalf("Unknown command: \"%s\"\n", flag.Args()[0])
 	}

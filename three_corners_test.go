@@ -27,15 +27,15 @@ func checkValidThreeCornerResult(expectedLength int, portals []indexedPortal, t 
 }
 
 func TestThreeCorner(t *testing.T) {
-	portals0, err := ParseJSONFile("testdata/portals_test_tc0.json")
+	portals0, err := ParseFile("testdata/portals_test_tc0.json")
 	if err != nil {
 		panic(err)
 	}
-	portals1, err := ParseJSONFile("testdata/portals_test_tc1.json")
+	portals1, err := ParseFile("testdata/portals_test_tc1.json")
 	if err != nil {
 		panic(err)
 	}
-	portals2, err := ParseJSONFile("testdata/portals_test_tc2.json")
+	portals2, err := ParseFile("testdata/portals_test_tc2.json")
 	if err != nil {
 		panic(err)
 	}

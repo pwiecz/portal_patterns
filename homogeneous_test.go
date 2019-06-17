@@ -42,7 +42,7 @@ func checkValidHomogeneousResult(expectedDepth uint16, portals []Portal, depth u
 	}
 }
 func TestHomogeneous(t *testing.T) {
-	portals, err := ParseJSONFile("testdata/portals_test.json")
+	portals, err := ParseFile("testdata/portals_test.json")
 	if err != nil {
 		panic(err)
 	}
@@ -58,7 +58,7 @@ func TestHomogeneous(t *testing.T) {
 }
 
 func TestHomogeneousPretty(t *testing.T) {
-	portals, err := ParseJSONFile("testdata/portals_test.json")
+	portals, err := ParseFile("testdata/portals_test.json")
 	if err != nil {
 		panic(err)
 	}

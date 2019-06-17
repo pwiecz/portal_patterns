@@ -176,6 +176,12 @@ func float64Min(v0, v1 float64) float64 {
 	}
 	return v1
 }
+func float64Max(v0, v1 float64) float64 {
+	if v0 > v1 {
+		return v0
+	}
+	return v1
+}
 func float32Min(v0, v1 float32) float32 {
 	if v0 < v1 {
 		return v0
