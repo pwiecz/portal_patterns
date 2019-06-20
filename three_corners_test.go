@@ -2,7 +2,7 @@ package main
 
 import "testing"
 
-func isCorrectThreeCorner(p [3]indexedPortal, portals []indexedPortal) bool {
+func isCorrectThreeCorner(p [3]IndexedPortal, portals []IndexedPortal) bool {
 	if len(portals) == 0 {
 		return true
 	}
@@ -14,14 +14,14 @@ func isCorrectThreeCorner(p [3]indexedPortal, portals []indexedPortal) bool {
 	return isCorrectThreeCorner(p, portals[1:])
 }
 
-func checkValidThreeCornerResult(expectedLength int, portals []indexedPortal, t *testing.T) {
+func checkValidThreeCornerResult(expectedLength int, portals []IndexedPortal, t *testing.T) {
 	if len(portals) != expectedLength {
 		t.Errorf("Expected length %d, actual length %d", expectedLength, len(portals))
 	}
 	if portals[0].Index != 0 || portals[1].Index != 1 || portals[2].Index != 2 {
 		t.Errorf("Result is not correct three corner fielding")
 	}
-	if !isCorrectThreeCorner([3]indexedPortal{portals[0], portals[1], portals[2]}, portals[3:]) {
+	if !isCorrectThreeCorner([3]IndexedPortal{portals[0], portals[1], portals[2]}, portals[3:]) {
 		t.Errorf("Result is not correct three corner fielding")
 	}
 }

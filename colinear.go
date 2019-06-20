@@ -11,7 +11,7 @@ type portalInfoData struct {
 	Lng   string
 }
 
-// MostColinear - Find portals that have the same latitude or longitude, and are closest to one another.
+// FindColinear - Find portals that have the same latitude or longitude
 func FindColinear(portals []PortalInfo) {
 	if len(portals) < 3 {
 		panic("Too short portal list")

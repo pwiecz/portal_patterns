@@ -17,11 +17,6 @@ type portalData struct {
 	LatLng s2.Point
 }
 
-type indexedPortal struct {
-	Index  portalIndex
-	Portal Portal
-}
-
 func portalsToPortalData(portals []Portal) []portalData {
 	portalsData := make([]portalData, 0, len(portals))
 	for i, portal := range portals {

@@ -20,6 +20,12 @@ type Portal struct {
 	LatLng s2.Point
 }
 
+// IndexedPortal - Portal plus a number
+type IndexedPortal struct {
+	Index  int
+	Portal Portal
+}
+
 // PortalCoordinates - portal coordinates in textual format
 type PortalCoordinates struct {
 	Lat string `json:"lat"`

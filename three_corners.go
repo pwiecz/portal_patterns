@@ -133,7 +133,7 @@ func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData) (b
 }
 
 // LargestThreeCorner - Find best way to connect three groups of portals
-func LargestThreeCorner(portals0, portals1, portals2 []Portal) []indexedPortal {
+func LargestThreeCorner(portals0, portals1, portals2 []Portal) []IndexedPortal {
 	portalsData0 := portalsToPortalData(portals0)
 	portalsData1 := portalsToPortalData(portals1)
 	portalsData2 := portalsToPortalData(portals2)
@@ -181,26 +181,26 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal) []indexedPortal {
 	numPortals0 := portalIndex(len(portals0))
 	numPortals1 := portalIndex(len(portals1))
 	k0, k1, k2 := bestP0.Index, bestP1.Index, bestP2.Index
-	result := append(make([]indexedPortal, 0, largestTC.Length+3),
-		indexedPortal{0, portals0[k0]},
-		indexedPortal{1, portals1[k1]},
-		indexedPortal{2, portals2[k2]})
+	result := append(make([]IndexedPortal, 0, largestTC.Length+3),
+		IndexedPortal{0, portals0[k0]},
+		IndexedPortal{1, portals1[k1]},
+		IndexedPortal{2, portals2[k2]})
 	for {
 		sol := q.getIndex(k0, k1, k2)
 		if sol.Length == 0 {
 			break
 		}
 		if sol.Index < numPortals0 {
-			result = append(result, indexedPortal{0, portals0[sol.Index]})
+			result = append(result, IndexedPortal{0, portals0[sol.Index]})
 			k0 = sol.Index
 		} else {
 			sol.Index = sol.Index - numPortals0
 			if sol.Index < numPortals1 {
-				result = append(result, indexedPortal{1, portals1[sol.Index]})
+				result = append(result, IndexedPortal{1, portals1[sol.Index]})
 				k1 = sol.Index
 			} else {
 				sol.Index = sol.Index - numPortals1
-				result = append(result, indexedPortal{2, portals2[sol.Index]})
+				result = append(result, IndexedPortal{2, portals2[sol.Index]})
 				k2 = sol.Index
 			}
 		}
