@@ -56,8 +56,8 @@ func LargestDoubleHerringbone(portals []Portal, numWorkers int) (Portal, Portal,
 	}
 	numProcessedPairs := 0
 	requestChannel := make(chan doubleHerringboneRequest, numWorkers)
-	responseChannel := make(chan doubleHerringboneRequest)
-	doneChannel := make(chan struct{})
+	responseChannel := make(chan doubleHerringboneRequest, numWorkers)
+	doneChannel := make(chan struct{}, numWorkers)
 	q := newBestHerringboneQuery(portalsData)
 	for i := 0; i < numWorkers; i++ {
 		go bestDoubleHerringboneWorker(q, requestChannel, responseChannel, doneChannel)
