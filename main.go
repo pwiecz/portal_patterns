@@ -4,6 +4,7 @@ import "flag"
 import "fmt"
 import "log"
 import "math"
+import "runtime"
 
 import "os"
 import "strings"
@@ -14,6 +15,7 @@ import "runtime/pprof"
 func main() {
 	fileBase := filepath.Base(os.Args[0])
 	cpuprofile := flag.String("cpuprofile", "", "write CPU profile to this file")
+	numWorkers := flag.Int("num_workers", 0, "if applicable for given algorithm use that many worker threads. If <= 0 use as many as there are CPUs on the machine")
 	cobwebCmd := flag.NewFlagSet("cobweb", flag.ExitOnError)
 	cobwebCmd.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s cobweb <portals>\n", fileBase)
@@ -101,7 +103,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
-		b0, b1, result := LargestHerringbone(portals)
+		numHerringboneWorkers := runtime.GOMAXPROCS(0)
+		if *numWorkers > 0 {
+			numHerringboneWorkers = *numWorkers
+		}
+		b0, b1, result := LargestHerringbone(portals, numHerringboneWorkers)
 		fmt.Printf("Base (%s) (%s)\n", b0.Name, b1.Name)
 		for i, portal := range result {
 			fmt.Printf("%d: %s\n", i, portal.Name)
@@ -123,7 +129,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
-		b0, b1, result0, result1 := LargestDoubleHerringbone(portals)
+		numHerringboneWorkers := runtime.GOMAXPROCS(0)
+		if *numWorkers > 0 {
+			numHerringboneWorkers = *numWorkers
+		}
+		b0, b1, result0, result1 := LargestDoubleHerringbone(portals, numHerringboneWorkers)
 		fmt.Printf("Base (%s) (%s)\n", b0.Name, b1.Name)
 		fmt.Println("First part:")
 		for i, portal := range result0 {

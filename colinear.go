@@ -25,7 +25,6 @@ func FindColinear(portals []PortalInfo) {
 	for i, portal := range portals {
 		portalData = append(portalData, portalInfoData{
 			Index: i, Lat: portal.Coordinates.Lat, Lng: portal.Coordinates.Lng})
-		//		fmt.Println(portal.Name)
 	}
 
 	foundColinearPortals := false

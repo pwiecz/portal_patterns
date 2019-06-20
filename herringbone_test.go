@@ -33,6 +33,6 @@ func TestHerringbone(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	b0, b1, backbone := LargestHerringbone(portals)
+	b0, b1, backbone := LargestHerringbone(portals, 6)
 	checkValidHerringboneResult(19, b0, b1, backbone, t)
 }
