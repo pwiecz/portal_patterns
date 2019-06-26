@@ -2,7 +2,6 @@ package main
 
 import "fmt"
 
-import "math"
 import "sort"
 import "sync"
 import "github.com/golang/geo/s1"
@@ -91,7 +90,7 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, nodes []no
 
 	start := invalidPortalIndex
 	var length uint16
-	weight := float32(-math.MaxFloat32)
+	var weight float32
 	for i, node := range nodes {
 		if node.length > length || (node.length == length && weights[node.index] < weight) {
 			length = node.length
