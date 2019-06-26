@@ -16,6 +16,8 @@ func main() {
 	fileBase := filepath.Base(os.Args[0])
 	cpuprofile := flag.String("cpuprofile", "", "write CPU profile to this file")
 	numWorkers := flag.Int("num_workers", 0, "if applicable for given algorithm use that many worker threads. If <= 0 use as many as there are CPUs on the machine")
+	showProgress := flag.Bool("progress", true, "show progress bar")
+	flag.BoolVar(showProgress, "P", true, "show progress bar")
 	cobwebCmd := flag.NewFlagSet("cobweb", flag.ExitOnError)
 	cobwebCmd.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s cobweb <portals>\n", fileBase)
@@ -72,6 +74,10 @@ func main() {
 		}
 		defer pprof.StopCPUProfile()
 	}
+	progressFunc := printProgressBar
+	if !*showProgress {
+		progressFunc = func(int, int) {}
+	}
 	switch flag.Args()[0] {
 	case "cobweb":
 		cobwebCmd.Parse(flag.Args()[1:])
@@ -84,7 +90,8 @@ func main() {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
 
-		result := LargestCobweb(portals)
+		result := LargestCobweb(portals, progressFunc)
+		fmt.Println("")
 		for i, portal := range result {
 			fmt.Printf("%d: %s\n", i, portal.Name)
 		}
@@ -107,8 +114,8 @@ func main() {
 		if *numWorkers > 0 {
 			numHerringboneWorkers = *numWorkers
 		}
-		b0, b1, result := LargestHerringbone(portals, numHerringboneWorkers)
-		fmt.Printf("Base (%s) (%s)\n", b0.Name, b1.Name)
+		b0, b1, result := LargestHerringbone(portals, numHerringboneWorkers, progressFunc)
+		fmt.Printf("\nBase (%s) (%s)\n", b0.Name, b1.Name)
 		for i, portal := range result {
 			fmt.Printf("%d: %s\n", i, portal.Name)
 		}
@@ -133,8 +140,8 @@ func main() {
 		if *numWorkers > 0 {
 			numHerringboneWorkers = *numWorkers
 		}
-		b0, b1, result0, result1 := LargestDoubleHerringbone(portals, numHerringboneWorkers)
-		fmt.Printf("Base (%s) (%s)\n", b0.Name, b1.Name)
+		b0, b1, result0, result1 := LargestDoubleHerringbone(portals, numHerringboneWorkers, progressFunc)
+		fmt.Printf("\nBase (%s) (%s)\n", b0.Name, b1.Name)
 		fmt.Println("First part:")
 		for i, portal := range result0 {
 			fmt.Printf("%d: %s\n", i, portal.Name)
@@ -176,7 +183,8 @@ func main() {
 		if len(portals1)+len(portals2)+len(portals3) >= math.MaxUint16-1 {
 			log.Fatalln("Too many portals")
 		}
-		result := LargestThreeCorner(portals1, portals2, portals3)
+		result := LargestThreeCorner(portals1, portals2, portals3, progressFunc)
+		fmt.Println("")
 		for i, indexedPortal := range result {
 			fmt.Printf("%d: %s\n", i, indexedPortal.Portal.Name)
 		}
@@ -233,11 +241,11 @@ func main() {
 			topLevelScorer = smallestTriangleScorer{}
 		}
 		if *homogeneousLargeTriangles {
-			result, depth = DeepestHomogeneous2(portals, *homogeneousMaxDepth, scorer, topLevelScorer)
+			result, depth = DeepestHomogeneous2(portals, *homogeneousMaxDepth, scorer, topLevelScorer, progressFunc)
 		} else {
-			result, depth = DeepestHomogeneous(portals, *homogeneousMaxDepth, topLevelScorer)
+			result, depth = DeepestHomogeneous(portals, *homogeneousMaxDepth, topLevelScorer, progressFunc)
 		}
-		fmt.Printf("Depth: %d\n", depth)
+		fmt.Printf("\nDepth: %d\n", depth)
 		for i, portal := range result {
 			fmt.Printf("%d: %s\n", i, portal.Name)
 		}

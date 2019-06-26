@@ -1,6 +1,5 @@
 package main
 
-import "fmt"
 import "math"
 
 type homogeneousTriangleScorer interface {
@@ -161,7 +160,7 @@ func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, ca
 }
 
 // DeepestHomogeneous2 - Find deepest homogeneous field that can be made out of portals
-func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScorer, topLevelScorer homogeneousTopLevelScorer) ([]Portal, uint16) {
+func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScorer, topLevelScorer homogeneousTopLevelScorer, progressFunc func(int, int)) ([]Portal, uint16) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -176,11 +175,11 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScore
 	onFilledIndexEntry := func() {
 		indexEntriesFilled++
 		if indexEntriesFilled%everyNth == 0 {
-			printProgressBar(indexEntriesFilled, numIndexEntries)
+			progressFunc(indexEntriesFilled, numIndexEntries)
 		}
 	}
 
-	printProgressBar(0, numIndexEntries)
+	progressFunc(0, numIndexEntries)
 	q := newBestHomogeneous2Query(portalsData, scorer, maxDepth, onFilledIndexEntry)
 	for i, p0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
@@ -191,8 +190,7 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScore
 			}
 		}
 	}
-	printProgressBar(numIndexEntries, numIndexEntries)
-	fmt.Println("")
+	progressFunc(numIndexEntries, numIndexEntries)
 
 	bestDepth := 1
 	var bestP0, bestP1, bestP2 portalData

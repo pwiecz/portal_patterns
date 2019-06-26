@@ -1,6 +1,5 @@
 package main
 
-import "fmt"
 import "sync"
 
 type doubleHerringboneRequest struct {
@@ -28,7 +27,7 @@ func bestDoubleHerringboneWorker(
 }
 
 // LargestDoubleHerringbone - Find largest possible multilayer of portals to be made
-func LargestDoubleHerringbone(portals []Portal, numWorkers int) (Portal, Portal, []Portal, []Portal) {
+func LargestDoubleHerringbone(portals []Portal, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal, []Portal) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -76,7 +75,7 @@ func LargestDoubleHerringbone(portals []Portal, numWorkers int) (Portal, Portal,
 		}
 		close(requestChannel)
 	}()
-	printProgressBar(0, numPairs)
+	progressFunc(0, numPairs)
 	numWorkersDone := 0
 	for numWorkersDone < numWorkers {
 		select {
@@ -95,14 +94,13 @@ func LargestDoubleHerringbone(portals []Portal, numWorkers int) (Portal, Portal,
 			}
 			numProcessedPairs++
 			if numProcessedPairs%everyNth == 0 {
-				printProgressBar(numProcessedPairs, numPairs)
+				progressFunc(numProcessedPairs, numPairs)
 			}
 		case <-doneChannel:
 			numWorkersDone++
 		}
 	}
-	printProgressBar(numPairs, numPairs)
-	fmt.Println("")
+	progressFunc(numPairs, numPairs)
 	close(responseChannel)
 	close(doneChannel)
 	resultCCW := make([]Portal, 0, len(largestCCW))

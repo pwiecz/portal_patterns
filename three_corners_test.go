@@ -45,6 +45,6 @@ func TestThreeCorner(t *testing.T) {
 	if len(portals0) < 1 || len(portals1) < 1 || len(portals2) < 1 {
 		t.FailNow()
 	}
-	threeCorner := LargestThreeCorner(portals0, portals1, portals2)
+	threeCorner := LargestThreeCorner(portals0, portals1, portals2, func(int, int) {})
 	checkValidThreeCornerResult(16, threeCorner, t)
 }

@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 type bestThreeCornersQuery struct {
 	portals0           []portalData
 	numPortals0        portalIndex
@@ -133,7 +131,7 @@ func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData) (b
 }
 
 // LargestThreeCorner - Find best way to connect three groups of portals
-func LargestThreeCorner(portals0, portals1, portals2 []Portal) []IndexedPortal {
+func LargestThreeCorner(portals0, portals1, portals2 []Portal, progressFunc func(int, int)) []IndexedPortal {
 	portalsData0 := portalsToPortalData(portals0)
 	portalsData1 := portalsToPortalData(portals1)
 	portalsData2 := portalsToPortalData(portals2)
@@ -147,10 +145,10 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal) []IndexedPortal {
 	onFillIndexEntry := func() {
 		indexEntriesFilled++
 		if indexEntriesFilled%everyNth == 0 {
-			printProgressBar(indexEntriesFilled, numIndexEntries)
+			progressFunc(indexEntriesFilled, numIndexEntries)
 		}
 	}
-	printProgressBar(0, numIndexEntries)
+	progressFunc(0, numIndexEntries)
 	q := newBestThreeCornersQuery(portalsData0, portalsData1, portalsData2, onFillIndexEntry)
 	for _, p0 := range portalsData0 {
 		for _, p1 := range portalsData1 {
@@ -159,8 +157,7 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal) []IndexedPortal {
 			}
 		}
 	}
-	printProgressBar(numIndexEntries, numIndexEntries)
-	fmt.Println("")
+	progressFunc(numIndexEntries, numIndexEntries)
 
 	var largestTC bestSolution
 	var bestNumCornerChanges uint16

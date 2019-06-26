@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 import "sort"
 import "sync"
 import "github.com/golang/geo/s1"
@@ -127,7 +125,7 @@ func bestHerringboneWorker(
 }
 
 // LargestHerringbone - Find largest possible multilayer of portals to be made
-func LargestHerringbone(portals []Portal, numWorkers int) (Portal, Portal, []Portal) {
+func LargestHerringbone(portals []Portal, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -173,7 +171,7 @@ func LargestHerringbone(portals []Portal, numWorkers int) (Portal, Portal, []Por
 	if everyNth < 50 {
 		everyNth = 2
 	}
-	printProgressBar(0, numPairs)
+	progressFunc(0, numPairs)
 	numProcessedPairs := 0
 
 	var largestHerringbone []portalIndex
@@ -193,14 +191,13 @@ func LargestHerringbone(portals []Portal, numWorkers int) (Portal, Portal, []Por
 			}
 			numProcessedPairs++
 			if numProcessedPairs%everyNth == 0 {
-				printProgressBar(numProcessedPairs, numPairs)
+				progressFunc(numProcessedPairs, numPairs)
 			}
 		case <-doneChannel:
 			numWorkersDone++
 		}
 	}
-	printProgressBar(numPairs, numPairs)
-	fmt.Println("")
+	progressFunc(numPairs, numPairs)
 	close(responseChannel)
 	close(doneChannel)
 	result := make([]Portal, 0, len(largestHerringbone))

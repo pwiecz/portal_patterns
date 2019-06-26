@@ -33,6 +33,6 @@ func TestCobweb(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	cobweb := LargestCobweb(portals)
+	cobweb := LargestCobweb(portals, func(int, int) {})
 	checkValidCobwebResult(22, cobweb, t)
 }

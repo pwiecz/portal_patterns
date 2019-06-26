@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 type bestCobwebQuery struct {
 	portals            []portalData
 	index              []bestSolution
@@ -72,7 +70,7 @@ func (q *bestCobwebQuery) findBestCobwebAux(p0, p1, p2 portalData, candidates []
 }
 
 // LargestCobweb - Find largest possible cobweb of portals to be made
-func LargestCobweb(portals []Portal) []Portal {
+func LargestCobweb(portals []Portal, progressFunc func(int, int)) []Portal {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -87,10 +85,10 @@ func LargestCobweb(portals []Portal) []Portal {
 	onFilledIndexEntry := func() {
 		indexEntriesFilled++
 		if indexEntriesFilled%everyNth == 0 {
-			printProgressBar(indexEntriesFilled, numIndexEntries)
+			progressFunc(indexEntriesFilled, numIndexEntries)
 		}
 	}
-	printProgressBar(0, numIndexEntries)
+	progressFunc(0, numIndexEntries)
 	q := newBestCobwebQuery(portalsData, onFilledIndexEntry)
 	for i, p0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
@@ -101,8 +99,7 @@ func LargestCobweb(portals []Portal) []Portal {
 			}
 		}
 	}
-	printProgressBar(numIndexEntries, numIndexEntries)
-	fmt.Println("")
+	progressFunc(numIndexEntries, numIndexEntries)
 
 	var bestP0, bestP1, bestP2 portalData
 	var bestLength uint16
