@@ -110,7 +110,7 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, nodes []no
 func bestHerringboneWorker(
 	q *bestHerringboneQuery,
 	requestChannel, responseChannel chan herringboneRequest,
-	doneChannel chan struct{}) {
+	wg *sync.WaitGroup) {
 	nodes := make([]node, 0, len(q.portals))
 	weights := make([]float32, len(q.portals))
 	for req := range requestChannel {
@@ -121,7 +121,7 @@ func bestHerringboneWorker(
 		req.result = q.findBestHerringbone(req.p0, req.p1, nodes, weights, req.result)
 		responseChannel <- req
 	}
-	doneChannel <- struct{}{}
+	wg.Done()
 }
 
 // LargestHerringbone - Find largest possible multilayer of portals to be made
@@ -142,10 +142,11 @@ func LargestHerringbone(portals []Portal, numWorkers int, progressFunc func(int,
 
 	requestChannel := make(chan herringboneRequest, numWorkers)
 	responseChannel := make(chan herringboneRequest, numWorkers)
-	doneChannel := make(chan struct{}, numWorkers)
+	var wg sync.WaitGroup
+	wg.Add(numWorkers)
 	q := newBestHerringboneQuery(portalsData)
 	for i := 0; i < numWorkers; i++ {
-		go bestHerringboneWorker(q, requestChannel, responseChannel, doneChannel)
+		go bestHerringboneWorker(q, requestChannel, responseChannel, &wg)
 	}
 	go func() {
 		for i, b0 := range portalsData {
@@ -165,7 +166,11 @@ func LargestHerringbone(portals []Portal, numWorkers int, progressFunc func(int,
 		}
 		close(requestChannel)
 	}()
+	go func() {
+		wg.Wait()
+		close(responseChannel)
 
+	}()
 	numPairs := len(portals) * (len(portals) - 1)
 	everyNth := numPairs / 1000
 	if everyNth < 50 {
@@ -176,30 +181,22 @@ func LargestHerringbone(portals []Portal, numWorkers int, progressFunc func(int,
 
 	var largestHerringbone []portalIndex
 	var bestB0, bestB1 portalIndex
-	numWorkersDone := 0
-	for numWorkersDone < numWorkers {
-		select {
-		case resp := <-responseChannel:
-			if len(resp.result) > len(largestHerringbone) {
-				if len(largestHerringbone) > 0 {
-					resultCache.Put(largestHerringbone)
-				}
-				largestHerringbone = resp.result
-				bestB0, bestB1 = resp.p0.Index, resp.p1.Index
-			} else {
-				resultCache.Put(resp.result)
+	for resp := range responseChannel {
+		if len(resp.result) > len(largestHerringbone) {
+			if len(largestHerringbone) > 0 {
+				resultCache.Put(largestHerringbone)
 			}
-			numProcessedPairs++
-			if numProcessedPairs%everyNth == 0 {
-				progressFunc(numProcessedPairs, numPairs)
-			}
-		case <-doneChannel:
-			numWorkersDone++
+			largestHerringbone = resp.result
+			bestB0, bestB1 = resp.p0.Index, resp.p1.Index
+		} else {
+			resultCache.Put(resp.result)
+		}
+		numProcessedPairs++
+		if numProcessedPairs%everyNth == 0 {
+			progressFunc(numProcessedPairs, numPairs)
 		}
 	}
 	progressFunc(numPairs, numPairs)
-	close(responseChannel)
-	close(doneChannel)
 	result := make([]Portal, 0, len(largestHerringbone))
 	for _, portalIx := range largestHerringbone {
 		result = append(result, portals[portalIx])
