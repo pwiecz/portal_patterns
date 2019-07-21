@@ -22,7 +22,7 @@ func checkValidHerringboneResult(expectedLength int, b0, b1 Portal, backbone []P
 	}
 }
 
-func TestHerringbone(t *testing.T) {
+func TestHerringboneMultiThreaded(t *testing.T) {
 	portals, err := ParseFile("testdata/portals_test.json")
 	if err != nil {
 		panic(err)
