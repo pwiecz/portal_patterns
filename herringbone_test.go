@@ -36,3 +36,18 @@ func TestHerringbone(t *testing.T) {
 	b0, b1, backbone := LargestHerringbone(portals, 6, func(int, int) {})
 	checkValidHerringboneResult(19, b0, b1, backbone, t)
 }
+
+func TestHerringboneSingleThread(t *testing.T) {
+	portals, err := ParseFile("testdata/portals_test.json")
+	if err != nil {
+		panic(err)
+	}
+	if testing.Short() {
+		t.Skip()
+	}
+	if len(portals) < 3 {
+		t.FailNow()
+	}
+	b0, b1, backbone := LargestHerringbone(portals, 1, func(int, int) {})
+	checkValidHerringboneResult(19, b0, b1, backbone, t)
+}
