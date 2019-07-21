@@ -135,6 +135,7 @@ func LargestHerringboneST(portals []Portal, progressFunc func(int, int)) (Portal
 		everyNth = 2
 	}
 	numProcessedPairs := 0
+	numProcessedPairsModN := 0
 	progressFunc(0, numPairs)
 	q := newBestHerringboneQuery(portalsData)
 	for i, b0 := range portalsData {
@@ -156,7 +157,9 @@ func LargestHerringboneST(portals []Portal, progressFunc func(int, int)) (Portal
 				bestB1 = b0
 			}
 			numProcessedPairs++
-			if numProcessedPairs%everyNth == 0 {
+			numProcessedPairsModN++
+			if numProcessedPairsModN == everyNth {
+				numProcessedPairsModN = 0
 				progressFunc(numProcessedPairs, numPairs)
 			}
 		}

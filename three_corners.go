@@ -142,9 +142,12 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal, progressFunc func
 		everyNth = 2
 	}
 	indexEntriesFilled := 0
+	indexEntriesFilledModN := 0
 	onFillIndexEntry := func() {
 		indexEntriesFilled++
-		if indexEntriesFilled%everyNth == 0 {
+		indexEntriesFilledModN++
+		if indexEntriesFilledModN == everyNth {
+			indexEntriesFilledModN = 0
 			progressFunc(indexEntriesFilled, numIndexEntries)
 		}
 	}

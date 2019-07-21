@@ -21,7 +21,8 @@ type bestHomogeneous2Query struct {
 	numPortals         int64
 	numPortalsSq       int64
 	onFilledIndexEntry func()
-	portalsInTriangle  []portalData
+	portalsInTriangle  [][]portalData
+	depth              uint16
 	maxDepth           int
 	scorer             homogeneousScorer
 }
@@ -38,7 +39,7 @@ func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, ma
 		numPortals:         numPortals,
 		numPortalsSq:       numPortals * numPortals,
 		onFilledIndexEntry: onFilledIndexEntry,
-		portalsInTriangle:  make([]portalData, 0, len(portals)),
+		portalsInTriangle:  make([][]portalData, len(portals)),
 		maxDepth:           maxDepth,
 		scorer:             scorer,
 	}
@@ -55,8 +56,8 @@ func (q *bestHomogeneous2Query) findBestHomogeneous(p0, p1, p2 portalData) {
 	if q.getIndex(p0.Index, p1.Index, p2.Index) != invalidPortalIndex {
 		return
 	}
-	q.portalsInTriangle = portalsInsideTriangle(q.portals, p0, p1, p2, q.portalsInTriangle)
-	q.findBestHomogeneousAux(p0, p1, p2, q.portalsInTriangle)
+	q.portalsInTriangle[0] = portalsInsideTriangle(q.portals, p0, p1, p2, q.portalsInTriangle[0])
+	q.findBestHomogeneousAux(p0, p1, p2, q.portalsInTriangle[0])
 }
 
 func sorted(a, b, c portalData) (portalData, portalData, portalData) {
@@ -131,19 +132,20 @@ func indexOrdering(p0, p1, p2 portalIndex, index int) (portalIndex, portalIndex,
 }
 
 func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, candidates []portalData) {
-	localCandidates := append(make([]portalData, 0, len(candidates)), candidates...)
+	q.depth++
+	q.portalsInTriangle[q.depth] = append(q.portalsInTriangle[q.depth][:0], candidates...)
 	triangleScorer := q.scorer.newTriangleScorer(p0, p1, p2, q.maxDepth)
-	for _, portal := range localCandidates {
+	for _, portal := range q.portalsInTriangle[q.depth] {
 		if q.getIndex(portal.Index, p1.Index, p2.Index) == invalidPortalIndex {
-			candidatesInWedge := portalsInsideWedge(localCandidates, portal, p1, p2, q.portalsInTriangle)
+			candidatesInWedge := partitionPortalsInsideWedge(candidates, portal, p1, p2)
 			q.findBestHomogeneousAux(portal, p1, p2, candidatesInWedge)
 		}
 		if q.getIndex(portal.Index, p0.Index, p2.Index) == invalidPortalIndex {
-			candidatesInWedge := portalsInsideWedge(localCandidates, portal, p0, p2, q.portalsInTriangle)
+			candidatesInWedge := partitionPortalsInsideWedge(candidates, portal, p0, p2)
 			q.findBestHomogeneousAux(portal, p0, p2, candidatesInWedge)
 		}
 		if q.getIndex(portal.Index, p0.Index, p1.Index) == invalidPortalIndex {
-			candidatesInWedge := portalsInsideWedge(localCandidates, portal, p0, p1, q.portalsInTriangle)
+			candidatesInWedge := partitionPortalsInsideWedge(candidates, portal, p0, p1)
 			q.findBestHomogeneousAux(portal, p0, p1, candidatesInWedge)
 		}
 		triangleScorer.scoreCandidate(portal)
@@ -157,6 +159,7 @@ func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, ca
 	q.setIndex(s1, s2, s0, bestMidpoints[3])
 	q.setIndex(s2, s0, s1, bestMidpoints[4])
 	q.setIndex(s2, s1, s0, bestMidpoints[5])
+	q.depth--
 }
 
 // DeepestHomogeneous2 - Find deepest homogeneous field that can be made out of portals
@@ -172,9 +175,12 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScore
 		everyNth = 2
 	}
 	indexEntriesFilled := 0
+	indexEntriesFilledModN := 0
 	onFilledIndexEntry := func() {
 		indexEntriesFilled++
-		if indexEntriesFilled%everyNth == 0 {
+		indexEntriesFilledModN++
+		if indexEntriesFilledModN == everyNth {
+			indexEntriesFilledModN = 0
 			progressFunc(indexEntriesFilled, numIndexEntries)
 		}
 	}
@@ -190,6 +196,7 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScore
 			}
 		}
 	}
+	q.portalsInTriangle = nil
 	progressFunc(numIndexEntries, numIndexEntries)
 
 	bestDepth := 1
