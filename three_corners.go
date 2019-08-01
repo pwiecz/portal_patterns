@@ -6,8 +6,8 @@ type bestThreeCornersQuery struct {
 	portals1           []portalData
 	numPortals1        portalIndex
 	portals2           []portalData
-	numPortals2        int64
-	numPortals1x2      int64
+	numPortals2        uint64
+	numPortals1x2      uint64
 	index              []bestSolution
 	numCornerChanges   []uint16
 	onIndexEntryFilled func()
@@ -17,7 +17,7 @@ type bestThreeCornersQuery struct {
 }
 
 func newBestThreeCornersQuery(portals0, portals1, portals2 []portalData, onIndexEntryFilled func()) *bestThreeCornersQuery {
-	numPortals0x1x2 := int64(len(portals0)) * int64(len(portals1)) * int64(len(portals2))
+	numPortals0x1x2 := uint64(len(portals0)) * uint64(len(portals1)) * uint64(len(portals2))
 	index := make([]bestSolution, numPortals0x1x2)
 	numCornerChanges := make([]uint16, numPortals0x1x2)
 	for i := 0; i < len(index); i++ {
@@ -29,8 +29,8 @@ func newBestThreeCornersQuery(portals0, portals1, portals2 []portalData, onIndex
 		portals1:           append(make([]portalData, 0, len(portals1)), portals1...),
 		numPortals1:        portalIndex(len(portals1)),
 		portals2:           append(make([]portalData, 0, len(portals2)), portals2...),
-		numPortals2:        int64(len(portals2)),
-		numPortals1x2:      int64(len(portals1)) * int64(len(portals2)),
+		numPortals2:        uint64(len(portals2)),
+		numPortals1x2:      uint64(len(portals1)) * uint64(len(portals2)),
 		index:              index,
 		numCornerChanges:   numCornerChanges,
 		onIndexEntryFilled: onIndexEntryFilled,
@@ -41,16 +41,16 @@ func newBestThreeCornersQuery(portals0, portals1, portals2 []portalData, onIndex
 }
 
 func (q *bestThreeCornersQuery) getIndex(i0, i1, i2 portalIndex) bestSolution {
-	return q.index[int64(i0)*q.numPortals1x2+int64(i1)*int64(q.numPortals2)+int64(i2)]
+	return q.index[uint64(i0)*q.numPortals1x2+uint64(i1)*q.numPortals2+uint64(i2)]
 }
 func (q *bestThreeCornersQuery) setIndex(i0, i1, i2 portalIndex, s bestSolution) {
-	q.index[int64(i0)*q.numPortals1x2+int64(i1)*int64(q.numPortals2)+int64(i2)] = s
+	q.index[uint64(i0)*q.numPortals1x2+uint64(i1)*q.numPortals2+uint64(i2)] = s
 }
 func (q *bestThreeCornersQuery) getNumCornerChanges(i0, i1, i2 portalIndex) uint16 {
-	return q.numCornerChanges[int64(i0)*q.numPortals1x2+int64(i2)*int64(q.numPortals2)+int64(i2)]
+	return q.numCornerChanges[uint64(i0)*q.numPortals1x2+uint64(i2)*q.numPortals2+uint64(i2)]
 }
 func (q *bestThreeCornersQuery) setNumCornerChanges(i0, i1, i2 portalIndex, n uint16) {
-	q.numCornerChanges[int64(i0)*q.numPortals1x2+int64(i2)*int64(q.numPortals2)+int64(i2)] = n
+	q.numCornerChanges[uint64(i0)*q.numPortals1x2+uint64(i2)*q.numPortals2+uint64(i2)] = n
 }
 func (q *bestThreeCornersQuery) findBestThreeCorner(p0, p1, p2 portalData) {
 	if q.getIndex(p0.Index, p1.Index, p2.Index).Length != invalidLength {
