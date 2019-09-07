@@ -9,8 +9,8 @@ type topLevelTriangleScorer interface {
 type bestHomogeneousQuery struct {
 	portals            []portalData
 	index              []bestSolution
-	numPortals         uint64
-	numPortalsSq       uint64
+	numPortals         uint
+	numPortalsSq       uint
 	onFilledIndexEntry func()
 	portalsInTriangle  [][]portalData
 	depth              uint16
@@ -18,7 +18,7 @@ type bestHomogeneousQuery struct {
 }
 
 func newBestHomogeneousQuery(portals []portalData, maxDepth int, onFilledIndexEntry func()) *bestHomogeneousQuery {
-	numPortals := uint64(len(portals))
+	numPortals := uint(len(portals))
 	index := make([]bestSolution, numPortals*numPortals*numPortals)
 	for i := 0; i < len(index); i++ {
 		index[i].Length = invalidLength
@@ -35,10 +35,10 @@ func newBestHomogeneousQuery(portals []portalData, maxDepth int, onFilledIndexEn
 }
 
 func (q *bestHomogeneousQuery) getIndex(i, j, k portalIndex) bestSolution {
-	return q.index[uint64(i)*q.numPortalsSq+uint64(j)*q.numPortals+uint64(k)]
+	return q.index[uint(i)*q.numPortalsSq+uint(j)*q.numPortals+uint(k)]
 }
 func (q *bestHomogeneousQuery) setIndex(i, j, k portalIndex, s bestSolution) {
-	q.index[uint64(i)*q.numPortalsSq+uint64(j)*q.numPortals+uint64(k)] = s
+	q.index[uint(i)*q.numPortalsSq+uint(j)*q.numPortals+uint(k)] = s
 }
 func (q *bestHomogeneousQuery) findBestHomogeneous(p0, p1, p2 portalData) {
 	if q.getIndex(p0.Index, p1.Index, p2.Index).Length != invalidLength {
