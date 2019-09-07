@@ -240,6 +240,7 @@ func main() {
 		} else if *homogeneousSmallestArea {
 			topLevelScorer = smallestTriangleScorer{}
 		}
+
 		if *homogeneousLargeTriangles {
 			result, depth = DeepestHomogeneous2(portals, *homogeneousMaxDepth, scorer, topLevelScorer, progressFunc)
 		} else {
@@ -252,17 +253,6 @@ func main() {
 		polylines := []string{polylineFromPortalList([]Portal{result[0], result[1], result[2], result[0]})}
 		polylines, _ = appendHomogeneousPolylines(result[0], result[1], result[2], uint16(depth), polylines, result[3:])
 		fmt.Printf("\n[%s]\n", strings.Join(polylines, ","))
-	case "colinear":
-		colinearCmd.Parse(flag.Args()[1:])
-		fileArgs := colinearCmd.Args()
-		if len(fileArgs) != 1 {
-			log.Fatalln("colinear command requires exactly one file argument")
-		}
-		portals, err := ParseFileAsPortalInfo(fileArgs[0])
-		if err != nil {
-			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
-		}
-		FindColinear(portals)
 	default:
 		log.Fatalf("Unknown command: \"%s\"\n", flag.Args()[0])
 	}
