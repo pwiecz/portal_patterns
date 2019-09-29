@@ -191,7 +191,7 @@ func pointToJSONCoords(point s2.Point) string {
 	latlng := s2.LatLngFromPoint(point)
 	return fmt.Sprintf(`{"lat":%f,"lng":%f}`, latlng.Lat.Degrees(), latlng.Lng.Degrees())
 }
-func polylineFromPortalList(portals []Portal) string {
+func PolylineFromPortalList(portals []Portal) string {
 	var json strings.Builder
 	json.WriteString(`{"type":"polyline","latLngs":[`)
 	if len(portals) > 0 {
@@ -204,7 +204,7 @@ func polylineFromPortalList(portals []Portal) string {
 	return json.String()
 }
 
-func printProgressBar(done int, total int) {
+func PrintProgressBar(done int, total int) {
 	const maxWidth = 50
 	doneWidth := done * maxWidth / total
 	var b strings.Builder

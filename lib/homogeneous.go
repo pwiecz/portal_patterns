@@ -2,7 +2,7 @@ package lib
 
 import "math"
 
-type topLevelTriangleScorer interface {
+type TopLevelTriangleScorer interface {
 	scoreTriangle(a, b, c portalData) float32
 }
 
@@ -106,7 +106,7 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 }
 
 // DeepestHomogeneous - Find deepest homogeneous field that can be made out of portals
-func DeepestHomogeneous(portals []Portal, maxDepth int, topLevelScorer topLevelTriangleScorer, progressFunc func(int, int)) ([]Portal, uint16) {
+func DeepestHomogeneous(portals []Portal, maxDepth int, topLevelScorer TopLevelTriangleScorer, progressFunc func(int, int)) ([]Portal, uint16) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -183,17 +183,17 @@ func (q *bestHomogeneousQuery) appendHomogeneousResult(p0, p1, p2 portalIndex, m
 	return result
 }
 
-func appendHomogeneousPolylines(p0, p1, p2 Portal, maxDepth uint16, result []string, portals []Portal) ([]string, []Portal) {
+func AppendHomogeneousPolylines(p0, p1, p2 Portal, maxDepth uint16, result []string, portals []Portal) ([]string, []Portal) {
 	if maxDepth == 1 {
 		return result, portals
 	}
 	portal := portals[0]
 	result = append(result,
-		polylineFromPortalList([]Portal{p0, portal}),
-		polylineFromPortalList([]Portal{p1, portal}),
-		polylineFromPortalList([]Portal{p2, portal}))
-	result, portals = appendHomogeneousPolylines(portal, p1, p2, maxDepth-1, result, portals[1:])
-	result, portals = appendHomogeneousPolylines(p0, portal, p2, maxDepth-1, result, portals)
-	result, portals = appendHomogeneousPolylines(p0, p1, portal, maxDepth-1, result, portals)
+		PolylineFromPortalList([]Portal{p0, portal}),
+		PolylineFromPortalList([]Portal{p1, portal}),
+		PolylineFromPortalList([]Portal{p2, portal}))
+	result, portals = AppendHomogeneousPolylines(portal, p1, p2, maxDepth-1, result, portals[1:])
+	result, portals = AppendHomogeneousPolylines(p0, portal, p2, maxDepth-1, result, portals)
+	result, portals = AppendHomogeneousPolylines(p0, p1, portal, maxDepth-1, result, portals)
 	return result, portals
 }

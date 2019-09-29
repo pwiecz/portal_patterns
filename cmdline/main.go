@@ -76,7 +76,7 @@ func main() {
 		}
 		defer pprof.StopCPUProfile()
 	}
-	progressFunc := printProgressBar
+	progressFunc := lib.PrintProgressBar
 	if !*showProgress {
 		progressFunc = func(int, int) {}
 	}
@@ -87,28 +87,28 @@ func main() {
 		if len(fileArgs) != 1 {
 			log.Fatalln("cobweb command requires exactly one file argument")
 		}
-		portals, err := ParseFile(fileArgs[0])
+		portals, err := lib.ParseFile(fileArgs[0])
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
 
-		result := LargestCobweb(portals, progressFunc)
+		result := lib.LargestCobweb(portals, progressFunc)
 		fmt.Println("")
 		for i, portal := range result {
 			fmt.Printf("%d: %s\n", i, portal.Name)
 		}
-		portalList := []Portal{result[1], result[0]}
+		portalList := []lib.Portal{result[1], result[0]}
 		for _, portal := range result[2:] {
 			portalList = append(portalList, portal, portalList[len(portalList)-2])
 		}
-		fmt.Printf("\n[%s]\n", polylineFromPortalList(portalList))
+		fmt.Printf("\n[%s]\n", lib.PolylineFromPortalList(portalList))
 	case "herringbone":
 		herringboneCmd.Parse(flag.Args()[1:])
 		fileArgs := herringboneCmd.Args()
 		if len(fileArgs) != 1 {
 			log.Fatalln("herringbone command requires exactly one file argument")
 		}
-		portals, err := ParseFile(fileArgs[0])
+		portals, err := lib.ParseFile(fileArgs[0])
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
@@ -116,25 +116,25 @@ func main() {
 		if *numWorkers > 0 {
 			numHerringboneWorkers = *numWorkers
 		}
-		b0, b1, result := LargestHerringbone(portals, numHerringboneWorkers, progressFunc)
+		b0, b1, result := lib.LargestHerringbone(portals, numHerringboneWorkers, progressFunc)
 		fmt.Printf("\nBase (%s) (%s)\n", b0.Name, b1.Name)
 		for i, portal := range result {
 			fmt.Printf("%d: %s\n", i, portal.Name)
 		}
-		portalList := []Portal{b0, b1}
+		portalList := []lib.Portal{b0, b1}
 		atIndex := 1
 		for _, portal := range result {
 			portalList = append(portalList, portal, portalList[atIndex])
 			atIndex = 1 - atIndex
 		}
-		fmt.Printf("\n[%s]\n", polylineFromPortalList(portalList))
+		fmt.Printf("\n[%s]\n", lib.PolylineFromPortalList(portalList))
 	case "double_herringbone":
 		doubleHerringboneCmd.Parse(flag.Args()[1:])
 		fileArgs := doubleHerringboneCmd.Args()
 		if len(fileArgs) != 1 {
 			log.Fatalln("double_herringbone command requires exactly one file argument")
 		}
-		portals, err := ParseFile(fileArgs[0])
+		portals, err := lib.ParseFile(fileArgs[0])
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
@@ -142,7 +142,7 @@ func main() {
 		if *numWorkers > 0 {
 			numHerringboneWorkers = *numWorkers
 		}
-		b0, b1, result0, result1 := LargestDoubleHerringbone(portals, numHerringboneWorkers, progressFunc)
+		b0, b1, result0, result1 := lib.LargestDoubleHerringbone(portals, numHerringboneWorkers, progressFunc)
 		fmt.Printf("\nBase (%s) (%s)\n", b0.Name, b1.Name)
 		fmt.Println("First part:")
 		for i, portal := range result0 {
@@ -153,7 +153,7 @@ func main() {
 			fmt.Printf("%d: %s\n", i, portal.Name)
 
 		}
-		portalList := []Portal{b0, b1}
+		portalList := []lib.Portal{b0, b1}
 		atIndex := 1
 		for _, portal := range result0 {
 			portalList = append(portalList, portal, portalList[atIndex])
@@ -163,35 +163,35 @@ func main() {
 			portalList = append(portalList, portal, portalList[atIndex])
 			atIndex = 1 - atIndex
 		}
-		fmt.Printf("\n[%s]\n", polylineFromPortalList(portalList))
+		fmt.Printf("\n[%s]\n", lib.PolylineFromPortalList(portalList))
 	case "three_corners":
 		threeCornersCmd.Parse(flag.Args()[1:])
 		fileArgs := threeCornersCmd.Args()
 		if len(fileArgs) != 3 {
 			log.Fatalln("three_corners command requires exactly three file argument")
 		}
-		portals1, err := ParseFile(fileArgs[0])
+		portals1, err := lib.ParseFile(fileArgs[0])
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
-		portals2, err := ParseFile(fileArgs[1])
+		portals2, err := lib.ParseFile(fileArgs[1])
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[1], err)
 		}
-		portals3, err := ParseFile(fileArgs[2])
+		portals3, err := lib.ParseFile(fileArgs[2])
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[3], err)
 		}
 		if len(portals1)+len(portals2)+len(portals3) >= math.MaxUint16-1 {
 			log.Fatalln("Too many portals")
 		}
-		result := LargestThreeCorner(portals1, portals2, portals3, progressFunc)
+		result := lib.LargestThreeCorner(portals1, portals2, portals3, progressFunc)
 		fmt.Println("")
 		for i, indexedPortal := range result {
 			fmt.Printf("%d: %s\n", i, indexedPortal.Portal.Name)
 		}
-		indexedPortalList := []IndexedPortal{result[0], result[1]}
-		lastIndexPortal := [3]IndexedPortal{result[0], result[1], {}}
+		indexedPortalList := []lib.IndexedPortal{result[0], result[1]}
+		lastIndexPortal := [3]lib.IndexedPortal{result[0], result[1], {}}
 		for _, indexedPortal := range result[2:] {
 			lastIndex := indexedPortalList[len(indexedPortalList)-1].Index
 			if indexedPortal.Index == lastIndex {
@@ -202,11 +202,11 @@ func main() {
 			indexedPortalList = append(indexedPortalList, indexedPortal, lastIndexPortal[nextIndex])
 			lastIndexPortal[indexedPortal.Index] = indexedPortal
 		}
-		portalList := make([]Portal, 0, len(indexedPortalList))
+		portalList := make([]lib.Portal, 0, len(indexedPortalList))
 		for _, indexedPortal := range indexedPortalList {
 			portalList = append(portalList, indexedPortal.Portal)
 		}
-		fmt.Printf("\n[%s]\n", polylineFromPortalList(portalList))
+		fmt.Printf("\n[%s]\n", lib.PolylineFromPortalList(portalList))
 	case "homogeneous":
 		fallthrough
 	case "homogenous":
@@ -221,39 +221,39 @@ func main() {
 		if len(fileArgs) != 1 {
 			log.Fatalln("homogeneous command requires exactly one file argument")
 		}
-		portals, err := ParseFile(fileArgs[0])
+		portals, err := lib.ParseFile(fileArgs[0])
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
-		var result []Portal
+		var result []lib.Portal
 		var depth uint16
-		var topLevelScorer topLevelTriangleScorer = arbitraryScorer{}
-		var scorer homogeneousScorer
+		var topLevelScorer lib.TopLevelTriangleScorer = lib.ArbitraryScorer{}
+		var scorer lib.HomogeneousScorer
 		if *homogeneousLargeTriangles {
 			if *homogeneousMaxDepth > 7 {
 				log.Fatalln("if --pretty is specified --max_depth must be at most 7")
 			}
-			largeTrianglesScorer := newThickTrianglesScorer(len(portals))
+			largeTrianglesScorer := lib.NewThickTrianglesScorer(len(portals))
 			scorer = largeTrianglesScorer
 			topLevelScorer = largeTrianglesScorer
 		}
 		if *homogeneousLargestArea {
-			topLevelScorer = largestTriangleScorer{}
+			topLevelScorer = lib.LargestTriangleScorer{}
 		} else if *homogeneousSmallestArea {
-			topLevelScorer = smallestTriangleScorer{}
+			topLevelScorer = lib.SmallestTriangleScorer{}
 		}
 
 		if *homogeneousLargeTriangles {
-			result, depth = DeepestHomogeneous2(portals, *homogeneousMaxDepth, scorer, topLevelScorer, progressFunc)
+			result, depth = lib.DeepestHomogeneous2(portals, *homogeneousMaxDepth, scorer, topLevelScorer, progressFunc)
 		} else {
-			result, depth = DeepestHomogeneous(portals, *homogeneousMaxDepth, topLevelScorer, progressFunc)
+			result, depth = lib.DeepestHomogeneous(portals, *homogeneousMaxDepth, topLevelScorer, progressFunc)
 		}
 		fmt.Printf("\nDepth: %d\n", depth)
 		for i, portal := range result {
 			fmt.Printf("%d: %s\n", i, portal.Name)
 		}
-		polylines := []string{polylineFromPortalList([]Portal{result[0], result[1], result[2], result[0]})}
-		polylines, _ = appendHomogeneousPolylines(result[0], result[1], result[2], uint16(depth), polylines, result[3:])
+		polylines := []string{lib.PolylineFromPortalList([]lib.Portal{result[0], result[1], result[2], result[0]})}
+		polylines, _ = lib.AppendHomogeneousPolylines(result[0], result[1], result[2], uint16(depth), polylines, result[3:])
 		fmt.Printf("\n[%s]\n", strings.Join(polylines, ","))
 	default:
 		log.Fatalf("Unknown command: \"%s\"\n", flag.Args()[0])

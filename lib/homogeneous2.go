@@ -7,7 +7,7 @@ type homogeneousTriangleScorer interface {
 	bestMidpoints() [6]portalIndex
 }
 
-type homogeneousScorer interface {
+type HomogeneousScorer interface {
 	newTriangleScorer(a, b, c portalData, maxDepth int) homogeneousTriangleScorer
 }
 
@@ -24,10 +24,10 @@ type bestHomogeneous2Query struct {
 	portalsInTriangle  [][]portalData
 	depth              uint16
 	maxDepth           int
-	scorer             homogeneousScorer
+	scorer             HomogeneousScorer
 }
 
-func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, maxDepth int, onFilledIndexEntry func()) *bestHomogeneous2Query {
+func newBestHomogeneous2Query(portals []portalData, scorer HomogeneousScorer, maxDepth int, onFilledIndexEntry func()) *bestHomogeneous2Query {
 	numPortals := uint(len(portals))
 	index := make([]portalIndex, numPortals*numPortals*numPortals)
 	for i := 0; i < len(index); i++ {
@@ -163,7 +163,7 @@ func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, ca
 }
 
 // DeepestHomogeneous2 - Find deepest homogeneous field that can be made out of portals
-func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer homogeneousScorer, topLevelScorer homogeneousTopLevelScorer, progressFunc func(int, int)) ([]Portal, uint16) {
+func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer HomogeneousScorer, topLevelScorer homogeneousTopLevelScorer, progressFunc func(int, int)) ([]Portal, uint16) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
