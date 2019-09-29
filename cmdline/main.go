@@ -12,6 +12,8 @@ import "strings"
 import "path/filepath"
 import "runtime/pprof"
 
+import "github.com/pwiecz/portal_patterns/lib"
+
 func main() {
 	fileBase := filepath.Base(os.Args[0])
 	cpuprofile := flag.String("cpuprofile", "", "write CPU profile to this file")

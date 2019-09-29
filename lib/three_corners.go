@@ -1,4 +1,4 @@
-package main
+package lib
 
 type bestThreeCornersQuery struct {
 	portals0           []portalData

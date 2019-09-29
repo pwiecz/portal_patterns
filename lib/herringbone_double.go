@@ -1,4 +1,4 @@
-package main
+package lib
 
 // LargestDoubleHerringbone - Find largest possible multilayer of portals to be made
 func LargestDoubleHerringbone(portals []Portal, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal, []Portal) {

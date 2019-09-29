@@ -1,4 +1,4 @@
-package main
+package lib
 
 type arbitraryScorer struct{}
 type largestTriangleScorer struct{}

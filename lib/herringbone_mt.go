@@ -1,4 +1,4 @@
-package main
+package lib
 
 import "sort"
 import "sync"
