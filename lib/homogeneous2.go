@@ -163,10 +163,15 @@ func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, ca
 }
 
 // DeepestHomogeneous2 - Find deepest homogeneous field that can be made out of portals
-func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer HomogeneousScorer, topLevelScorer homogeneousTopLevelScorer, progressFunc func(int, int)) ([]Portal, uint16) {
+func DeepestHomogeneous2(portals []Portal, options ...HomogeneousOption) ([]Portal, uint16) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
+	params := defaultHomogeneous2Params(len(portals))
+	for _, option := range options {
+		option.apply2(&params)
+	}
+
 	portalsData := portalsToPortalData(portals)
 
 	numIndexEntries := len(portals) * (len(portals) - 1) * (len(portals) - 2) / 6
@@ -181,23 +186,26 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer HomogeneousScore
 		indexEntriesFilledModN++
 		if indexEntriesFilledModN == everyNth {
 			indexEntriesFilledModN = 0
-			progressFunc(indexEntriesFilled, numIndexEntries)
+			params.progressFunc(indexEntriesFilled, numIndexEntries)
 		}
 	}
 
-	progressFunc(0, numIndexEntries)
-	q := newBestHomogeneous2Query(portalsData, scorer, maxDepth, onFilledIndexEntry)
+	params.progressFunc(0, numIndexEntries)
+	q := newBestHomogeneous2Query(portalsData, params.scorer, params.maxDepth, onFilledIndexEntry)
 	for i, p0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
 			p1 := portalsData[j]
 			for k := j + 1; k < len(portalsData); k++ {
 				p2 := portalsData[k]
+				if !hasAllIndicesInTheTriple(params.fixedCornerIndices, i, j, k) {
+					continue
+				}
 				q.findBestHomogeneous(p0, p1, p2)
 			}
 		}
 	}
 	q.portalsInTriangle = nil
-	progressFunc(numIndexEntries, numIndexEntries)
+	params.progressFunc(numIndexEntries, numIndexEntries)
 
 	bestDepth := 1
 	var bestP0, bestP1, bestP2 portalData
@@ -206,6 +214,9 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer HomogeneousScore
 		for j := i + 1; j < len(portalsData); j++ {
 			p1 := portalsData[j]
 			for k := j + 1; k < len(portalsData); k++ {
+				if !hasAllIndicesInTheTriple(params.fixedCornerIndices, i, j, k) {
+					continue
+				}
 				p2 := portalsData[k]
 				for depth := q.maxDepth; depth >= bestDepth; depth-- {
 					s0, s1, s2 := p0, p1, p2
@@ -215,7 +226,7 @@ func DeepestHomogeneous2(portals []Portal, maxDepth int, scorer HomogeneousScore
 							continue
 						}
 					}
-					score := topLevelScorer.scoreTriangle(s0, s1, s2)
+					score := params.topLevelScorer.scoreTriangle(s0, s1, s2)
 					if depth > bestDepth || (depth == bestDepth && score > bestScore) {
 						bestP0, bestP1, bestP2 = s0, s1, s2
 						bestDepth = depth

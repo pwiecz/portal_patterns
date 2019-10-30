@@ -6,7 +6,7 @@ type thickTrianglesScorer struct {
 	numPortalsSq uint
 }
 
-func NewThickTrianglesScorer(numPortals int) *thickTrianglesScorer {
+func newThickTrianglesScorer(numPortals int) *thickTrianglesScorer {
 	numPortals64 := uint(numPortals)
 	minHeight := make([]float32, numPortals64*numPortals64*numPortals64)
 	return &thickTrianglesScorer{

@@ -15,7 +15,7 @@ func TestHerringboneDoubleMultiThreaded(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	b0, b1, backbone0, backbone1 := LargestDoubleHerringbone(portals, 6, func(int, int) {})
+	b0, b1, backbone0, backbone1 := LargestDoubleHerringbone(portals, []int{}, 6, func(int, int) {})
 	checkValidHerringboneResult(14, b0, b1, backbone0, t)
 	checkValidHerringboneResult(16, b0, b1, backbone1, t)
 	if !s2.Sign(backbone0[0].LatLng, b0.LatLng, b1.LatLng) {
@@ -37,7 +37,7 @@ func TestHerringboneDoubleSingleThread(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	b0, b1, backbone0, backbone1 := LargestDoubleHerringbone(portals, 1, func(int, int) {})
+	b0, b1, backbone0, backbone1 := LargestDoubleHerringbone(portals, []int{}, 1, func(int, int) {})
 	checkValidHerringboneResult(14, b0, b1, backbone0, t)
 	checkValidHerringboneResult(16, b0, b1, backbone1, t)
 	if !s2.Sign(backbone0[0].LatLng, b0.LatLng, b1.LatLng) {

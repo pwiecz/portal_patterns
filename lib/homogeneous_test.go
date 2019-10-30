@@ -52,8 +52,7 @@ func TestHomogeneous(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	scorer := largestTriangleScorer{}
-	result, depth := DeepestHomogeneous(portals, 6, scorer, func(int, int) {})
+	result, depth := DeepestHomogeneous(portals, HomogeneousMaxDepth{6}, HomogeneousLargestArea{})
 	checkValidHomogeneousResult(5, result, depth, t)
 }
 
@@ -68,7 +67,6 @@ func TestHomogeneousPretty(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	scorer := newThickTrianglesScorer(len(portals))
-	result, depth := DeepestHomogeneous2(portals, 6, scorer, scorer, func(int, int) {})
+	result, depth := DeepestHomogeneous2(portals, HomogeneousMaxDepth{6}, HomogeneousLargestArea{})
 	checkValidHomogeneousResult(5, result, depth, t)
 }

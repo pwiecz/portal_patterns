@@ -21,33 +21,40 @@ func main() {
 	showProgress := flag.Bool("progress", true, "show progress bar")
 	flag.BoolVar(showProgress, "P", true, "show progress bar")
 	cobwebCmd := flag.NewFlagSet("cobweb", flag.ExitOnError)
+	cobwebCornerPortalsValue := PortalsValue{}
+	cobwebCmd.Var(&cobwebCornerPortalsValue, "corner_portal", "fix corner portal of the cobweb field")
 	cobwebCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s cobweb <portals>\n", fileBase)
+		fmt.Fprintf(flag.CommandLine.Output(), "%s cobweb [--corner_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
+		cobwebCmd.PrintDefaults()
 	}
 	threeCornersCmd := flag.NewFlagSet("three_corners", flag.ExitOnError)
 	threeCornersCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s three_corners <portals1> <portals2> <portals3>\n", fileBase)
+		fmt.Fprintf(flag.CommandLine.Output(), "%s three_corners <portals1_file> <portals2_file> <portals3_file>\n", fileBase)
 	}
 	herringboneCmd := flag.NewFlagSet("herringbone", flag.ExitOnError)
+	herringboneBasePortalsValue := PortalsValue{}
+	herringboneCmd.Var(&herringboneBasePortalsValue, "base_portal", "fix a base portal of the herringbone field")
 	herringboneCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s herringbone <portals>\n", fileBase)
+		fmt.Fprintf(flag.CommandLine.Output(), "%s herringbone [--base_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
+		herringboneCmd.PrintDefaults()
 	}
 	doubleHerringboneCmd := flag.NewFlagSet("double_herringbone", flag.ExitOnError)
+	doubleHerringboneBasePortalsValue := PortalsValue{}
+	doubleHerringboneCmd.Var(&doubleHerringboneBasePortalsValue, "base_portal", "fix a base portal of the double herringbone field")
 	doubleHerringboneCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s double_herringbone <portals>\n", fileBase)
+		fmt.Fprintf(flag.CommandLine.Output(), "%s double_herringbone [--base_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
+		doubleHerringboneCmd.PrintDefaults()
 	}
 	homogeneousCmd := flag.NewFlagSet("homogeneous", flag.ExitOnError)
 	homogeneousMaxDepth := homogeneousCmd.Int("max_depth", 6, "don't return homogenous fields with depth larger than max_depth")
-	homogeneousLargeTriangles := homogeneousCmd.Bool("pretty", false, "try to split the top triangle into large regular web of triangles (slow)")
+	homogeneousPretty := homogeneousCmd.Bool("pretty", false, "try to split the top triangle into large regular web of triangles (slow)")
 	homogeneousLargestArea := homogeneousCmd.Bool("largest_area", false, "pick the top triangle having the largest possible area")
 	homogeneousSmallestArea := homogeneousCmd.Bool("smallest_area", false, "pick the top triangle having the smallest possible area")
+	homogeneousCornerPortalsValue := PortalsValue{}
+	homogeneousCmd.Var(&homogeneousCornerPortalsValue, "corner_portal", "fix corner portal of the homogeneous field")
 	homogeneousCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [-max_depth=<n>] [-pretty] [-largest_area|-smallest_area] <portals>\n", fileBase)
+		fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [-max_depth=<n>] [-pretty] [-largest_area|-smallest_area] [--corner_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
 		homogeneousCmd.PrintDefaults()
-	}
-	colinearCmd := flag.NewFlagSet("colinear", flag.ExitOnError)
-	colinearCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s colinear <portals>\n", fileBase)
 	}
 
 	defaultUsage := flag.Usage
@@ -58,7 +65,6 @@ func main() {
 		herringboneCmd.Usage()
 		doubleHerringboneCmd.Usage()
 		homogeneousCmd.Usage()
-		colinearCmd.Usage()
 	}
 	flag.Parse()
 	if len(flag.Args()) <= 1 {
@@ -91,8 +97,12 @@ func main() {
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
+		if len(cobwebCornerPortalsValue.Portals) > 3 {
+			log.Fatalf("cobweb command accepts at most three corner portals - %d specified", len(cobwebCornerPortalsValue.Portals))
+		}
+		cobwebCornerPortalIndices := portalsToIndices(cobwebCornerPortalsValue, portals)
 
-		result := lib.LargestCobweb(portals, progressFunc)
+		result := lib.LargestCobweb(portals, cobwebCornerPortalIndices, progressFunc)
 		fmt.Println("")
 		for i, portal := range result {
 			fmt.Printf("%d: %s\n", i, portal.Name)
@@ -112,11 +122,15 @@ func main() {
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
+		if len(herringboneBasePortalsValue.Portals) > 2 {
+			log.Fatalf("herringbone command accepts at most two base portals - %d specified", len(herringboneBasePortalsValue.Portals))
+		}
+		herringboneBasePortalIndices := portalsToIndices(herringboneBasePortalsValue, portals)
 		numHerringboneWorkers := runtime.GOMAXPROCS(0)
 		if *numWorkers > 0 {
 			numHerringboneWorkers = *numWorkers
 		}
-		b0, b1, result := lib.LargestHerringbone(portals, numHerringboneWorkers, progressFunc)
+		b0, b1, result := lib.LargestHerringbone(portals, herringboneBasePortalIndices, numHerringboneWorkers, progressFunc)
 		fmt.Printf("\nBase (%s) (%s)\n", b0.Name, b1.Name)
 		for i, portal := range result {
 			fmt.Printf("%d: %s\n", i, portal.Name)
@@ -138,11 +152,15 @@ func main() {
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
+		if len(doubleHerringboneBasePortalsValue.Portals) > 2 {
+			log.Fatalf("double_herringbone command accepts at most two base portals - %d specified", len(doubleHerringboneBasePortalsValue.Portals))
+		}
+		doubleHerringboneBasePortalIndices := portalsToIndices(doubleHerringboneBasePortalsValue, portals)
 		numHerringboneWorkers := runtime.GOMAXPROCS(0)
 		if *numWorkers > 0 {
 			numHerringboneWorkers = *numWorkers
 		}
-		b0, b1, result0, result1 := lib.LargestDoubleHerringbone(portals, numHerringboneWorkers, progressFunc)
+		b0, b1, result0, result1 := lib.LargestDoubleHerringbone(portals, doubleHerringboneBasePortalIndices, numHerringboneWorkers, progressFunc)
 		fmt.Printf("\nBase (%s) (%s)\n", b0.Name, b1.Name)
 		fmt.Println("First part:")
 		for i, portal := range result0 {
@@ -185,6 +203,7 @@ func main() {
 		if len(portals1)+len(portals2)+len(portals3) >= math.MaxUint16-1 {
 			log.Fatalln("Too many portals")
 		}
+
 		result := lib.LargestThreeCorner(portals1, portals2, portals3, progressFunc)
 		fmt.Println("")
 		for i, indexedPortal := range result {
@@ -225,28 +244,32 @@ func main() {
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
-		var result []lib.Portal
-		var depth uint16
-		var topLevelScorer lib.TopLevelTriangleScorer = lib.ArbitraryScorer{}
-		var scorer lib.HomogeneousScorer
-		if *homogeneousLargeTriangles {
+		if len(homogeneousCornerPortalsValue.Portals) > 3 {
+			log.Fatalf("homogeneous command accepts at most three corner portals - %d specified", len(homogeneousCornerPortalsValue.Portals))
+		}
+		homogeneousCornerPortalIndices := portalsToIndices(homogeneousCornerPortalsValue, portals)
+		if *homogeneousPretty {
 			if *homogeneousMaxDepth > 7 {
 				log.Fatalln("if --pretty is specified --max_depth must be at most 7")
 			}
-			largeTrianglesScorer := lib.NewThickTrianglesScorer(len(portals))
-			scorer = largeTrianglesScorer
-			topLevelScorer = largeTrianglesScorer
+		}
+		homogeneousOptions := []lib.HomogeneousOption{
+			lib.HomogeneousProgressFunc{ProgressFunc: progressFunc},
+			lib.HomogeneousMaxDepth{MaxDepth: *homogeneousMaxDepth},
+			lib.HomogeneousFixedCornerIndices{Indices: homogeneousCornerPortalIndices},
 		}
 		if *homogeneousLargestArea {
-			topLevelScorer = lib.LargestTriangleScorer{}
+			homogeneousOptions = append(homogeneousOptions, lib.HomogeneousLargestArea{})
 		} else if *homogeneousSmallestArea {
-			topLevelScorer = lib.SmallestTriangleScorer{}
+			homogeneousOptions = append(homogeneousOptions, lib.HomogeneousSmallestArea{})
 		}
 
-		if *homogeneousLargeTriangles {
-			result, depth = lib.DeepestHomogeneous2(portals, *homogeneousMaxDepth, scorer, topLevelScorer, progressFunc)
+		var result []lib.Portal
+		var depth uint16
+		if *homogeneousPretty {
+			result, depth = lib.DeepestHomogeneous2(portals, homogeneousOptions...)
 		} else {
-			result, depth = lib.DeepestHomogeneous(portals, *homogeneousMaxDepth, topLevelScorer, progressFunc)
+			result, depth = lib.DeepestHomogeneous(portals, homogeneousOptions...)
 		}
 		fmt.Printf("\nDepth: %d\n", depth)
 		for i, portal := range result {

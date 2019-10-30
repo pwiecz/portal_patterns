@@ -1,15 +1,15 @@
 package lib
 
 // LargestDoubleHerringbone - Find largest possible multilayer of portals to be made
-func LargestDoubleHerringbone(portals []Portal, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal, []Portal) {
+func LargestDoubleHerringbone(portals []Portal, fixedBaseIndices []int, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal, []Portal) {
 	if numWorkers == 1 {
-		return LargestDoubleHerringboneST(portals, progressFunc)
+		return LargestDoubleHerringboneST(portals, fixedBaseIndices, progressFunc)
 	}
-	return LargestDoubleHerringboneMT(portals, numWorkers, progressFunc)
+	return LargestDoubleHerringboneMT(portals, fixedBaseIndices, numWorkers, progressFunc)
 }
 
 // LargestDoubleHerringboneST - Find largest possible multilayer of portals to be made, using a single thread
-func LargestDoubleHerringboneST(portals []Portal, progressFunc func(int, int)) (Portal, Portal, []Portal, []Portal) {
+func LargestDoubleHerringboneST(portals []Portal, fixedBaseIndices []int, progressFunc func(int, int)) (Portal, Portal, []Portal, []Portal) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -37,6 +37,9 @@ func LargestDoubleHerringboneST(portals []Portal, progressFunc func(int, int)) (
 	for i, b0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
 			b1 := portalsData[j]
+			if !hasAllIndicesInThePair(fixedBaseIndices, i, j) {
+				continue
+			}
 			bestCCW := q.findBestHerringbone(b0, b1, resultCacheCCW)
 			bestCW := q.findBestHerringbone(b1, b0, resultCacheCW)
 			if len(bestCCW)+len(bestCW) > len(largestCCW)+len(largestCW) {

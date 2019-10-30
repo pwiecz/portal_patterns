@@ -33,7 +33,7 @@ func TestHerringboneMultiThreaded(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	b0, b1, backbone := LargestHerringbone(portals, 6, func(int, int) {})
+	b0, b1, backbone := LargestHerringbone(portals, []int{}, 6, func(int, int) {})
 	checkValidHerringboneResult(19, b0, b1, backbone, t)
 }
 
@@ -48,6 +48,6 @@ func TestHerringboneSingleThread(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	b0, b1, backbone := LargestHerringbone(portals, 1, func(int, int) {})
+	b0, b1, backbone := LargestHerringbone(portals, []int{}, 1, func(int, int) {})
 	checkValidHerringboneResult(19, b0, b1, backbone, t)
 }

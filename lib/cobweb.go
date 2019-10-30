@@ -74,7 +74,7 @@ func (q *bestCobwebQuery) findBestCobwebAux(p0, p1, p2 portalData, candidates []
 }
 
 // LargestCobweb - Find largest possible cobweb of portals to be made
-func LargestCobweb(portals []Portal, progressFunc func(int, int)) []Portal {
+func LargestCobweb(portals []Portal, fixedCornerIndices []int, progressFunc func(int, int)) []Portal {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -102,6 +102,9 @@ func LargestCobweb(portals []Portal, progressFunc func(int, int)) []Portal {
 			p1 := portalsData[j]
 			for k := j + 1; k < len(portalsData); k++ {
 				p2 := portalsData[k]
+				if !hasAllIndicesInTheTriple(fixedCornerIndices, i, j, k) {
+					continue
+				}
 				q.findBestCobweb(p0, p1, p2)
 			}
 		}
@@ -118,6 +121,9 @@ func LargestCobweb(portals []Portal, progressFunc func(int, int)) []Portal {
 			}
 			for k, p2 := range portalsData {
 				if i == k || j == k {
+					continue
+				}
+				if !hasAllIndicesInTheTriple(fixedCornerIndices, i, j, k) {
 					continue
 				}
 				candidate := q.getIndex(p0.Index, p1.Index, p2.Index)

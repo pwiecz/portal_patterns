@@ -5,13 +5,12 @@ import "github.com/golang/geo/s1"
 import "github.com/golang/geo/s2"
 import "github.com/golang/geo/r3"
 
-
 // LargestHerringbone - Find largest possible multilayer of portals to be made
-func LargestHerringbone(portals []Portal, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal) {
+func LargestHerringbone(portals []Portal, fixedBaseIndices []int, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal) {
 	if numWorkers == 1 {
-		return LargestHerringboneST(portals, progressFunc)
+		return LargestHerringboneST(portals, fixedBaseIndices, progressFunc)
 	}
-	return LargestHerringboneMT(portals, numWorkers, progressFunc)
+	return LargestHerringboneMT(portals, fixedBaseIndices, numWorkers, progressFunc)
 }
 
 type node struct {
@@ -115,7 +114,7 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 }
 
 // LargestHerringboneST - Find largest possible multilayer of portals to be made, using a single thread
-func LargestHerringboneST(portals []Portal, progressFunc func(int, int)) (Portal, Portal, []Portal) {
+func LargestHerringboneST(portals []Portal, fixedBaseIndices []int, progressFunc func(int, int)) (Portal, Portal, []Portal) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -141,6 +140,9 @@ func LargestHerringboneST(portals []Portal, progressFunc func(int, int)) (Portal
 	for i, b0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
 			b1 := portalsData[j]
+			if !hasAllIndicesInThePair(fixedBaseIndices, i, j) {
+				continue
+			}
 			for k := 0; k < len(index); k++ {
 				index[k].Length = invalidLength
 			}

@@ -27,7 +27,7 @@ func bestDoubleHerringboneWorker(
 }
 
 // LargestDoubleHerringboneMT - Find largest possible multilayer of portals to be made, parallel version
-func LargestDoubleHerringboneMT(portals []Portal, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal, []Portal) {
+func LargestDoubleHerringboneMT(portals []Portal, fixedBaseIndices []int, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal, []Portal) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -65,6 +65,9 @@ func LargestDoubleHerringboneMT(portals []Portal, numWorkers int, progressFunc f
 		for i, b0 := range portalsData {
 			for j := i + 1; j < len(portalsData); j++ {
 				b1 := portalsData[j]
+				if !hasAllIndicesInThePair(fixedBaseIndices, i, j) {
+					continue
+				}
 				requestChannel <- doubleHerringboneRequest{
 					p0:        b0,
 					p1:        b1,
