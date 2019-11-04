@@ -99,19 +99,19 @@ func (t *triangleWedgeQuery) ContainsPoint(o s2.Point) bool {
 
 type distanceQuery struct {
 	aCrossB s2.Point
-	c2      float64
+	invC2   float64
 }
 
 func newDistanceQuery(a, b s2.Point) distanceQuery {
 	aCrossB := a.PointCross(b)
-	return distanceQuery{aCrossB, aCrossB.Norm2()}
+	return distanceQuery{aCrossB, 1.0 / aCrossB.Norm2()}
 }
 func (d *distanceQuery) ChordAngle(p s2.Point) s1.ChordAngle {
 	pDotC := p.Dot(d.aCrossB.Vector)
 	pDotC2 := pDotC * pDotC
 	cx := d.aCrossB.Cross(p.Vector)
-	qr := 1 - math.Sqrt(cx.Norm2()/d.c2)
-	return s1.ChordAngle((pDotC2 / d.c2) + (qr * qr))
+	qr := 1 - math.Sqrt(cx.Norm2()*d.invC2)
+	return s1.ChordAngle((pDotC2 * d.invC2) + (qr * qr))
 }
 func (d *distanceQuery) Distance(p s2.Point) s1.Angle {
 	return d.ChordAngle(p).Angle()
