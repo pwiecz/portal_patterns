@@ -3,13 +3,22 @@ package lib
 import "math"
 
 type bestHomogeneousQuery struct {
+	// all the portals
 	portals            []portalData
+	// index of triple of portals to a solution
+	// solution for every triple is store six times - for each of the permutations of portals
 	index              []bestSolution
+	// count of portals (used to compute a solution index from indices of three portals)
 	numPortals         uint
+	// square of portal count (used to compute a solution index from indices of three portals)
 	numPortalsSq       uint
+	// callback to be called whenever solution for new triple of portals is found
 	onFilledIndexEntry func()
+	// preallocated storage for lists of portals within triangles at consecutive recursion depths
 	portalsInTriangle  [][]portalData
+	// current recursion depth
 	depth              uint16
+	// maxDepth of solution to be found
 	maxDepth           uint16
 }
 
@@ -46,6 +55,9 @@ func (q *bestHomogeneousQuery) findBestHomogeneous(p0, p1, p2 portalData) {
 
 func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, candidates []portalData) bestSolution {
 	q.depth++
+	// make a copy of input slice to slice we'll be iterating over,
+	// as we're going to keep modifying the input slice by calling
+	//  partitionPortalsInsideWedge().
 	q.portalsInTriangle[q.depth] = append(q.portalsInTriangle[q.depth][:0], candidates...)
 	bestMidpoint := bestSolution{Index: invalidPortalIndex, Length: 1}
 	for _, portal := range q.portalsInTriangle[q.depth] {

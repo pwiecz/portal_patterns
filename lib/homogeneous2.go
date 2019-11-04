@@ -7,7 +7,7 @@ type homogeneousTriangleScorer interface {
 	bestMidpoints() [6]portalIndex
 }
 
-type HomogeneousScorer interface {
+type homogeneousScorer interface {
 	newTriangleScorer(a, b, c portalData, maxDepth int) homogeneousTriangleScorer
 }
 
@@ -16,18 +16,29 @@ type homogeneousTopLevelScorer interface {
 }
 
 type bestHomogeneous2Query struct {
+	// all the portals
 	portals            []portalData
+	// index of triple of portals to a solution
+	// each permutations of the three portals stores the best solution 
+	// for different depth - 2..7
 	index              []portalIndex
+	// count of portals (used to compute a solution index from indices of three portals)
 	numPortals         uint
+	// square of portal count (used to compute a solution index from indices of three portals)
 	numPortalsSq       uint
+	// callback to be called whenever solution for new triple of portals is found
 	onFilledIndexEntry func()
+	// preallocated storage for lists of portals within triangles at consecutive recursion depths
 	portalsInTriangle  [][]portalData
+	// current recursion depth
 	depth              uint16
+	// maxDepth of solution to be found
 	maxDepth           int
-	scorer             HomogeneousScorer
+	// a scorer for picking best of the possible solutions of the same depth
+	scorer             homogeneousScorer
 }
 
-func newBestHomogeneous2Query(portals []portalData, scorer HomogeneousScorer, maxDepth int, onFilledIndexEntry func()) *bestHomogeneous2Query {
+func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, maxDepth int, onFilledIndexEntry func()) *bestHomogeneous2Query {
 	numPortals := uint(len(portals))
 	index := make([]portalIndex, numPortals*numPortals*numPortals)
 	for i := 0; i < len(index); i++ {

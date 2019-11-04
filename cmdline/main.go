@@ -4,10 +4,8 @@ import "flag"
 import "fmt"
 import "log"
 import "math"
-import "runtime"
-
 import "os"
-import "strings"
+import "runtime"
 
 import "path/filepath"
 import "runtime/pprof"
@@ -21,7 +19,7 @@ func main() {
 	showProgress := flag.Bool("progress", true, "show progress bar")
 	flag.BoolVar(showProgress, "P", true, "show progress bar")
 	cobwebCmd := flag.NewFlagSet("cobweb", flag.ExitOnError)
-	cobwebCornerPortalsValue := PortalsValue{}
+	cobwebCornerPortalsValue := portalsValue{}
 	cobwebCmd.Var(&cobwebCornerPortalsValue, "corner_portal", "fix corner portal of the cobweb field")
 	cobwebCmd.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s cobweb [--corner_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
@@ -32,30 +30,20 @@ func main() {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s three_corners <portals1_file> <portals2_file> <portals3_file>\n", fileBase)
 	}
 	herringboneCmd := flag.NewFlagSet("herringbone", flag.ExitOnError)
-	herringboneBasePortalsValue := PortalsValue{}
+	herringboneBasePortalsValue := portalsValue{}
 	herringboneCmd.Var(&herringboneBasePortalsValue, "base_portal", "fix a base portal of the herringbone field")
 	herringboneCmd.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s herringbone [--base_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
 		herringboneCmd.PrintDefaults()
 	}
 	doubleHerringboneCmd := flag.NewFlagSet("double_herringbone", flag.ExitOnError)
-	doubleHerringboneBasePortalsValue := PortalsValue{}
+	doubleHerringboneBasePortalsValue := portalsValue{}
 	doubleHerringboneCmd.Var(&doubleHerringboneBasePortalsValue, "base_portal", "fix a base portal of the double herringbone field")
 	doubleHerringboneCmd.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s double_herringbone [--base_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
 		doubleHerringboneCmd.PrintDefaults()
 	}
-	homogeneousCmd := flag.NewFlagSet("homogeneous", flag.ExitOnError)
-	homogeneousMaxDepth := homogeneousCmd.Int("max_depth", 6, "don't return homogenous fields with depth larger than max_depth")
-	homogeneousPretty := homogeneousCmd.Bool("pretty", false, "try to split the top triangle into large regular web of triangles (slow)")
-	homogeneousLargestArea := homogeneousCmd.Bool("largest_area", false, "pick the top triangle having the largest possible area")
-	homogeneousSmallestArea := homogeneousCmd.Bool("smallest_area", false, "pick the top triangle having the smallest possible area")
-	homogeneousCornerPortalsValue := PortalsValue{}
-	homogeneousCmd.Var(&homogeneousCornerPortalsValue, "corner_portal", "fix corner portal of the homogeneous field")
-	homogeneousCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [-max_depth=<n>] [-pretty] [-largest_area|-smallest_area] [--corner_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
-		homogeneousCmd.PrintDefaults()
-	}
+	homogeneousCmd := NewHomogeneousCmd()
 
 	defaultUsage := flag.Usage
 	flag.Usage = func() {
@@ -64,7 +52,7 @@ func main() {
 		threeCornersCmd.Usage()
 		herringboneCmd.Usage()
 		doubleHerringboneCmd.Usage()
-		homogeneousCmd.Usage()
+		homogeneousCmd.Usage(fileBase)
 	}
 	flag.Parse()
 	if len(flag.Args()) <= 1 {
@@ -229,55 +217,7 @@ func main() {
 	case "homogeneous":
 		fallthrough
 	case "homogenous":
-		homogeneousCmd.Parse(flag.Args()[1:])
-		if *homogeneousMaxDepth < 1 {
-			log.Fatalln("--max_depth must by at least 1")
-		}
-		if *homogeneousLargestArea && *homogeneousSmallestArea {
-			log.Fatalln("--largest_area and --smallest_area cannot be both specified at the same time")
-		}
-		fileArgs := homogeneousCmd.Args()
-		if len(fileArgs) != 1 {
-			log.Fatalln("homogeneous command requires exactly one file argument")
-		}
-		portals, err := lib.ParseFile(fileArgs[0])
-		if err != nil {
-			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
-		}
-		if len(homogeneousCornerPortalsValue.Portals) > 3 {
-			log.Fatalf("homogeneous command accepts at most three corner portals - %d specified", len(homogeneousCornerPortalsValue.Portals))
-		}
-		homogeneousCornerPortalIndices := portalsToIndices(homogeneousCornerPortalsValue, portals)
-		if *homogeneousPretty {
-			if *homogeneousMaxDepth > 7 {
-				log.Fatalln("if --pretty is specified --max_depth must be at most 7")
-			}
-		}
-		homogeneousOptions := []lib.HomogeneousOption{
-			lib.HomogeneousProgressFunc{ProgressFunc: progressFunc},
-			lib.HomogeneousMaxDepth{MaxDepth: *homogeneousMaxDepth},
-			lib.HomogeneousFixedCornerIndices{Indices: homogeneousCornerPortalIndices},
-		}
-		if *homogeneousLargestArea {
-			homogeneousOptions = append(homogeneousOptions, lib.HomogeneousLargestArea{})
-		} else if *homogeneousSmallestArea {
-			homogeneousOptions = append(homogeneousOptions, lib.HomogeneousSmallestArea{})
-		}
-
-		var result []lib.Portal
-		var depth uint16
-		if *homogeneousPretty {
-			result, depth = lib.DeepestHomogeneous2(portals, homogeneousOptions...)
-		} else {
-			result, depth = lib.DeepestHomogeneous(portals, homogeneousOptions...)
-		}
-		fmt.Printf("\nDepth: %d\n", depth)
-		for i, portal := range result {
-			fmt.Printf("%d: %s\n", i, portal.Name)
-		}
-		polylines := []string{lib.PolylineFromPortalList([]lib.Portal{result[0], result[1], result[2], result[0]})}
-		polylines, _ = lib.AppendHomogeneousPolylines(result[0], result[1], result[2], uint16(depth), polylines, result[3:])
-		fmt.Printf("\n[%s]\n", strings.Join(polylines, ","))
+		homogeneousCmd.Run(flag.Args()[1:], progressFunc)
 	default:
 		log.Fatalf("Unknown command: \"%s\"\n", flag.Args()[0])
 	}

@@ -8,12 +8,12 @@ import "strings"
 import "github.com/golang/geo/s2"
 import "github.com/pwiecz/portal_patterns/lib"
 
-type PortalsValue struct {
+type portalsValue struct {
 	LatLngStrings []string
 	Portals       []s2.Point
 }
 
-func (p *PortalsValue) Set(latLngStr string) error {
+func (p *portalsValue) Set(latLngStr string) error {
 	parts := strings.Split(latLngStr, ",")
 	if len(parts) != 2 {
 		return fmt.Errorf("Cannot parse \"%s\" as lat,lng", latLngStr)
@@ -31,11 +31,11 @@ func (p *PortalsValue) Set(latLngStr string) error {
 	return nil
 }
 
-func (p PortalsValue) String() string {
+func (p portalsValue) String() string {
 	return strings.Join(p.LatLngStrings, ";")
 }
 
-func portalsToIndices(arg PortalsValue, portals []lib.Portal) []int {
+func portalsToIndices(arg portalsValue, portals []lib.Portal) []int {
 	var indices []int
 	for i, latLng := range arg.Portals {
 		found := false

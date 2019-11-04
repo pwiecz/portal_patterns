@@ -72,7 +72,7 @@ func defaultHomogeneousParams() homogeneousParams {
 
 type homogeneous2Params struct {
 	maxDepth           int
-	scorer             HomogeneousScorer
+	scorer             homogeneousScorer
 	topLevelScorer     homogeneousTopLevelScorer
 	fixedCornerIndices []int
 	progressFunc       func(int, int)
