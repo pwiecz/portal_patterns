@@ -18,6 +18,7 @@ func newThickTrianglesScorer(numPortals int) *thickTrianglesScorer {
 	}
 }
 
+// scorer for picking the best midpoint of triangle a,b,c
 type thickTrianglesTriangleScorer struct {
 	minHeight    []float32
 	numPortals   uint
@@ -31,34 +32,28 @@ type thickTrianglesTriangleScorer struct {
 	candidates   [6]portalIndex
 }
 
-func (s *thickTrianglesScorer) newTriangleScorer(a, b, c portalData, maxDepth int) homogeneousTriangleScorer {
-	a, b, c = sorted(a, b, c)
-	var scorePtrs [6]*float32
-	for level := 2; level <= maxDepth; level++ {
-		i, j, k := indexOrdering(a.Index, b.Index, c.Index, level)
-		scorePtrs[level-2] = &s.minHeight[uint(i)*s.numPortalsSq+uint(j)*s.numPortals+uint(k)]
-	}
-	candidates := [6]portalIndex{
-		invalidPortalIndex - 1,
-		invalidPortalIndex - 1,
-		invalidPortalIndex - 1,
-		invalidPortalIndex - 1,
-		invalidPortalIndex - 1,
-		invalidPortalIndex - 1}
+func (s *thickTrianglesScorer) newTriangleScorer(maxDepth int) homogeneousTriangleScorer {
 	return &thickTrianglesTriangleScorer{
 		minHeight:    s.minHeight,
 		numPortals:   s.numPortals,
 		numPortalsSq: s.numPortalsSq,
 		maxDepth:     maxDepth,
-		a:            a,
-		b:            b,
-		c:            c,
-		abDistance:   newDistanceQuery(a.LatLng, b.LatLng),
-		acDistance:   newDistanceQuery(a.LatLng, c.LatLng),
-		bcDistance:   newDistanceQuery(b.LatLng, c.LatLng),
-		scorePtrs:    scorePtrs,
-		candidates:   candidates,
 	}
+}
+
+func (s *thickTrianglesTriangleScorer) reset(a, b, c portalData) {
+	a, b, c = sorted(a, b, c)
+	for level := 2; level <= s.maxDepth; level++ {
+		i, j, k := indexOrdering(a.Index, b.Index, c.Index, level)
+		s.scorePtrs[level-2] = &s.minHeight[uint(i)*s.numPortalsSq+uint(j)*s.numPortals+uint(k)]
+	}
+	for i := 0; i < 6; i++ {
+		s.candidates[i] = invalidPortalIndex - 1
+	}
+	s.a, s.b, s.c = a, b, c
+	s.abDistance = newDistanceQuery(a.LatLng, b.LatLng)
+	s.acDistance = newDistanceQuery(a.LatLng, c.LatLng)
+	s.bcDistance = newDistanceQuery(b.LatLng, c.LatLng)
 }
 func (s *thickTrianglesTriangleScorer) getHeight(a, b, c portalIndex) float32 {
 	return s.minHeight[uint(a)*s.numPortalsSq+uint(b)*s.numPortals+uint(c)]

@@ -3,12 +3,14 @@ package lib
 import "math"
 
 type homogeneousTriangleScorer interface {
+	// resets scorer to compute scores for this triangle
+	reset(a, b, c portalData)
 	scoreCandidate(p portalData)
 	bestMidpoints() [6]portalIndex
 }
 
 type homogeneousScorer interface {
-	newTriangleScorer(a, b, c portalData, maxDepth int) homogeneousTriangleScorer
+	newTriangleScorer(maxDepth int) homogeneousTriangleScorer
 }
 
 type homogeneousTopLevelScorer interface {
@@ -30,6 +32,8 @@ type bestHomogeneous2Query struct {
 	onFilledIndexEntry func()
 	// preallocated storage for lists of portals within triangles at consecutive recursion depths
 	portalsInTriangle  [][]portalData
+	// preallocated storage for triangle scorers at consecutive recursion depths
+	triangleScorers []homogeneousTriangleScorer
 	// current recursion depth
 	depth              uint16
 	// maxDepth of solution to be found
@@ -44,12 +48,17 @@ func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, ma
 	for i := 0; i < len(index); i++ {
 		index[i] = invalidPortalIndex
 	}
+	triangleScorers := make([]homogeneousTriangleScorer, len(portals))
+	for i := 0; i < len(portals); i++ {
+		triangleScorers[i] = scorer.newTriangleScorer(maxDepth)
+	}
 	return &bestHomogeneous2Query{
 		portals:            portals,
 		index:              index,
 		numPortals:         numPortals,
 		numPortalsSq:       numPortals * numPortals,
 		onFilledIndexEntry: onFilledIndexEntry,
+		triangleScorers:    triangleScorers,
 		portalsInTriangle:  make([][]portalData, len(portals)),
 		maxDepth:           maxDepth,
 		scorer:             scorer,
@@ -145,7 +154,8 @@ func indexOrdering(p0, p1, p2 portalIndex, index int) (portalIndex, portalIndex,
 func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, candidates []portalData) {
 	q.depth++
 	q.portalsInTriangle[q.depth] = append(q.portalsInTriangle[q.depth][:0], candidates...)
-	triangleScorer := q.scorer.newTriangleScorer(p0, p1, p2, q.maxDepth)
+	triangleScorer := q.triangleScorers[q.depth]
+	triangleScorer.reset(p0, p1, p2)
 	for _, portal := range q.portalsInTriangle[q.depth] {
 		if q.getIndex(portal.Index, p1.Index, p2.Index) == invalidPortalIndex {
 			candidatesInWedge := partitionPortalsInsideWedge(candidates, portal, p1, p2)
