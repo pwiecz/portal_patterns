@@ -55,8 +55,19 @@ func (h HomogeneousFixedCornerIndices) apply2(param *homogeneous2Params) {
 	param.fixedCornerIndices = h.Indices
 }
 
+type HomogeneousPerfect struct {
+	Perfect bool
+}
+func(h HomogeneousPerfect) apply(param* homogeneousParams) {
+	param.perfect = h.Perfect
+}
+func(h HomogeneousPerfect) apply2(param* homogeneous2Params) {
+	param.perfect = h.Perfect
+}
+
 type homogeneousParams struct {
 	maxDepth           int
+	perfect            bool
 	topLevelScorer     homogeneousTopLevelScorer
 	fixedCornerIndices []int
 	progressFunc       func(int, int)
@@ -65,6 +76,7 @@ type homogeneousParams struct {
 func defaultHomogeneousParams() homogeneousParams {
 	return homogeneousParams{
 		maxDepth:       6,
+		perfect:        false,
 		topLevelScorer: arbitraryScorer{},
 		progressFunc:   func(int, int) {},
 	}
@@ -72,6 +84,7 @@ func defaultHomogeneousParams() homogeneousParams {
 
 type homogeneous2Params struct {
 	maxDepth           int
+	perfect            bool
 	scorer             homogeneousScorer
 	topLevelScorer     homogeneousTopLevelScorer
 	fixedCornerIndices []int
@@ -81,6 +94,7 @@ type homogeneous2Params struct {
 func defaultHomogeneous2Params(numPortals int) homogeneous2Params {
 	return homogeneous2Params{
 		maxDepth:       6,
+		perfect:        false,
 		scorer:         newThickTrianglesScorer(numPortals),
 		topLevelScorer: arbitraryScorer{},
 		progressFunc:   func(int, int) {},

@@ -20,12 +20,15 @@ type bestHomogeneousQuery struct {
 	depth              uint16
 	// maxDepth of solution to be found
 	maxDepth           uint16
+	// accept only candidates that use all the portals within the top level triangle
+	perfect            bool
 }
 
-func newBestHomogeneousQuery(portals []portalData, maxDepth int, onFilledIndexEntry func()) *bestHomogeneousQuery {
+func newBestHomogeneousQuery(portals []portalData, maxDepth int, perfect bool, onFilledIndexEntry func()) *bestHomogeneousQuery {
 	numPortals := uint(len(portals))
 	index := make([]bestSolution, numPortals*numPortals*numPortals)
 	for i := 0; i < len(index); i++ {
+		index[i].Index = invalidPortalIndex
 		index[i].Length = invalidLength
 	}
 	return &bestHomogeneousQuery{
@@ -36,6 +39,7 @@ func newBestHomogeneousQuery(portals []portalData, maxDepth int, onFilledIndexEn
 		onFilledIndexEntry: onFilledIndexEntry,
 		portalsInTriangle:  make([][]portalData, len(portals)),
 		maxDepth:           uint16(maxDepth),
+		perfect:            perfect,
 	}
 }
 
@@ -61,16 +65,14 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 	q.portalsInTriangle[q.depth] = append(q.portalsInTriangle[q.depth][:0], candidates...)
 	bestMidpoint := bestSolution{Index: invalidPortalIndex, Length: 1}
 	for _, portal := range q.portalsInTriangle[q.depth] {
-		minDepth := invalidLength
+		var minDepth uint16
 		{
 			candidate0 := q.getIndex(portal.Index, p1.Index, p2.Index)
 			if candidate0.Length == invalidLength {
 				candidatesInWedge := partitionPortalsInsideWedge(candidates, portal, p1, p2)
 				candidate0 = q.findBestHomogeneousAux(portal, p1, p2, candidatesInWedge)
 			}
-			if candidate0.Length < minDepth {
-				minDepth = candidate0.Length
-			}
+			minDepth = candidate0.Length
 		}
 		{
 			candidate1 := q.getIndex(portal.Index, p0.Index, p2.Index)
@@ -78,8 +80,10 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 				candidatesInWedge := partitionPortalsInsideWedge(candidates, portal, p0, p2)
 				candidate1 = q.findBestHomogeneousAux(portal, p0, p2, candidatesInWedge)
 			}
-			if candidate1.Length < minDepth {
+			if !q.perfect && candidate1.Length < minDepth {
 				minDepth = candidate1.Length
+			} else if q.perfect && candidate1.Length != minDepth {
+				continue
 			}
 		}
 		{
@@ -88,21 +92,24 @@ func (q *bestHomogeneousQuery) findBestHomogeneousAux(p0, p1, p2 portalData, can
 				candidatesInWedge := partitionPortalsInsideWedge(candidates, portal, p0, p1)
 				candidate2 = q.findBestHomogeneousAux(portal, p0, p1, candidatesInWedge)
 			}
-			if candidate2.Length < minDepth {
+			if !q.perfect && candidate2.Length < minDepth {
 				minDepth = candidate2.Length
+			} else if q.perfect && candidate2.Length != minDepth {
+				continue
 			}
 		}
-		if minDepth != invalidLength {
-			if minDepth+1 > q.maxDepth {
-				minDepth = q.maxDepth - 1
-			}
-			if minDepth+1 > bestMidpoint.Length {
-				bestMidpoint.Index = portal.Index
-				bestMidpoint.Length = minDepth + 1
-			}
+		if minDepth+1 > q.maxDepth {
+			minDepth = q.maxDepth - 1
+		}
+		if minDepth+1 > bestMidpoint.Length {
+			bestMidpoint.Index = portal.Index
+			bestMidpoint.Length = minDepth + 1
 		}
 	}
 	q.onFilledIndexEntry()
+	if q.perfect && bestMidpoint.Length == 1 && len(candidates) != 0 {
+		bestMidpoint.Length = 0
+	}
 	q.setIndex(p0.Index, p1.Index, p2.Index, bestMidpoint)
 	q.setIndex(p0.Index, p2.Index, p1.Index, bestMidpoint)
 	q.setIndex(p1.Index, p0.Index, p2.Index, bestMidpoint)
@@ -122,7 +129,6 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 	for _, option := range options {
 		option.apply(&params)
 	}
-
 	portalsData := portalsToPortalData(portals)
 
 	numIndexEntries := len(portals) * (len(portals) - 1) * (len(portals) - 2) / 6
@@ -142,7 +148,7 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 	}
 
 	params.progressFunc(0, numIndexEntries)
-	q := newBestHomogeneousQuery(portalsData, params.maxDepth, onFilledIndexEntry)
+	q := newBestHomogeneousQuery(portalsData, params.maxDepth, params.perfect, onFilledIndexEntry)
 	for i, p0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
 			p1 := portalsData[j]

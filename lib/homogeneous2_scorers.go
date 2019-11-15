@@ -20,28 +20,31 @@ func newThickTrianglesScorer(numPortals int) *thickTrianglesScorer {
 
 // scorer for picking the best midpoint of triangle a,b,c
 type thickTrianglesTriangleScorer struct {
-	minHeight    []float32
-	numPortals   uint
-	numPortalsSq uint
-	maxDepth     int
-	a, b, c      portalData
-	abDistance   distanceQuery
-	acDistance   distanceQuery
-	bcDistance   distanceQuery
-	scorePtrs    [6]*float32
-	candidates   [6]portalIndex
+	minHeight            []float32
+	numPortals           uint
+	numPortalsSq         uint
+	maxDepth             int
+	perfect              bool
+	validLevel2Candidate bool
+	a, b, c              portalData
+	abDistance           distanceQuery
+	acDistance           distanceQuery
+	bcDistance           distanceQuery
+	scorePtrs            [6]*float32
+	candidates           [6]portalIndex
 }
 
-func (s *thickTrianglesScorer) newTriangleScorer(maxDepth int) homogeneousTriangleScorer {
+func (s *thickTrianglesScorer) newTriangleScorer(maxDepth int, perfect bool) homogeneousTriangleScorer {
 	return &thickTrianglesTriangleScorer{
 		minHeight:    s.minHeight,
 		numPortals:   s.numPortals,
 		numPortalsSq: s.numPortalsSq,
 		maxDepth:     maxDepth,
+		perfect:      perfect,
 	}
 }
 
-func (s *thickTrianglesTriangleScorer) reset(a, b, c portalData) {
+func (s *thickTrianglesTriangleScorer) reset(a, b, c portalData, numCandidates int) {
 	a, b, c = sorted(a, b, c)
 	for level := 2; level <= s.maxDepth; level++ {
 		i, j, k := indexOrdering(a.Index, b.Index, c.Index, level)
@@ -54,6 +57,7 @@ func (s *thickTrianglesTriangleScorer) reset(a, b, c portalData) {
 	s.abDistance = newDistanceQuery(a.LatLng, b.LatLng)
 	s.acDistance = newDistanceQuery(a.LatLng, c.LatLng)
 	s.bcDistance = newDistanceQuery(b.LatLng, c.LatLng)
+	s.validLevel2Candidate = !s.perfect || numCandidates == 1
 }
 func (s *thickTrianglesTriangleScorer) getHeight(a, b, c portalIndex) float32 {
 	return s.minHeight[uint(a)*s.numPortalsSq+uint(b)*s.numPortals+uint(c)]
@@ -72,19 +76,22 @@ func merge(p, a, b portalIndex) (portalIndex, portalIndex, portalIndex) {
 	}
 	return a, b, p
 }
+
 func (s *thickTrianglesTriangleScorer) scoreCandidate(p portalData) {
-	// We multiply by radiansToMeters not to obtain any meaningful distance measure
-	// (as ChordAngle returns a squared distance anyway), but just to scale the number up
-	// to make it fit in float32 precision range.
-	lvl2Height := float32(
-		float64Min(
-			float64(s.abDistance.ChordAngle(p.LatLng)),
+	if s.validLevel2Candidate {
+		// We multiply by radiansToMeters not to obtain any meaningful distance measure
+		// (as ChordAngle returns a squared distance anyway), but just to scale the number up
+		// to make it fit in float32 precision range.
+		lvl2Height := float32(
 			float64Min(
-				float64(s.acDistance.ChordAngle(p.LatLng)),
-				float64(s.bcDistance.ChordAngle(p.LatLng)))) * radiansToMeters)
-	if lvl2Height > *s.scorePtrs[0] {
-		*s.scorePtrs[0] = lvl2Height
-		s.candidates[0] = p.Index
+				float64(s.abDistance.ChordAngle(p.LatLng)),
+				float64Min(
+					float64(s.acDistance.ChordAngle(p.LatLng)),
+					float64(s.bcDistance.ChordAngle(p.LatLng)))) * radiansToMeters)
+		if lvl2Height > *s.scorePtrs[0] {
+			*s.scorePtrs[0] = lvl2Height
+			s.candidates[0] = p.Index
+		}
 	}
 	for level := 3; level <= s.maxDepth; level++ {
 		s0, s1, s2 := merge(p.Index, s.a.Index, s.b.Index)
@@ -99,7 +106,7 @@ func (s *thickTrianglesTriangleScorer) scoreCandidate(p portalData) {
 				s.getHeight(t0, t1, t2),
 				s.getHeight(u0, u1, u2)))
 		if minHeight == 0 {
-			break
+			continue
 		}
 		if minHeight > *s.scorePtrs[level-2] {
 			*s.scorePtrs[level-2] = minHeight
