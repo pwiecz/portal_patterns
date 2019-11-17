@@ -19,29 +19,29 @@ type homogeneousTopLevelScorer interface {
 
 type bestHomogeneous2Query struct {
 	// all the portals
-	portals            []portalData
+	portals []portalData
 	// index of triple of portals to a solution
-	// each permutations of the three portals stores the best solution 
+	// each permutations of the three portals stores the best solution
 	// for different depth - 2..7
-	index              []portalIndex
+	index []portalIndex
 	// count of portals (used to compute a solution index from indices of three portals)
-	numPortals         uint
+	numPortals uint
 	// square of portal count (used to compute a solution index from indices of three portals)
-	numPortalsSq       uint
+	numPortalsSq uint
 	// callback to be called whenever solution for new triple of portals is found
 	onFilledIndexEntry func()
 	// preallocated storage for lists of portals within triangles at consecutive recursion depths
-	portalsInTriangle  [][]portalData
+	portalsInTriangle [][]portalData
 	// preallocated storage for triangle scorers at consecutive recursion depths
 	triangleScorers []homogeneousTriangleScorer
 	// current recursion depth
-	depth              uint16
+	depth uint16
 	// maxDepth of solution to be found
-	maxDepth           int
+	maxDepth int
 	// accept only candidates that use all the portals within the top level triangle
-	perfect            bool
+	perfect bool
 	// a scorer for picking best of the possible solutions of the same depth
-	scorer             homogeneousScorer
+	scorer homogeneousScorer
 }
 
 func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, maxDepth int, perfect bool, onFilledIndexEntry func()) *bestHomogeneous2Query {
@@ -81,77 +81,6 @@ func (q *bestHomogeneous2Query) findBestHomogeneous(p0, p1, p2 portalData) {
 	}
 	q.portalsInTriangle[0] = portalsInsideTriangle(q.portals, p0, p1, p2, q.portalsInTriangle[0])
 	q.findBestHomogeneousAux(p0, p1, p2, q.portalsInTriangle[0])
-}
-
-func sorted(a, b, c portalData) (portalData, portalData, portalData) {
-	if a.Index < b.Index {
-		if a.Index < c.Index {
-			if b.Index < c.Index {
-				return a, b, c
-			}
-			return a, c, b
-		}
-		return c, a, b
-	}
-	if a.Index < c.Index {
-		return b, a, c
-	}
-	if b.Index < c.Index {
-		return b, c, a
-	}
-	return c, b, a
-}
-
-func sortedIndices(a, b, c portalIndex) (portalIndex, portalIndex, portalIndex) {
-	if a < b {
-		if a < c {
-			if b < c {
-				return a, b, c
-			}
-			return a, c, b
-		}
-		return c, a, b
-	}
-	if a < c {
-		return b, a, c
-	}
-	if b < c {
-		return b, c, a
-	}
-	return c, b, a
-}
-
-func ordering(p0, p1, p2 portalData, index int) (portalData, portalData, portalData) {
-	switch index {
-	case 2:
-		return p0, p1, p2
-	case 3:
-		return p0, p2, p1
-	case 4:
-		return p1, p0, p2
-	case 5:
-		return p1, p2, p0
-	case 6:
-		return p2, p0, p1
-	default:
-		return p2, p1, p0
-	}
-}
-func indexOrdering(p0, p1, p2 portalIndex, index int) (portalIndex, portalIndex, portalIndex) {
-	switch index {
-	case 2:
-		return p0, p1, p2
-	case 3:
-		return p0, p2, p1
-	case 4:
-		return p1, p0, p2
-	case 5:
-		return p1, p2, p0
-	case 6:
-		return p2, p0, p1
-	default:
-		return p2, p1, p0
-	}
 }
 
 func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, candidates []portalData) {
