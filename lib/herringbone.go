@@ -118,10 +118,7 @@ func LargestHerringboneST(portals []Portal, fixedBaseIndices []int, progressFunc
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
-	portalsData := make([]portalData, 0, len(portals))
-	for i, portal := range portals {
-		portalsData = append(portalsData, portalData{Index: portalIndex(i), LatLng: portal.LatLng})
-	}
+	portalsData := portalsToPortalData(portals)
 
 	index := make([]bestSolution, len(portals))
 	var largestHerringbone []portalIndex

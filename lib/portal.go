@@ -17,7 +17,7 @@ import "github.com/golang/geo/s2"
 // Portal - portal with geographic coordinates in s2.Point format
 type Portal struct {
 	Name   string
-	LatLng s2.Point
+	LatLng s2.LatLng
 }
 
 // IndexedPortal - Portal plus a number
@@ -175,7 +175,7 @@ func portalInfoToPortal(portalInfo []PortalInfo) ([]Portal, error) {
 		if err != nil {
 			return portals, errors.New("Cannot parse longitude: \"" + latlng.Lng + "\"")
 		}
-		point := s2.PointFromLatLng(s2.LatLngFromDegrees(lat, lng))
+		point := s2.LatLngFromDegrees(lat, lng)
 		portals = append(portals, Portal{Name: portal.Name, LatLng: point})
 		if len(portals) >= math.MaxUint16-1 {
 			return portals, errors.New("Too many portals")

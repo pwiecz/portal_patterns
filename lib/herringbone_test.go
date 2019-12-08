@@ -2,11 +2,13 @@ package lib
 
 import "testing"
 
-func isCorrectHerringbone(b0, b1 Portal, backbone []Portal) bool {
+import "github.com/golang/geo/s2"
+
+func isCorrectHerringbone(b0, b1 s2.Point, backbone []portalData) bool {
 	if len(backbone) <= 1 {
 		return true
 	}
-	triangle := newTriangleQuery(b0.LatLng, b1.LatLng, backbone[0].LatLng)
+	triangle := newTriangleQuery(b0, b1, backbone[0].LatLng)
 	if !triangle.ContainsPoint(backbone[1].LatLng) {
 		return false
 	}
@@ -17,7 +19,8 @@ func checkValidHerringboneResult(expectedLength int, b0, b1 Portal, backbone []P
 	if len(backbone) != expectedLength {
 		t.Errorf("Expected length %d, actual length %d", expectedLength, len(backbone))
 	}
-	if !isCorrectHerringbone(b0, b1, backbone) {
+	backboneData := portalsToPortalData(backbone);
+	if !isCorrectHerringbone(s2.PointFromLatLng(b0.LatLng), s2.PointFromLatLng(b1.LatLng), backboneData) {
 		t.Errorf("Result is not correct herringbone fielding")
 	}
 }

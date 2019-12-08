@@ -18,7 +18,9 @@ type portalData struct {
 func portalsToPortalData(portals []Portal) []portalData {
 	portalsData := make([]portalData, 0, len(portals))
 	for i, portal := range portals {
-		portalsData = append(portalsData, portalData{Index: portalIndex(i), LatLng: portal.LatLng})
+		portalsData = append(portalsData, portalData{
+			Index: portalIndex(i), 
+			LatLng: s2.PointFromLatLng(portal.LatLng)})
 	}
 	return portalsData
 }
@@ -41,6 +43,8 @@ func portalsInsideWedge(portals []portalData, a, b, c portalData, result []porta
 	}
 	return result
 }
+// returns a subset of portals from portals that lie inside wedge ab, ac. 
+// It reorders the input portals slice and returns its subslice
 func partitionPortalsInsideWedge(portals []portalData, a, b, c portalData) []portalData {
 	wedge := newTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
 	length := len(portals)
@@ -107,16 +111,18 @@ func hasAllIndicesInThePair(indices []int, a, b int) bool {
 }
 
 func pointToJSONCoords(point s2.Point) string {
-	latlng := s2.LatLngFromPoint(point)
-	return fmt.Sprintf(`{"lat":%f,"lng":%f}`, latlng.Lat.Degrees(), latlng.Lng.Degrees())
+	return latLngToJSONCoords(s2.LatLngFromPoint(point))
+}
+func latLngToJSONCoords(latLng s2.LatLng) string {
+	return fmt.Sprintf(`{"lat":%f,"lng":%f}`, latLng.Lat.Degrees(), latLng.Lng.Degrees())
 }
 func PolylineFromPortalList(portals []Portal) string {
 	var json strings.Builder
 	json.WriteString(`{"type":"polyline","latLngs":[`)
 	if len(portals) > 0 {
-		fmt.Fprint(&json, pointToJSONCoords(portals[0].LatLng))
+		fmt.Fprint(&json, latLngToJSONCoords(portals[0].LatLng))
 		for _, portal := range portals[1:] {
-			fmt.Fprintf(&json, ",%s", pointToJSONCoords(portal.LatLng))
+			fmt.Fprintf(&json, ",%s", latLngToJSONCoords(portal.LatLng))
 		}
 	}
 	json.WriteString(`],"color":"#a24ac3"}`)

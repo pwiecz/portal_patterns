@@ -2,7 +2,14 @@ package lib
 
 import "testing"
 
-func isCorrectThreeCorner(p [3]IndexedPortal, portals []IndexedPortal) bool {
+import "github.com/golang/geo/s2"
+
+type indexedPortalData struct {
+	Index int
+	Portal portalData
+}
+
+func isCorrectThreeCorner(p [3]indexedPortalData, portals []indexedPortalData) bool {
 	if len(portals) == 0 {
 		return true
 	}
@@ -21,7 +28,17 @@ func checkValidThreeCornerResult(expectedLength int, portals []IndexedPortal, t 
 	if portals[0].Index != 0 || portals[1].Index != 1 || portals[2].Index != 2 {
 		t.Errorf("Result is not correct three corner fielding")
 	}
-	if !isCorrectThreeCorner([3]IndexedPortal{portals[0], portals[1], portals[2]}, portals[3:]) {
+	indexedPortalsData := make([]indexedPortalData, 0, len(portals))
+	for i, portal := range portals {
+		indexedPortalsData = append(indexedPortalsData, indexedPortalData{
+			Index: portal.Index,
+			Portal: portalData{
+				Index: portalIndex(i),
+				LatLng: s2.PointFromLatLng(portal.Portal.LatLng),
+			},
+		})
+	}
+	if !isCorrectThreeCorner([3]indexedPortalData{indexedPortalsData[0], indexedPortalsData[1], indexedPortalsData[2]}, indexedPortalsData[3:]) {
 		t.Errorf("Result is not correct three corner fielding")
 	}
 }

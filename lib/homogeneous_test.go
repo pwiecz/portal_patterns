@@ -8,7 +8,7 @@ var portals []Portal
 func numPortalsPerDepth(depth uint16) int {
 	return int(math.Pow(3, float64(depth-1)))/2 + 3
 }
-func isCorrectHomogeneous(p0, p1, p2 Portal, depth uint16, portals []Portal) ([]Portal, bool) {
+func isCorrectHomogeneous(p0, p1, p2 portalData, depth uint16, portals []portalData) ([]portalData, bool) {
 	if depth == 1 {
 		return portals, true
 	}
@@ -37,7 +37,8 @@ func checkValidHomogeneousResult(expectedDepth uint16, portals []Portal, depth u
 		t.Errorf("Expected %d portals for depth %d, got %d portals", numPortalsPerDepth(depth), depth, len(portals))
 		return
 	}
-	if _, ok := isCorrectHomogeneous(portals[0], portals[1], portals[2], depth, portals[3:]); !ok {
+	portalsData := portalsToPortalData(portals)
+	if _, ok := isCorrectHomogeneous(portalsData[0], portalsData[1], portalsData[2], depth, portalsData[3:]); !ok {
 		t.Errorf("Result is not correct homogeneous fielding")
 	}
 }

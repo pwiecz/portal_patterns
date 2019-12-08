@@ -13,14 +13,7 @@ func LargestDoubleHerringboneST(portals []Portal, fixedBaseIndices []int, progre
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
-	portalsData := make([]portalData, 0, len(portals))
-	for i, portal := range portals {
-		portalsData = append(portalsData, portalData{Index: portalIndex(i), LatLng: portal.LatLng})
-	}
-	portalList := make([]portalData, 0, len(portals))
-	for _, p := range portalsData {
-		portalList = append(portalList, p)
-	}
+	portalsData := portalsToPortalData(portals)
 
 	var largestCCW, largestCW []portalIndex
 	var bestB0, bestB1 portalIndex

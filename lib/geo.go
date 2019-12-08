@@ -25,6 +25,7 @@ func newTriangleQuery(a, b, c s2.Point) triangleQuery {
 	return triangleQuery{aCrossB, cCrossA, bCrossC}
 }
 
+// returns true if points abc are counterclockwise
 func sign(aCrossB r3.Vector, c s2.Point) bool {
 	return aCrossB.Dot(c.Vector) > 0
 }

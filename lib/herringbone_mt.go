@@ -115,10 +115,7 @@ func LargestHerringboneMT(portals []Portal, fixedBaseIndices []int, numWorkers i
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
-	portalsData := make([]portalData, 0, len(portals))
-	for i, portal := range portals {
-		portalsData = append(portalsData, portalData{Index: portalIndex(i), LatLng: portal.LatLng})
-	}
+	portalsData := portalsToPortalData(portals)
 
 	resultCache := sync.Pool{
 		New: func() interface{} {

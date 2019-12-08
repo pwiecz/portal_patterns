@@ -2,7 +2,7 @@ package lib
 
 import "testing"
 
-func isCorrectCobweb(p0, p1, p2 Portal, portals []Portal) bool {
+func isCorrectCobweb(p0, p1, p2 portalData, portals []portalData) bool {
 	if len(portals) == 0 {
 		return true
 	}
@@ -17,7 +17,8 @@ func checkValidCobwebResult(expectedLength int, portals []Portal, t *testing.T) 
 	if len(portals) != expectedLength {
 		t.Errorf("Expected length %d, actual length %d", expectedLength, len(portals))
 	}
-	if !isCorrectCobweb(portals[0], portals[1], portals[2], portals[3:]) {
+	portalsData := portalsToPortalData(portals)
+	if !isCorrectCobweb(portalsData[0], portalsData[1], portalsData[2], portalsData[3:]) {
 		t.Errorf("Result is not correct cobweb fielding")
 	}
 }
