@@ -3,10 +3,6 @@ package lib
 import "fmt"
 import "math"
 import "strings"
-import "image"
-import "image/png"
-import "image/color"
-import "os"
 import "github.com/golang/geo/s2"
 import "github.com/golang/geo/r2"
 
@@ -49,25 +45,17 @@ func portalsToPortalData(portals []Portal) []portalData {
 		y := (cosCLng*math.Sin(portal.LatLng.Lng.Radians()) - sinCLng*math.Cos(portal.LatLng.Lng.Radians())*math.Cos(centroid.Lat.Radians()-portal.LatLng.Lat.Radians())) / cosC
 		minX, minY = math.Min(x, minX), math.Min(y, minY)
 		maxX, maxY = math.Max(x, maxX), math.Max(y, maxY)
-		fmt.Printf("x:%f, y:%f\n", x, y)
 		portalsData = append(portalsData, portalData{
 			Index:  portalIndex(i),
 			LatLng: r2.Point{X: x, Y: y},
 		})
 	}
-	img := image.NewGray(image.Rect(0, 0, 1000, 1000))
 	for i, portal := range portalsData {
 		x := (portal.LatLng.X - minX) / (maxX - minX)
 		y := (portal.LatLng.Y - minY) / (maxY - minY)
 		portalsData[i].LatLng.X = x
 		portalsData[i].LatLng.Y = y
-		img.Set((int)(x*1000), (int)(y*1000), color.Gray{255})
 	}
-	f, err := os.Create("/home/piotr/portals.png")
-	if err != nil {
-		panic(err)
-	}
-	png.Encode(f, img)
 	return portalsData
 }
 

@@ -81,18 +81,12 @@ func merge(p, a, b portalIndex) (portalIndex, portalIndex, portalIndex) {
 
 func (s *thickTrianglesTriangleScorer) scoreCandidate(p portalData) {
 	if s.validLevel2Candidate {
-		// We multiply by radiansToMeters not to obtain any meaningful distance measure
-		// (as ChordAngle returns a squared distance anyway), but just to scale the number up
-		// to make it fit in float32 precision range.
 		lvl2Height := float32(
 			float64Min(
-//				float64(s.abDistance.ChordAngle(p.LatLng)),
-				float64(s.abDistance.Distance(p.LatLng)),
+				s.abDistance.DistanceSq(p.LatLng),
 				float64Min(
-//					float64(s.acDistance.ChordAngle(p.LatLng)),
-					float64(s.acDistance.Distance(p.LatLng)),
-//					float64(s.bcDistance.ChordAngle(p.LatLng))
-					float64(s.bcDistance.Distance(p.LatLng)))) * radiansToMeters)
+					s.acDistance.DistanceSq(p.LatLng),
+					s.bcDistance.DistanceSq(p.LatLng))))
 		if lvl2Height > *s.scorePtrs[0] {
 			*s.scorePtrs[0] = lvl2Height
 			s.candidates[0] = p.Index

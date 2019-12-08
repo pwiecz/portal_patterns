@@ -1,5 +1,6 @@
 package r2geo
 
+import "math"
 import "testing"
 
 import "github.com/golang/geo/r2"
@@ -69,6 +70,32 @@ func TestWedge(t *testing.T) {
 			if q.ContainsPoint(p) {
 				t.Errorf("Wedge %d should not contain point %f,%f", i, p.X, p.Y)
 			}
+		}
+	}
+}
+
+func TestDistance(t *testing.T) {
+	a := r2.Point{0, 0}
+	b := r2.Point{1,0}
+	q:= NewDistanceQuery(a, b)
+	points := []r2.Point{
+		r2.Point{-0.5, 0},
+		r2.Point{0, 0.25},
+		r2.Point{0.1, 0.125},
+		r2.Point{1, 1},
+		r2.Point{2, -1},
+	}
+	results := []float64 {
+		0.5,
+		0.25,
+		0.125,
+		1,
+		math.Sqrt(2),
+	}
+	for i, point := range points {
+		d := q.Distance(point)
+		if math.Abs(d - results[i]) > 0.00001 {
+			t.Errorf("Expected distance for point %f,%f - %f got %f", point.X, point.Y, results[i], d)
 		}
 	}
 }

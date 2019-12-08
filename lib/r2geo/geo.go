@@ -72,20 +72,61 @@ func (t *TriangleWedgeQuery) ContainsPoint(o r2.Point) bool {
 // DistanceQuery helps find distance from segment a,b to a point
 type DistanceQuery struct {
 	a, b r2.Point
-	lenSq float64
+	ab r2.Point
+	invLenSq float64
 }
 
 func NewDistanceQuery(a, b r2.Point) DistanceQuery {
-	ab := a.Sub(b)
-	return DistanceQuery{a, b, ab.X*ab.X+ab.Y*ab.Y}
+	ab := b.Sub(a)
+	lenSq := ab.X*ab.X+ab.Y*ab.Y
+	if lenSq == 0 {
+		return DistanceQuery{
+			a: a,
+			b: b,
+			ab: b.Sub(a),
+			invLenSq: 0,
+		}
+	}
+	return DistanceQuery{
+		a: a,
+		b: b,
+		ab: b.Sub(a),
+		invLenSq: 1. / lenSq,
+	}
+}
+func norm(p r2.Point) float64 {
+	return math.Sqrt(p.X*p.X+p.Y*p.Y)
+}
+func normSq(p r2.Point) float64 {
+	return p.X*p.X+p.Y*p.Y
 }
 func (d *DistanceQuery) Distance(p r2.Point) float64 {
-	if d.lenSq == 0 {
-		return p.Sub(d.a).Norm()
+	if d.invLenSq == 0 {
+		return norm(p.Sub(d.a))
 	}
-	t := math.Max(0, math.Min(1, p.Sub(d.a).Dot(d.b.Sub(d.a)) / d.lenSq))
-	proj := d.a.Add(d.b.Sub(d.a).Mul(t))
-	return p.Sub(proj).Norm()
+	t := p.Sub(d.a).Dot(d.ab) * d.invLenSq
+	if t <= 0 {
+		return norm(p.Sub(d.a))
+	} else if t >= 1 {
+		return norm(p.Sub(d.b))
+	} else {
+		proj := d.a.Add(d.ab.Mul(t))
+		return norm(p.Sub(proj))
+	}
+}
+func (d *DistanceQuery) DistanceSq(p r2.Point) float64 {
+	if d.invLenSq == 0 {
+		return normSq(p.Sub(d.a))
+	}
+	t := p.Sub(d.a).Dot(d.ab) * d.invLenSq
+	if t <= 0 {
+		return normSq(p.Sub(d.a))
+	} else if t >= 1 {
+		return normSq(p.Sub(d.b))
+	} else {
+		proj := d.a.Add(d.ab.Mul(t))
+		return normSq(p.Sub(proj))
+	}
 }
 
 func TriangleArea(p0, p1, p2 r2.Point) float64 {
