@@ -106,7 +106,11 @@ func (s *thickTrianglesTriangleScorer) scoreCandidate(p portalData) {
 				s.getHeight(t0, t1, t2),
 				s.getHeight(u0, u1, u2)))
 		if minHeight == 0 {
-			continue
+			if s.perfect {
+				continue
+			} else {
+				break
+			}
 		}
 		if minHeight > *s.scorePtrs[level-2] {
 			*s.scorePtrs[level-2] = minHeight
