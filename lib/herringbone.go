@@ -2,9 +2,6 @@ package lib
 
 import "math"
 import "sort"
-//import "github.com/golang/geo/s1"
-//import "github.com/golang/geo/s2"
-//import "github.com/golang/geo/r3"
 import "github.com/golang/geo/r2"
 import "github.com/pwiecz/portal_patterns/lib/r2geo"
 
@@ -18,23 +15,17 @@ func LargestHerringbone(portals []Portal, fixedBaseIndices []int, numWorkers int
 
 type node struct {
 	index      portalIndex
-	start, end float64//s1.Angle
-	//distance   s1.ChordAngle
+	start, end float64
 	distance   float64
 	length     uint16
 	next       portalIndex
 }
 
-//func angle(a, b s2.Point, v r3.Vector) s1.Angle {
-//	return a.PointCross(b).Angle(v)
-//}
+// Internal angle at b in triangle abc. Value must be in range [-Pi, Pi].
 func angle(a, b, c r2.Point) float64 {
-	ab := b.Sub(a)
+	ab := a.Sub(b)
 	bc := c.Sub(b)
-	angle := math.Atan2(ab.Y, ab.X) - math.Atan2(bc.Y, bc.X)
-	if angle < 0 {
-		angle = angle + math.Pi
-	}
+	angle := math.Acos(ab.Dot(bc) / (ab.Norm() * bc.Norm()))
 	return angle
 }
 
@@ -54,7 +45,6 @@ func newBestHerringboneQuery(portals []portalData) *bestHerringboneQuery {
 
 func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []portalIndex) []portalIndex {
 	q.nodes = q.nodes[:0]
-	//v0, v1 := b1.LatLng.PointCross(b0.LatLng).Vector, b0.LatLng.PointCross(b1.LatLng).Vector
 	distQuery := r2geo.NewDistanceQuery(b0.LatLng, b1.LatLng)
 	for _, portal := range q.portals {
 		if portal == b0 || portal == b1 {
@@ -63,10 +53,8 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 		if r2geo.Sign(portal.LatLng, b0.LatLng, b1.LatLng) <= 0 {
 			continue
 		}
-		//a0, a1 := angle(portal.LatLng, b0.LatLng, v0), angle(portal.LatLng, b1.LatLng, v1)
 		a0, a1 := angle(portal.LatLng, b0.LatLng, b1.LatLng), angle(portal.LatLng, b1.LatLng, b0.LatLng)
-		//dist := distQuery.ChordAngle(portal.LatLng)
-		dist := distQuery.Distance(portal.LatLng)
+		dist := distQuery.DistanceSq(portal.LatLng)
 		q.nodes = append(q.nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
 	}
 	sort.Slice(q.nodes, func(i, j int) bool {

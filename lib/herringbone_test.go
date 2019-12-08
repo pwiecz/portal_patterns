@@ -3,7 +3,6 @@ package lib
 import "testing"
 
 import "github.com/golang/geo/s2"
-//import "github.com/golang/geo/r2"
 
 import "github.com/pwiecz/portal_patterns/lib/s2geo"
 
