@@ -1,5 +1,6 @@
 package lib
 
+import"fmt"
 import "math"
 
 type bestHomogeneousQuery struct {
@@ -201,6 +202,7 @@ func (q *bestHomogeneousQuery) appendHomogeneousResult(p0, p1, p2 portalIndex, m
 		return result
 	}
 	bestP := q.getIndex(p0, p1, p2).Index
+	fmt.Printf("%f,%f\n", q.portals[bestP].LatLng.X,q.portals[bestP].LatLng.Y)
 	result = append(result, bestP)
 	result = q.appendHomogeneousResult(bestP, p1, p2, maxDepth-1, result)
 	result = q.appendHomogeneousResult(p0, bestP, p2, maxDepth-1, result)

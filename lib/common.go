@@ -3,8 +3,14 @@ package lib
 import "fmt"
 import "math"
 import "strings"
-
+import "image"
+import "image/png"
+import "image/color"
+import "os"
 import "github.com/golang/geo/s2"
+import "github.com/golang/geo/r2"
+
+import "github.com/pwiecz/portal_patterns/lib/r2geo"
 
 type portalIndex uint16
 
@@ -12,16 +18,56 @@ const invalidPortalIndex portalIndex = math.MaxUint16
 
 type portalData struct {
 	Index  portalIndex
-	LatLng s2.Point
+	LatLng r2.Point
 }
 
-func portalsToPortalData(portals []Portal) []portalData {
+/*func portalsToPortalData(portals []Portal) []portalData {
 	portalsData := make([]portalData, 0, len(portals))
 	for i, portal := range portals {
 		portalsData = append(portalsData, portalData{
-			Index: portalIndex(i), 
+			Index: portalIndex(i),
 			LatLng: s2.PointFromLatLng(portal.LatLng)})
 	}
+	return portalsData
+}*/
+
+func portalsToPortalData(portals []Portal) []portalData {
+	chq := s2.NewConvexHullQuery()
+	for _, portal := range portals {
+		chq.AddPoint(s2.PointFromLatLng(portal.LatLng))
+	}
+	hq := chq.ConvexHull()
+	centroid := s2.LatLngFromPoint(hq.Centroid())
+	sinCLng := math.Sin(centroid.Lng.Radians())
+	cosCLng := math.Cos(centroid.Lng.Radians())
+	portalsData := make([]portalData, 0, len(portals))
+	minX, minY, maxX, maxY := 1000., 1000., -1000., -1000.
+	for i, portal := range portals {
+		cosC := sinCLng*math.Sin(portal.LatLng.Lng.Radians()) +
+			cosCLng*math.Cos(portal.LatLng.Lng.Radians())*math.Cos(centroid.Lat.Radians()-portal.LatLng.Lat.Radians())
+		x := math.Cos(portal.LatLng.Lng.Radians()) * math.Sin(centroid.Lat.Radians()-portal.LatLng.Lat.Radians()) / cosC
+		y := (cosCLng*math.Sin(portal.LatLng.Lng.Radians()) - sinCLng*math.Cos(portal.LatLng.Lng.Radians())*math.Cos(centroid.Lat.Radians()-portal.LatLng.Lat.Radians())) / cosC
+		minX, minY = math.Min(x, minX), math.Min(y, minY)
+		maxX, maxY = math.Max(x, maxX), math.Max(y, maxY)
+		fmt.Printf("x:%f, y:%f\n", x, y)
+		portalsData = append(portalsData, portalData{
+			Index:  portalIndex(i),
+			LatLng: r2.Point{X: x, Y: y},
+		})
+	}
+	img := image.NewGray(image.Rect(0, 0, 1000, 1000))
+	for i, portal := range portalsData {
+		x := (portal.LatLng.X - minX) / (maxX - minX)
+		y := (portal.LatLng.Y - minY) / (maxY - minY)
+		portalsData[i].LatLng.X = x
+		portalsData[i].LatLng.Y = y
+		img.Set((int)(x*1000), (int)(y*1000), color.Gray{255})
+	}
+	f, err := os.Create("/home/piotr/portals.png")
+	if err != nil {
+		panic(err)
+	}
+	png.Encode(f, img)
 	return portalsData
 }
 
@@ -33,7 +79,7 @@ type bestSolution struct {
 }
 
 func portalsInsideWedge(portals []portalData, a, b, c portalData, result []portalData) []portalData {
-	wedge := newTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
+	wedge := r2geo.NewTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
 	result = result[:0]
 	for _, p := range portals {
 		if p.Index != a.Index && p.Index != b.Index && p.Index != c.Index &&
@@ -43,10 +89,11 @@ func portalsInsideWedge(portals []portalData, a, b, c portalData, result []porta
 	}
 	return result
 }
-// returns a subset of portals from portals that lie inside wedge ab, ac. 
+
+// returns a subset of portals from portals that lie inside wedge ab, ac.
 // It reorders the input portals slice and returns its subslice
 func partitionPortalsInsideWedge(portals []portalData, a, b, c portalData) []portalData {
-	wedge := newTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
+	wedge := r2geo.NewTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
 	length := len(portals)
 	for i := 0; i < length; {
 		p := portals[i]
@@ -62,7 +109,7 @@ func partitionPortalsInsideWedge(portals []portalData, a, b, c portalData) []por
 }
 
 func portalsInsideTriangle(portals []portalData, a, b, c portalData, result []portalData) []portalData {
-	triangle := newTriangleQuery(a.LatLng, b.LatLng, c.LatLng)
+	triangle := r2geo.NewTriangleQuery(a.LatLng, b.LatLng, c.LatLng)
 	result = result[:0]
 	for _, p := range portals {
 		if p.Index != a.Index && p.Index != b.Index && p.Index != c.Index &&

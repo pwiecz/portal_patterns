@@ -1,9 +1,12 @@
 package lib
 
+import "math"
 import "sort"
-import "github.com/golang/geo/s1"
-import "github.com/golang/geo/s2"
-import "github.com/golang/geo/r3"
+//import "github.com/golang/geo/s1"
+//import "github.com/golang/geo/s2"
+//import "github.com/golang/geo/r3"
+import "github.com/golang/geo/r2"
+import "github.com/pwiecz/portal_patterns/lib/r2geo"
 
 // LargestHerringbone - Find largest possible multilayer of portals to be made
 func LargestHerringbone(portals []Portal, fixedBaseIndices []int, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal) {
@@ -15,14 +18,24 @@ func LargestHerringbone(portals []Portal, fixedBaseIndices []int, numWorkers int
 
 type node struct {
 	index      portalIndex
-	start, end s1.Angle
-	distance   s1.ChordAngle
+	start, end float64//s1.Angle
+	//distance   s1.ChordAngle
+	distance   float64
 	length     uint16
 	next       portalIndex
 }
 
-func angle(a, b s2.Point, v r3.Vector) s1.Angle {
-	return a.PointCross(b).Angle(v)
+//func angle(a, b s2.Point, v r3.Vector) s1.Angle {
+//	return a.PointCross(b).Angle(v)
+//}
+func angle(a, b, c r2.Point) float64 {
+	ab := b.Sub(a)
+	bc := c.Sub(b)
+	angle := math.Atan2(ab.Y, ab.X) - math.Atan2(bc.Y, bc.X)
+	if angle < 0 {
+		angle = angle + math.Pi
+	}
+	return angle
 }
 
 type bestHerringboneQuery struct {
@@ -41,17 +54,19 @@ func newBestHerringboneQuery(portals []portalData) *bestHerringboneQuery {
 
 func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []portalIndex) []portalIndex {
 	q.nodes = q.nodes[:0]
-	v0, v1 := b1.LatLng.PointCross(b0.LatLng).Vector, b0.LatLng.PointCross(b1.LatLng).Vector
-	distQuery := newDistanceQuery(b0.LatLng, b1.LatLng)
+	//v0, v1 := b1.LatLng.PointCross(b0.LatLng).Vector, b0.LatLng.PointCross(b1.LatLng).Vector
+	distQuery := r2geo.NewDistanceQuery(b0.LatLng, b1.LatLng)
 	for _, portal := range q.portals {
 		if portal == b0 || portal == b1 {
 			continue
 		}
-		if !s2.Sign(portal.LatLng, b0.LatLng, b1.LatLng) {
+		if r2geo.Sign(portal.LatLng, b0.LatLng, b1.LatLng) <= 0 {
 			continue
 		}
-		a0, a1 := angle(portal.LatLng, b0.LatLng, v0), angle(portal.LatLng, b1.LatLng, v1)
-		dist := distQuery.ChordAngle(portal.LatLng)
+		//a0, a1 := angle(portal.LatLng, b0.LatLng, v0), angle(portal.LatLng, b1.LatLng, v1)
+		a0, a1 := angle(portal.LatLng, b0.LatLng, b1.LatLng), angle(portal.LatLng, b1.LatLng, b0.LatLng)
+		//dist := distQuery.ChordAngle(portal.LatLng)
+		dist := distQuery.Distance(portal.LatLng)
 		q.nodes = append(q.nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
 	}
 	sort.Slice(q.nodes, func(i, j int) bool {
@@ -69,10 +84,10 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 				if q.nodes[j].length >= bestLength {
 					bestLength = q.nodes[j].length + 1
 					bestNext = portalIndex(j)
-					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * radiansToMeters)
+					scaledDistance := float32(r2geo.Distance(q.portals[node.index].LatLng, q.portals[q.nodes[j].index].LatLng) * radiansToMeters)
 					bestWeight = q.weights[q.nodes[j].index] + scaledDistance
 				} else if q.nodes[j].length+1 == bestLength {
-					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * radiansToMeters)
+					scaledDistance := float32(r2geo.Distance(q.portals[node.index].LatLng, q.portals[q.nodes[j].index].LatLng) * radiansToMeters)
 					if q.weights[node.index]+scaledDistance < bestWeight {
 						bestLength = q.nodes[j].length + 1
 						bestNext = portalIndex(j)
@@ -87,8 +102,8 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 			q.weights[node.index] = bestWeight
 		} else {
 			q.weights[node.index] = float32(float64Min(
-				distance(q.portals[node.index], b0),
-				distance(q.portals[node.index], b1)) * radiansToMeters)
+				r2geo.Distance(q.portals[node.index].LatLng, b0.LatLng),
+				r2geo.Distance(q.portals[node.index].LatLng, b1.LatLng)) * radiansToMeters)
 		}
 	}
 

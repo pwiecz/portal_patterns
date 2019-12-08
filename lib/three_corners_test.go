@@ -4,17 +4,19 @@ import "testing"
 
 import "github.com/golang/geo/s2"
 
-type indexedPortalData struct {
+import "github.com/pwiecz/portal_patterns/lib/s2geo"
+
+type indexedPoint struct {
 	Index int
-	Portal portalData
+	LatLng s2.Point
 }
 
-func isCorrectThreeCorner(p [3]indexedPortalData, portals []indexedPortalData) bool {
+func isCorrectThreeCorner(p [3]indexedPoint, portals []indexedPoint) bool {
 	if len(portals) == 0 {
 		return true
 	}
-	triangle := newTriangleQuery(p[0].Portal.LatLng, p[1].Portal.LatLng, p[2].Portal.LatLng)
-	if !triangle.ContainsPoint(portals[0].Portal.LatLng) {
+	triangle := s2geo.NewTriangleQuery(p[0].LatLng, p[1].LatLng, p[2].LatLng)
+	if !triangle.ContainsPoint(portals[0].LatLng) {
 		return false
 	}
 	p[portals[0].Index] = portals[0]
@@ -28,17 +30,14 @@ func checkValidThreeCornerResult(expectedLength int, portals []IndexedPortal, t 
 	if portals[0].Index != 0 || portals[1].Index != 1 || portals[2].Index != 2 {
 		t.Errorf("Result is not correct three corner fielding")
 	}
-	indexedPortalsData := make([]indexedPortalData, 0, len(portals))
-	for i, portal := range portals {
-		indexedPortalsData = append(indexedPortalsData, indexedPortalData{
+	indexedPoints := make([]indexedPoint, 0, len(portals))
+	for _, portal := range portals {
+		indexedPoints = append(indexedPoints, indexedPoint{
 			Index: portal.Index,
-			Portal: portalData{
-				Index: portalIndex(i),
-				LatLng: s2.PointFromLatLng(portal.Portal.LatLng),
-			},
+			LatLng: s2.PointFromLatLng(portal.Portal.LatLng),
 		})
 	}
-	if !isCorrectThreeCorner([3]indexedPortalData{indexedPortalsData[0], indexedPortalsData[1], indexedPortalsData[2]}, indexedPortalsData[3:]) {
+	if !isCorrectThreeCorner([3]indexedPoint{indexedPoints[0], indexedPoints[1], indexedPoints[2]}, indexedPoints[3:]) {
 		t.Errorf("Result is not correct three corner fielding")
 	}
 }

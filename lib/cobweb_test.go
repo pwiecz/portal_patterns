@@ -2,11 +2,14 @@ package lib
 
 import "testing"
 
+import "github.com/pwiecz/portal_patterns/lib/r2geo"
+
+
 func isCorrectCobweb(p0, p1, p2 portalData, portals []portalData) bool {
 	if len(portals) == 0 {
 		return true
 	}
-	triangle := newTriangleQuery(p0.LatLng, p1.LatLng, p2.LatLng)
+	triangle := r2geo.NewTriangleQuery(p0.LatLng, p1.LatLng, p2.LatLng)
 	if !triangle.ContainsPoint(portals[0].LatLng) {
 		return false
 	}
