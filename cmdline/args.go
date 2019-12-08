@@ -10,7 +10,7 @@ import "github.com/pwiecz/portal_patterns/lib"
 
 type portalsValue struct {
 	LatLngStrings []string
-	Portals       []s2.Point
+	Portals       []s2.LatLng
 }
 
 func (p *portalsValue) Set(latLngStr string) error {
@@ -26,7 +26,7 @@ func (p *portalsValue) Set(latLngStr string) error {
 	if err != nil {
 		return err
 	}
-	p.Portals = append(p.Portals, s2.PointFromLatLng(s2.LatLngFromDegrees(lat, lng)))
+	p.Portals = append(p.Portals, s2.LatLngFromDegrees(lat, lng))
 	p.LatLngStrings = append(p.LatLngStrings, latLngStr)
 	return nil
 }
@@ -40,7 +40,7 @@ func portalsToIndices(arg portalsValue, portals []lib.Portal) []int {
 	for i, latLng := range arg.Portals {
 		found := false
 		for j, portal := range portals {
-			if latLng.ApproxEqual(portal.LatLng) {
+			if s2.PointFromLatLng(latLng).ApproxEqual(s2.PointFromLatLng(portal.LatLng)) {
 				if found {
 					log.Fatalf("found more than one portal matching the specified corner portal: %s", arg.LatLngStrings[i])
 				}
