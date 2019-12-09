@@ -100,6 +100,20 @@ func (d *distanceQuery) Distance(p s2.Point) s1.Angle {
 	return d.ChordAngle(p).Angle()
 }
 
+type AngleQuery struct {
+	a s2.Point
+	ab r3.Vector
+}
+func NewAngleQuery(a, b s2.Point) AngleQuery {
+	return AngleQuery{
+		a: a,
+		ab: b.PointCross(a).Vector,
+	}
+}
+func (a *AngleQuery) Angle(c s2.Point) s1.Angle {
+	return c.PointCross(a.a).Angle(a.ab)
+}
+
 //func triangleArea(p0, p1, p2 portalData) float64 {
 //	return s2.GirardArea(p0.LatLng, p1.LatLng, p2.LatLng)
 //}
