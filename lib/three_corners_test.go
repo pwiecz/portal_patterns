@@ -7,7 +7,7 @@ import "github.com/golang/geo/s2"
 import "github.com/pwiecz/portal_patterns/lib/s2geo"
 
 type indexedPoint struct {
-	Index int
+	Index  int
 	LatLng s2.Point
 }
 
@@ -28,17 +28,17 @@ func checkValidThreeCornerResult(expectedLength int, portals []IndexedPortal, t 
 		t.Errorf("Expected length %d, actual length %d", expectedLength, len(portals))
 	}
 	if portals[0].Index != 0 || portals[1].Index != 1 || portals[2].Index != 2 {
-		t.Errorf("Result is not correct three corner fielding")
+		t.Errorf("Result is not a correct three corner fielding")
 	}
 	indexedPoints := make([]indexedPoint, 0, len(portals))
 	for _, portal := range portals {
 		indexedPoints = append(indexedPoints, indexedPoint{
-			Index: portal.Index,
+			Index:  portal.Index,
 			LatLng: s2.PointFromLatLng(portal.Portal.LatLng),
 		})
 	}
 	if !isCorrectThreeCorner([3]indexedPoint{indexedPoints[0], indexedPoints[1], indexedPoints[2]}, indexedPoints[3:]) {
-		t.Errorf("Result is not correct three corner fielding")
+		t.Errorf("Result is not a correct three corner fielding")
 	}
 }
 
