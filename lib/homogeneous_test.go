@@ -3,8 +3,6 @@ package lib
 import "math"
 import "testing"
 
-var portals []Portal
-
 func numPortalsPerDepth(depth uint16) int {
 	return int(math.Pow(3, float64(depth-1)))/2 + 3
 }
