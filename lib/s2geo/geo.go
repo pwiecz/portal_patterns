@@ -100,6 +100,7 @@ func (d *distanceQuery) Distance(p s2.Point) s1.Angle {
 	return d.ChordAngle(p).Angle()
 }
 
+// AngleQuery helps find internal angle of triangle abc at vertex b.
 type AngleQuery struct {
 	a s2.Point
 	ab r3.Vector
