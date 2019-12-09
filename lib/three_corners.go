@@ -47,10 +47,10 @@ func (q *bestThreeCornersQuery) setIndex(i0, i1, i2 portalIndex, s bestSolution)
 	q.index[uint(i0)*q.numPortals1x2+uint(i1)*q.numPortals2+uint(i2)] = s
 }
 func (q *bestThreeCornersQuery) getNumCornerChanges(i0, i1, i2 portalIndex) uint16 {
-	return q.numCornerChanges[uint(i0)*q.numPortals1x2+uint(i2)*q.numPortals2+uint(i2)]
+	return q.numCornerChanges[uint(i0)*q.numPortals1x2+uint(i1)*q.numPortals2+uint(i2)]
 }
 func (q *bestThreeCornersQuery) setNumCornerChanges(i0, i1, i2 portalIndex, n uint16) {
-	q.numCornerChanges[uint(i0)*q.numPortals1x2+uint(i2)*q.numPortals2+uint(i2)] = n
+	q.numCornerChanges[uint(i0)*q.numPortals1x2+uint(i1)*q.numPortals2+uint(i2)] = n
 }
 func (q *bestThreeCornersQuery) findBestThreeCorner(p0, p1, p2 portalData) {
 	if q.getIndex(p0.Index, p1.Index, p2.Index).Length != invalidLength {
