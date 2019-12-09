@@ -13,17 +13,13 @@ type TriangleQuery struct {
 func Sign(a, b, c r2.Point) float64 {
 	return (a.X-c.X)*(b.Y-c.Y) - (b.X-c.X)*(a.Y-c.Y)
 }
+
 func NewTriangleQuery(a, b, c r2.Point) TriangleQuery {
 	if Sign(a, b, c) < 0 {
 		a, c = c, a
 	}
 	return TriangleQuery{a, b, c}
 }
-
-// returns true if points abc are counterclockwise
-//func Sign(aCrossB r3.Vector, c s2.Point) bool {
-//	return aCrossB.Dot(c.Vector) > 0
-//}
 
 func (t *TriangleQuery) ContainsPoint(o r2.Point) bool {
 	if Sign(t.a, t.b, o) > 0 && Sign(t.c, t.a, o) > 0 && Sign(t.b, t.c, o) > 0 {
