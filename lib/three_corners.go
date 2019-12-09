@@ -1,5 +1,5 @@
 package lib
-import "fmt"
+
 type bestThreeCornersQuery struct {
 	portals0           []portalData
 	numPortals0        portalIndex
@@ -79,9 +79,9 @@ func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData, ca
 			candidatesInWedge1 := partitionPortalsInsideWedge(candidates1, portal, p1, p2)
 			candidatesInWedge2 := partitionPortalsInsideWedge(candidates2, portal, p1, p2)
 			candidate, numCornerChanges = q.findBestThreeCornerAux(portal, p1, p2, candidatesInWedge0, candidatesInWedge1, candidatesInWedge2)
-			if candidate.Length > 0 && candidate.Index >= q.numPortals0 {
-				numCornerChanges = numCornerChanges + 1
-			}
+		}
+		if candidate.Length > 0 && candidate.Index >= q.numPortals0 {
+			numCornerChanges = numCornerChanges + 1
 		}
 		candidate.Length = candidate.Length + 1
 		if candidate.Length > bestTC.Length || (candidate.Length == bestTC.Length && numCornerChanges < bestNumCornerChanges) {
@@ -98,9 +98,9 @@ func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData, ca
 			candidatesInWedge1 := partitionPortalsInsideWedge(candidates1, portal, p0, p2)
 			candidatesInWedge2 := partitionPortalsInsideWedge(candidates2, portal, p0, p2)
 			candidate, numCornerChanges = q.findBestThreeCornerAux(p0, portal, p2, candidatesInWedge0, candidatesInWedge1, candidatesInWedge2)
-			if candidate.Length > 0 && (candidate.Index < q.numPortals0 || candidate.Index >= q.numPortals0+q.numPortals1) {
-				numCornerChanges = numCornerChanges + 1
-			}
+		}
+		if candidate.Length > 0 && (candidate.Index < q.numPortals0 || candidate.Index >= q.numPortals0+q.numPortals1) {
+			numCornerChanges = numCornerChanges + 1
 		}
 		candidate.Length = candidate.Length + 1
 		if candidate.Length > bestTC.Length || (candidate.Length == bestTC.Length && numCornerChanges < bestNumCornerChanges) {
@@ -117,9 +117,9 @@ func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData, ca
 			candidatesInWedge1 := partitionPortalsInsideWedge(candidates1, portal, p0, p1)
 			candidatesInWedge2 := partitionPortalsInsideWedge(candidates2, portal, p0, p1)
 			candidate, numCornerChanges = q.findBestThreeCornerAux(p0, p1, portal, candidatesInWedge0, candidatesInWedge1, candidatesInWedge2)
-			if candidate.Length > 0 && candidate.Index < q.numPortals0+q.numPortals1 {
-				numCornerChanges = numCornerChanges + 1
-			}
+		}
+		if candidate.Length > 0 && candidate.Index < q.numPortals0+q.numPortals1 {
+			numCornerChanges = numCornerChanges + 1
 		}
 		candidate.Length = candidate.Length + 1
 		if candidate.Length > bestTC.Length || (candidate.Length == bestTC.Length && numCornerChanges < bestNumCornerChanges) {
