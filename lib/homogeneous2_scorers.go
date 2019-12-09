@@ -7,7 +7,6 @@ import "github.com/pwiecz/portal_patterns/lib/r2geo"
 type thickTrianglesScorer struct {
 	minHeight    []float32
 	numPortals   uint
-	numPortalsSq uint
 }
 
 func newThickTrianglesScorer(numPortals int) *thickTrianglesScorer {
@@ -16,7 +15,6 @@ func newThickTrianglesScorer(numPortals int) *thickTrianglesScorer {
 	return &thickTrianglesScorer{
 		minHeight:    minHeight,
 		numPortals:   numPortals64,
-		numPortalsSq: numPortals64 * numPortals64,
 	}
 }
 
@@ -24,7 +22,6 @@ func newThickTrianglesScorer(numPortals int) *thickTrianglesScorer {
 type thickTrianglesTriangleScorer struct {
 	minHeight            []float32
 	numPortals           uint
-	numPortalsSq         uint
 	maxDepth             int
 	perfect              bool
 	validLevel2Candidate bool
@@ -40,7 +37,6 @@ func (s *thickTrianglesScorer) newTriangleScorer(maxDepth int, perfect bool) hom
 	return &thickTrianglesTriangleScorer{
 		minHeight:    s.minHeight,
 		numPortals:   s.numPortals,
-		numPortalsSq: s.numPortalsSq,
 		maxDepth:     maxDepth,
 		perfect:      perfect,
 	}
@@ -50,7 +46,7 @@ func (s *thickTrianglesTriangleScorer) reset(a, b, c portalData, numCandidates i
 	a, b, c = sorted(a, b, c)
 	for level := 2; level <= s.maxDepth; level++ {
 		i, j, k := indexOrdering(a.Index, b.Index, c.Index, level)
-		s.scorePtrs[level-2] = &s.minHeight[uint(i)*s.numPortalsSq+uint(j)*s.numPortals+uint(k)]
+		s.scorePtrs[level-2] = &s.minHeight[(uint(i)*s.numPortals+uint(j))*s.numPortals+uint(k)]
 	}
 	for i := 0; i < 6; i++ {
 		s.candidates[i] = invalidPortalIndex - 1
@@ -62,10 +58,10 @@ func (s *thickTrianglesTriangleScorer) reset(a, b, c portalData, numCandidates i
 	s.validLevel2Candidate = !s.perfect || numCandidates == 1
 }
 func (s *thickTrianglesTriangleScorer) getHeight(a, b, c portalIndex) float32 {
-	return s.minHeight[uint(a)*s.numPortalsSq+uint(b)*s.numPortals+uint(c)]
+	return s.minHeight[(uint(a)*s.numPortals+uint(b))*s.numPortals+uint(c)]
 }
 func (s *thickTrianglesScorer) scoreTriangle(a, b, c portalData) float32 {
-	return s.minHeight[uint(a.Index)*s.numPortalsSq+uint(b.Index)*s.numPortals+uint(c.Index)]
+	return s.minHeight[(uint(a.Index)*s.numPortals+uint(b.Index))*s.numPortals+uint(c.Index)]
 }
 
 // assuming a,b are ordered(sorted), return sorted triple of (p, a, b)
