@@ -3,7 +3,6 @@ package lib
 import "sort"
 import "github.com/golang/geo/s1"
 import "github.com/golang/geo/s2"
-import "github.com/golang/geo/r3"
 
 // LargestHerringbone - Find largest possible multilayer of portals to be made
 func LargestHerringbone(portals []Portal, fixedBaseIndices []int, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal) {
@@ -19,10 +18,6 @@ type node struct {
 	distance   s1.ChordAngle
 	length     uint16
 	next       portalIndex
-}
-
-func angle(a, b s2.Point, v r3.Vector) s1.Angle {
-	return a.PointCross(b).Angle(v)
 }
 
 type bestHerringboneQuery struct {
@@ -41,7 +36,7 @@ func newBestHerringboneQuery(portals []portalData) *bestHerringboneQuery {
 
 func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []portalIndex) []portalIndex {
 	q.nodes = q.nodes[:0]
-	v0, v1 := b1.LatLng.PointCross(b0.LatLng).Vector, b0.LatLng.PointCross(b1.LatLng).Vector
+	aq0, aq1 := NewAngleQuery(b0.LatLng, b1.LatLng), NewAngleQuery(b1.LatLng, b0.LatLng)
 	distQuery := newDistanceQuery(b0.LatLng, b1.LatLng)
 	for _, portal := range q.portals {
 		if portal == b0 || portal == b1 {
@@ -50,7 +45,7 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 		if !s2.Sign(portal.LatLng, b0.LatLng, b1.LatLng) {
 			continue
 		}
-		a0, a1 := angle(portal.LatLng, b0.LatLng, v0), angle(portal.LatLng, b1.LatLng, v1)
+		a0, a1 := aq0.Angle(portal.LatLng), aq1.Angle(portal.LatLng)
 		dist := distQuery.ChordAngle(portal.LatLng)
 		q.nodes = append(q.nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
 	}

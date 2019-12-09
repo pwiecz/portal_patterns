@@ -21,7 +21,7 @@ type herringboneRequest struct {
 
 func (q *bestHerringboneMtQuery) findBestHerringbone(b0, b1 portalData, nodes []node, weights []float32, result []portalIndex) []portalIndex {
 	nodes = nodes[:0]
-	v0, v1 := b1.LatLng.PointCross(b0.LatLng).Vector, b0.LatLng.PointCross(b1.LatLng).Vector
+	aq0, aq1 := NewAngleQuery(b0.LatLng, b1.LatLng), NewAngleQuery(b1.LatLng, b0.LatLng)
 	distQuery := newDistanceQuery(b0.LatLng, b1.LatLng)
 	for _, portal := range q.portals {
 		if portal == b0 || portal == b1 {
@@ -30,7 +30,7 @@ func (q *bestHerringboneMtQuery) findBestHerringbone(b0, b1 portalData, nodes []
 		if !s2.Sign(portal.LatLng, b0.LatLng, b1.LatLng) {
 			continue
 		}
-		a0, a1 := angle(portal.LatLng, b0.LatLng, v0), angle(portal.LatLng, b1.LatLng, v1)
+		a0, a1 := aq0.Angle(portal.LatLng), aq1.Angle(portal.LatLng)
 		dist := distQuery.ChordAngle(portal.LatLng)
 		nodes = append(nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
 	}
