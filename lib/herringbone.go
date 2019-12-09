@@ -1,8 +1,6 @@
 package lib
 
-import "math"
 import "sort"
-import "github.com/golang/geo/r2"
 import "github.com/pwiecz/portal_patterns/lib/r2geo"
 
 // LargestHerringbone - Find largest possible multilayer of portals to be made
@@ -19,14 +17,6 @@ type node struct {
 	distance   float64
 	length     uint16
 	next       portalIndex
-}
-
-// Internal angle at b in triangle abc. Value must be in range [-Pi, Pi].
-func angle(a, b, c r2.Point) float64 {
-	ab := a.Sub(b)
-	bc := c.Sub(b)
-	angle := math.Acos(ab.Dot(bc) / (ab.Norm() * bc.Norm()))
-	return angle
 }
 
 type bestHerringboneQuery struct {
@@ -46,6 +36,7 @@ func newBestHerringboneQuery(portals []portalData) *bestHerringboneQuery {
 func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []portalIndex) []portalIndex {
 	q.nodes = q.nodes[:0]
 	distQuery := r2geo.NewDistanceQuery(b0.LatLng, b1.LatLng)
+	aq0, aq1 := r2geo.NewAngleQuery(b0.LatLng, b1.LatLng), r2geo.NewAngleQuery(b1.LatLng, b0.LatLng)
 	for _, portal := range q.portals {
 		if portal == b0 || portal == b1 {
 			continue
@@ -53,7 +44,7 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 		if r2geo.Sign(portal.LatLng, b0.LatLng, b1.LatLng) <= 0 {
 			continue
 		}
-		a0, a1 := angle(portal.LatLng, b0.LatLng, b1.LatLng), angle(portal.LatLng, b1.LatLng, b0.LatLng)
+		a0, a1 := aq0.Angle(portal.LatLng), aq1.Angle(portal.LatLng)
 		dist := distQuery.DistanceSq(portal.LatLng)
 		q.nodes = append(q.nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
 	}

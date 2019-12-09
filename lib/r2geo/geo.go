@@ -71,34 +71,34 @@ func (t *TriangleWedgeQuery) ContainsPoint(o r2.Point) bool {
 
 // DistanceQuery helps find distance from segment a,b to a point
 type DistanceQuery struct {
-	a, b r2.Point
-	ab r2.Point
+	a, b     r2.Point
+	ab       r2.Point
 	invLenSq float64
 }
 
 func NewDistanceQuery(a, b r2.Point) DistanceQuery {
 	ab := b.Sub(a)
-	lenSq := ab.X*ab.X+ab.Y*ab.Y
+	lenSq := ab.X*ab.X + ab.Y*ab.Y
 	if lenSq == 0 {
 		return DistanceQuery{
-			a: a,
-			b: b,
-			ab: b.Sub(a),
+			a:        a,
+			b:        b,
+			ab:       b.Sub(a),
 			invLenSq: 0,
 		}
 	}
 	return DistanceQuery{
-		a: a,
-		b: b,
-		ab: b.Sub(a),
+		a:        a,
+		b:        b,
+		ab:       b.Sub(a),
 		invLenSq: 1. / lenSq,
 	}
 }
 func length(p r2.Point) float64 {
-	return math.Sqrt(p.X*p.X+p.Y*p.Y)
+	return math.Sqrt(p.X*p.X + p.Y*p.Y)
 }
 func lengthSq(p r2.Point) float64 {
-	return p.X*p.X+p.Y*p.Y
+	return p.X*p.X + p.Y*p.Y
 }
 func (d *DistanceQuery) Distance(p r2.Point) float64 {
 	if d.invLenSq == 0 {
@@ -129,10 +129,32 @@ func (d *DistanceQuery) DistanceSq(p r2.Point) float64 {
 	}
 }
 
+// AngleQuery helps find internal angle of triangle abc at vertex b.
+type AngleQuery struct {
+	b     r2.Point
+	ab    r2.Point
+	abLen float64
+}
+
+func NewAngleQuery(a, b r2.Point) AngleQuery {
+	ab := a.Sub(b)
+	return AngleQuery{
+		b:     b,
+		ab:    ab,
+		abLen: math.Sqrt(ab.X*ab.X + ab.Y*ab.Y),
+	}
+}
+func (a *AngleQuery) Angle(c r2.Point) float64 {
+	bc := c.Sub(a.b)
+	bcLen := math.Sqrt(bc.X*bc.X + bc.Y*bc.Y)
+	return math.Acos(a.ab.Dot(bc) / (a.abLen * bcLen))
+}
+
 func TriangleArea(p0, p1, p2 r2.Point) float64 {
-	return math.Abs((p0.X * (p1.Y - p2.Y) + p1.X * (p2.Y - p0.Y) + p2.X * (p0.Y - p1.Y)) * 0.5)
+	return math.Abs((p0.X*(p1.Y-p2.Y) + p1.X*(p2.Y-p0.Y) + p2.X*(p0.Y-p1.Y)) * 0.5)
 }
 
 func Distance(p0, p1 r2.Point) float64 {
-	return p0.Sub(p1).Norm()
+	dx, dy := p0.X-p1.X, p0.Y-p1.Y
+	return math.Sqrt(dx*dx + dy*dy)
 }
