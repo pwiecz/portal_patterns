@@ -10,8 +10,6 @@ type bestHomogeneousQuery struct {
 	index              []bestSolution
 	// count of portals (used to compute a solution index from indices of three portals)
 	numPortals         uint
-	// square of portal count (used to compute a solution index from indices of three portals)
-	numPortalsSq       uint
 	// callback to be called whenever solution for new triple of portals is found
 	onFilledIndexEntry func()
 	// preallocated storage for lists of portals within triangles at consecutive recursion depths
@@ -35,7 +33,6 @@ func newBestHomogeneousQuery(portals []portalData, maxDepth int, perfect bool, o
 		portals:            portals,
 		index:              index,
 		numPortals:         numPortals,
-		numPortalsSq:       numPortals * numPortals,
 		onFilledIndexEntry: onFilledIndexEntry,
 		portalsInTriangle:  make([][]portalData, len(portals)),
 		maxDepth:           uint16(maxDepth),
@@ -44,10 +41,10 @@ func newBestHomogeneousQuery(portals []portalData, maxDepth int, perfect bool, o
 }
 
 func (q *bestHomogeneousQuery) getIndex(i, j, k portalIndex) bestSolution {
-	return q.index[uint(i)*q.numPortalsSq+uint(j)*q.numPortals+uint(k)]
+	return q.index[(uint(i)*q.numPortals+uint(j))*q.numPortals+uint(k)]
 }
 func (q *bestHomogeneousQuery) setIndex(i, j, k portalIndex, s bestSolution) {
-	q.index[uint(i)*q.numPortalsSq+uint(j)*q.numPortals+uint(k)] = s
+	q.index[(uint(i)*q.numPortals+uint(j))*q.numPortals+uint(k)] = s
 }
 func (q *bestHomogeneousQuery) findBestHomogeneous(p0, p1, p2 portalData) {
 	if q.getIndex(p0.Index, p1.Index, p2.Index).Length != invalidLength {

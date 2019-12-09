@@ -4,7 +4,6 @@ type bestCobwebQuery struct {
 	portals            []portalData
 	index              []bestSolution
 	numPortals         uint
-	numPortalsSq       uint
 	onFilledIndexEntry func()
 	filteredPortals    [][]portalData
 	depth              uint16
@@ -19,7 +18,6 @@ func newBestCobwebQuery(portals []portalData, onFilledIndexEntry func()) *bestCo
 	return &bestCobwebQuery{
 		portals:            portals,
 		numPortals:         numPortals,
-		numPortalsSq:       numPortals * numPortals,
 		index:              index,
 		onFilledIndexEntry: onFilledIndexEntry,
 		filteredPortals:    make([][]portalData, len(portals)),
@@ -27,10 +25,10 @@ func newBestCobwebQuery(portals []portalData, onFilledIndexEntry func()) *bestCo
 	}
 }
 func (q *bestCobwebQuery) getIndex(i, j, k portalIndex) bestSolution {
-	return q.index[uint(i)*q.numPortalsSq+uint(j)*q.numPortals+uint(k)]
+	return q.index[(uint(i)*q.numPortals+uint(j))*q.numPortals+uint(k)]
 }
 func (q *bestCobwebQuery) setIndex(i, j, k portalIndex, s bestSolution) {
-	q.index[uint(i)*q.numPortalsSq+uint(j)*q.numPortals+uint(k)] = s
+	q.index[(uint(i)*q.numPortals+uint(j))*q.numPortals+uint(k)] = s
 }
 func (q *bestCobwebQuery) findBestCobweb(p0, p1, p2 portalData) {
 	if q.getIndex(p0.Index, p1.Index, p2.Index).Length != invalidLength {
