@@ -94,38 +94,38 @@ func NewDistanceQuery(a, b r2.Point) DistanceQuery {
 		invLenSq: 1. / lenSq,
 	}
 }
-func norm(p r2.Point) float64 {
+func length(p r2.Point) float64 {
 	return math.Sqrt(p.X*p.X+p.Y*p.Y)
 }
-func normSq(p r2.Point) float64 {
+func lengthSq(p r2.Point) float64 {
 	return p.X*p.X+p.Y*p.Y
 }
 func (d *DistanceQuery) Distance(p r2.Point) float64 {
 	if d.invLenSq == 0 {
-		return norm(p.Sub(d.a))
+		return length(p.Sub(d.a))
 	}
 	t := p.Sub(d.a).Dot(d.ab) * d.invLenSq
 	if t <= 0 {
-		return norm(p.Sub(d.a))
+		return length(p.Sub(d.a))
 	} else if t >= 1 {
-		return norm(p.Sub(d.b))
+		return length(p.Sub(d.b))
 	} else {
 		proj := d.a.Add(d.ab.Mul(t))
-		return norm(p.Sub(proj))
+		return length(p.Sub(proj))
 	}
 }
 func (d *DistanceQuery) DistanceSq(p r2.Point) float64 {
 	if d.invLenSq == 0 {
-		return normSq(p.Sub(d.a))
+		return lengthSq(p.Sub(d.a))
 	}
 	t := p.Sub(d.a).Dot(d.ab) * d.invLenSq
 	if t <= 0 {
-		return normSq(p.Sub(d.a))
+		return lengthSq(p.Sub(d.a))
 	} else if t >= 1 {
-		return normSq(p.Sub(d.b))
+		return lengthSq(p.Sub(d.b))
 	} else {
 		proj := d.a.Add(d.ab.Mul(t))
-		return normSq(p.Sub(proj))
+		return lengthSq(p.Sub(proj))
 	}
 }
 
