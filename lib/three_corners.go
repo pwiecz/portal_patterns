@@ -47,10 +47,10 @@ func (q *bestThreeCornersQuery) setIndex(i0, i1, i2 portalIndex, s bestSolution)
 	q.index[uint(i0)*q.numPortals1x2+uint(i1)*q.numPortals2+uint(i2)] = s
 }
 func (q *bestThreeCornersQuery) getNumCornerChanges(i0, i1, i2 portalIndex) uint16 {
-	return q.numCornerChanges[uint(i0)*q.numPortals1x2+uint(i2)*q.numPortals2+uint(i2)]
+	return q.numCornerChanges[uint(i0)*q.numPortals1x2+uint(i1)*q.numPortals2+uint(i2)]
 }
 func (q *bestThreeCornersQuery) setNumCornerChanges(i0, i1, i2 portalIndex, n uint16) {
-	q.numCornerChanges[uint(i0)*q.numPortals1x2+uint(i2)*q.numPortals2+uint(i2)] = n
+	q.numCornerChanges[uint(i0)*q.numPortals1x2+uint(i1)*q.numPortals2+uint(i2)] = n
 }
 func (q *bestThreeCornersQuery) findBestThreeCorner(p0, p1, p2 portalData) {
 	if q.getIndex(p0.Index, p1.Index, p2.Index).Length != invalidLength {
@@ -132,9 +132,21 @@ func (q *bestThreeCornersQuery) findBestThreeCornerAux(p0, p1, p2 portalData) (b
 
 // LargestThreeCorner - Find best way to connect three groups of portals
 func LargestThreeCorner(portals0, portals1, portals2 []Portal, progressFunc func(int, int)) []IndexedPortal {
-	portalsData0 := portalsToPortalData(portals0)
-	portalsData1 := portalsToPortalData(portals1)
-	portalsData2 := portalsToPortalData(portals2)
+	portals := append(append(portals0, portals1...), portals2...)
+	// We have to convert all portals at once, as the output depends on the input portals.
+	portalsData := portalsToPortalData(portals)
+	portalsData0 := portalsData[0:len(portals0)]
+	for i := range portalsData0 {
+		portalsData0[i].Index = portalIndex(i)
+	}
+	portalsData1 := portalsData[len(portals0):len(portals0)+len(portals1)]
+	for i := range portalsData1 {
+		portalsData1[i].Index = portalIndex(i)
+	}
+	portalsData2 := portalsData[len(portals0)+len(portals1):]
+	for i := range portalsData2 {
+		portalsData2[i].Index = portalIndex(i)
+	}
 
 	numIndexEntries := len(portals0) * len(portals1) * len(portals2)
 	everyNth := numIndexEntries / 1000
