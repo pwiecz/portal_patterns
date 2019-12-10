@@ -115,7 +115,6 @@ func LargestHerringboneST(portals []Portal, fixedBaseIndices []int, progressFunc
 	}
 	portalsData := portalsToPortalData(portals)
 
-	index := make([]bestSolution, len(portals))
 	var largestHerringbone []portalIndex
 	var bestB0, bestB1 portalData
 	resultCache := make([]portalIndex, 0, len(portals))
@@ -134,9 +133,6 @@ func LargestHerringboneST(portals []Portal, fixedBaseIndices []int, progressFunc
 			b1 := portalsData[j]
 			if !hasAllIndicesInThePair(fixedBaseIndices, i, j) {
 				continue
-			}
-			for k := 0; k < len(index); k++ {
-				index[k].Length = invalidLength
 			}
 			bestCCW := q.findBestHerringbone(b0, b1, resultCache)
 			if len(bestCCW) > len(largestHerringbone) {
