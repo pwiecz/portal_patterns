@@ -2,15 +2,29 @@ package lib
 
 import "sort"
 import "sync"
+import "github.com/golang/geo/r3"
 import "github.com/golang/geo/s2"
 
 type bestHerringboneMtQuery struct {
 	portals []portalData
+	// Array of normalized direction vectors between all the pairs of portals
+	norms []r3.Vector
 }
 
 func newBestHerringboneMtQuery(portals []portalData) *bestHerringboneMtQuery {
+	norms := make([]r3.Vector, len(portals)*len(portals))
+	for i, p0 := range portals {
+		for j, p1 := range portals {
+			if i == j {
+				continue
+			}
+			norms[i*len(portals)+j] = p1.LatLng.Cross(p0.LatLng.Vector).Normalize()
+
+		}
+	}
 	return &bestHerringboneMtQuery{
 		portals: portals,
+		norms:   norms,
 	}
 }
 
@@ -19,9 +33,12 @@ type herringboneRequest struct {
 	result []portalIndex
 }
 
+func (q *bestHerringboneMtQuery) normalizedVector(b0, b1 portalData) r3.Vector {
+	return q.norms[uint(b0.Index)*uint(len(q.portals))+uint(b1.Index)]
+}
 func (q *bestHerringboneMtQuery) findBestHerringbone(b0, b1 portalData, nodes []node, weights []float32, result []portalIndex) []portalIndex {
 	nodes = nodes[:0]
-	aq0, aq1 := NewAngleQuery(b0.LatLng, b1.LatLng), NewAngleQuery(b1.LatLng, b0.LatLng)
+	b01, b10 := q.normalizedVector(b0, b1), q.normalizedVector(b1, b0)
 	distQuery := newDistanceQuery(b0.LatLng, b1.LatLng)
 	for _, portal := range q.portals {
 		if portal == b0 || portal == b1 {
@@ -30,7 +47,8 @@ func (q *bestHerringboneMtQuery) findBestHerringbone(b0, b1 portalData, nodes []
 		if !s2.Sign(portal.LatLng, b0.LatLng, b1.LatLng) {
 			continue
 		}
-		a0, a1 := aq0.Angle(portal.LatLng), aq1.Angle(portal.LatLng)
+		a0 := b01.Dot(q.normalizedVector(b1, portal)) // acos of angle b0,b1,portal
+		a1 := b10.Dot(q.normalizedVector(b0, portal)) // acos of angle b1,b0,portal
 		dist := distQuery.ChordAngle(portal.LatLng)
 		nodes = append(nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
 	}
