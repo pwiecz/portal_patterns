@@ -1,6 +1,7 @@
 package lib
 
 import "sort"
+import "github.com/golang/geo/r2"
 import "github.com/pwiecz/portal_patterns/lib/r2geo"
 
 // LargestHerringbone - Find largest possible multilayer of portals to be made
@@ -21,22 +22,42 @@ type node struct {
 
 type bestHerringboneQuery struct {
 	portals []portalData
+	// Array of normalized direction vectors between all the pairs of portals
+	norms   []r2.Point
 	nodes   []node
 	weights []float32
 }
 
 func newBestHerringboneQuery(portals []portalData) *bestHerringboneQuery {
+	norms := make([]r2.Point, len(portals)*len(portals))
+	for i, p0 := range portals {
+		for j, p1 := range portals {
+			if i == j {
+				continue
+			}
+			dp := p1.LatLng.Sub(p0.LatLng)
+			dpLen := dp.Norm()
+			dp.X /= dpLen
+			dp.Y /= dpLen
+			norms[i*len(portals)+j] = dp
+
+		}
+	}
 	return &bestHerringboneQuery{
 		portals: portals,
+		norms:   norms,
 		nodes:   make([]node, 0, len(portals)),
 		weights: make([]float32, len(portals)),
 	}
+}
+func (q *bestHerringboneQuery) normalizedVector(b0, b1 portalData) r2.Point {
+	return q.norms[uint(b0.Index)*uint(len(q.portals))+uint(b1.Index)]
 }
 
 func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []portalIndex) []portalIndex {
 	q.nodes = q.nodes[:0]
 	distQuery := r2geo.NewDistanceQuery(b0.LatLng, b1.LatLng)
-	aq0, aq1 := r2geo.NewAngleQuery(b0.LatLng, b1.LatLng), r2geo.NewAngleQuery(b1.LatLng, b0.LatLng)
+	b01, b10 := q.normalizedVector(b0, b1), q.normalizedVector(b1, b0)
 	for _, portal := range q.portals {
 		if portal == b0 || portal == b1 {
 			continue
@@ -44,7 +65,8 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 		if r2geo.Sign(portal.LatLng, b0.LatLng, b1.LatLng) <= 0 {
 			continue
 		}
-		a0, a1 := aq0.Angle(portal.LatLng), aq1.Angle(portal.LatLng)
+		a0 := b01.Dot(q.normalizedVector(b1, portal)) // acos of angle b0,b1,portal
+		a1 := b10.Dot(q.normalizedVector(b0, portal)) // acos of angle b1,b0,portal
 		dist := distQuery.DistanceSq(portal.LatLng)
 		q.nodes = append(q.nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
 	}
@@ -85,7 +107,6 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 				r2geo.Distance(q.portals[node.index].LatLng, b1.LatLng)) * radiansToMeters)
 		}
 	}
-
 	start := invalidPortalIndex
 	var length uint16
 	var weight float32

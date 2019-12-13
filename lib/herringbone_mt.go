@@ -2,15 +2,33 @@ package lib
 
 import "sort"
 import "sync"
+import "github.com/golang/geo/r2"
 import "github.com/pwiecz/portal_patterns/lib/r2geo"
 
 type bestHerringboneMtQuery struct {
 	portals []portalData
+	// Array of normalized direction vectors between all the pairs of portals
+	norms []r2.Point
 }
 
 func newBestHerringboneMtQuery(portals []portalData) *bestHerringboneMtQuery {
+	norms := make([]r2.Point, len(portals)*len(portals))
+	for i, p0 := range portals {
+		for j, p1 := range portals {
+			if i == j {
+				continue
+			}
+			dp := p1.LatLng.Sub(p0.LatLng)
+			dpLen := dp.Norm()
+			dp.X /= dpLen
+			dp.Y /= dpLen
+			norms[i*len(portals)+j] = dp
+
+		}
+	}
 	return &bestHerringboneMtQuery{
 		portals: portals,
+		norms:   norms,
 	}
 }
 
@@ -19,10 +37,14 @@ type herringboneRequest struct {
 	result []portalIndex
 }
 
+func (q *bestHerringboneMtQuery) normalizedVector(b0, b1 portalData) r2.Point {
+	return q.norms[uint(b0.Index)*uint(len(q.portals))+uint(b1.Index)]
+}
+
 func (q *bestHerringboneMtQuery) findBestHerringbone(b0, b1 portalData, nodes []node, weights []float32, result []portalIndex) []portalIndex {
 	nodes = nodes[:0]
-	aq0, aq1 := r2geo.NewAngleQuery(b0.LatLng, b1.LatLng), r2geo.NewAngleQuery(b1.LatLng, b0.LatLng)
 	distQuery := r2geo.NewDistanceQuery(b0.LatLng, b1.LatLng)
+	b01, b10 := q.normalizedVector(b0, b1), q.normalizedVector(b1, b0)
 	for _, portal := range q.portals {
 		if portal == b0 || portal == b1 {
 			continue
@@ -30,8 +52,9 @@ func (q *bestHerringboneMtQuery) findBestHerringbone(b0, b1 portalData, nodes []
 		if r2geo.Sign(portal.LatLng, b0.LatLng, b1.LatLng) <= 0 {
 			continue
 		}
-		a0, a1 := aq0.Angle(portal.LatLng), aq1.Angle(portal.LatLng)
-		dist := distQuery.Distance(portal.LatLng)
+		a0 := b01.Dot(q.normalizedVector(b1, portal)) // acos of angle b0,b1,portal
+		a1 := b10.Dot(q.normalizedVector(b0, portal)) // acos of angle b1,b0,portal
+		dist := distQuery.DistanceSq(portal.LatLng)
 		nodes = append(nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
 	}
 	sort.Slice(nodes, func(i, j int) bool {
