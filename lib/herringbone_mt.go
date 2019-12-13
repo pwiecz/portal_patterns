@@ -3,7 +3,6 @@ package lib
 import "sort"
 import "sync"
 import "github.com/golang/geo/r2"
-import "github.com/pwiecz/portal_patterns/lib/r2geo"
 
 type bestHerringboneMtQuery struct {
 	portals []portalData
@@ -43,13 +42,13 @@ func (q *bestHerringboneMtQuery) normalizedVector(b0, b1 portalData) r2.Point {
 
 func (q *bestHerringboneMtQuery) findBestHerringbone(b0, b1 portalData, nodes []node, weights []float32, result []portalIndex) []portalIndex {
 	nodes = nodes[:0]
-	distQuery := r2geo.NewDistanceQuery(b0.LatLng, b1.LatLng)
+	distQuery := NewDistanceQuery(b0.LatLng, b1.LatLng)
 	b01, b10 := q.normalizedVector(b0, b1), q.normalizedVector(b1, b0)
 	for _, portal := range q.portals {
 		if portal == b0 || portal == b1 {
 			continue
 		}
-		if r2geo.Sign(portal.LatLng, b0.LatLng, b1.LatLng) <= 0 {
+		if Sign(portal.LatLng, b0.LatLng, b1.LatLng) <= 0 {
 			continue
 		}
 		a0 := b01.Dot(q.normalizedVector(b1, portal)) // acos of angle b0,b1,portal
@@ -72,10 +71,10 @@ func (q *bestHerringboneMtQuery) findBestHerringbone(b0, b1 portalData, nodes []
 				if nodes[j].length >= bestLength {
 					bestLength = nodes[j].length + 1
 					bestNext = portalIndex(j)
-					scaledDistance := float32(r2geo.Distance(q.portals[node.index].LatLng, q.portals[nodes[j].index].LatLng) * radiansToMeters)
+					scaledDistance := float32(Distance(q.portals[node.index].LatLng, q.portals[nodes[j].index].LatLng) * radiansToMeters)
 					bestWeight = weights[nodes[j].index] + scaledDistance
 				} else if nodes[j].length+1 == bestLength {
-					scaledDistance := float32(r2geo.Distance(q.portals[node.index].LatLng, q.portals[nodes[j].index].LatLng) * radiansToMeters)
+					scaledDistance := float32(Distance(q.portals[node.index].LatLng, q.portals[nodes[j].index].LatLng) * radiansToMeters)
 					if weights[node.index]+scaledDistance < bestWeight {
 						bestLength = nodes[j].length + 1
 						bestNext = portalIndex(j)
@@ -90,8 +89,8 @@ func (q *bestHerringboneMtQuery) findBestHerringbone(b0, b1 portalData, nodes []
 			weights[node.index] = bestWeight
 		} else {
 			weights[node.index] = float32(float64Min(
-				r2geo.Distance(q.portals[node.index].LatLng, b0.LatLng),
-				r2geo.Distance(q.portals[node.index].LatLng, b1.LatLng)) * radiansToMeters)
+				Distance(q.portals[node.index].LatLng, b0.LatLng),
+				Distance(q.portals[node.index].LatLng, b1.LatLng)) * radiansToMeters)
 		}
 	}
 

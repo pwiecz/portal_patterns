@@ -5,8 +5,6 @@ import "testing"
 
 import "github.com/golang/geo/s2"
 
-import "github.com/pwiecz/portal_patterns/lib/s2geo"
-
 var portals []Portal
 
 func numPortalsPerDepth(depth uint16) int {
@@ -17,7 +15,7 @@ func isCorrectHomogeneous(p0, p1, p2 s2.Point, depth uint16, portals []s2.Point)
 		return portals, true
 	}
 	portal := portals[0]
-	triangle := s2geo.NewTriangleQuery(p0, p1, p2)
+	triangle := NewS2TriangleQuery(p0, p1, p2)
 	if !triangle.ContainsPoint(portal) {
 		return portals, false
 	}

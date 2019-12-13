@@ -1,7 +1,5 @@
 package lib
 
-import "github.com/pwiecz/portal_patterns/lib/r2geo"
-
 type PortalLimit int
 
 const (
@@ -62,7 +60,7 @@ func findBestFlipHerringbone(p0, p1 portalData, portals []portalData, maxBackbon
 		if portal.Index == p0.Index || portal.Index == p1.Index {
 			continue
 		}
-		if r2geo.Sign(p0.LatLng, p1.LatLng, portal.LatLng) <= 0 {
+		if Sign(p0.LatLng, p1.LatLng, portal.LatLng) <= 0 {
 			continue
 		}
 		filteredPortals = append(filteredPortals, portal)
@@ -104,7 +102,7 @@ func LargestFlipHerringbone(portals []Portal, maxBackbonePortals int, numPortalL
 			b, f := findBestFlipHerringbone(p0, p1, portalsData, maxBackbonePortals, numPortalLimit, bestNumFields)
 			if numPortalLimit != EQUAL || len(b) == maxBackbonePortals {
 				numFields := len(f)*(2*len(b)-1)
-				distanceSq := r2geo.DistanceSq(p0.LatLng, p1.LatLng)
+				distanceSq := DistanceSq(p0.LatLng, p1.LatLng)
 				if  numFields > bestNumFields || (numFields == bestNumFields && distanceSq < bestDistanceSq) {
 					bestNumFields = numFields
 					bestBackbone = b

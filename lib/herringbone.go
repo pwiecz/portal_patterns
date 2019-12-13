@@ -2,7 +2,6 @@ package lib
 
 import "sort"
 import "github.com/golang/geo/r2"
-import "github.com/pwiecz/portal_patterns/lib/r2geo"
 
 // LargestHerringbone - Find largest possible multilayer of portals to be made
 func LargestHerringbone(portals []Portal, fixedBaseIndices []int, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal) {
@@ -56,13 +55,13 @@ func (q *bestHerringboneQuery) normalizedVector(b0, b1 portalData) r2.Point {
 
 func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []portalIndex) []portalIndex {
 	q.nodes = q.nodes[:0]
-	distQuery := r2geo.NewDistanceQuery(b0.LatLng, b1.LatLng)
+	distQuery := NewDistanceQuery(b0.LatLng, b1.LatLng)
 	b01, b10 := q.normalizedVector(b0, b1), q.normalizedVector(b1, b0)
 	for _, portal := range q.portals {
 		if portal == b0 || portal == b1 {
 			continue
 		}
-		if r2geo.Sign(portal.LatLng, b0.LatLng, b1.LatLng) <= 0 {
+		if Sign(portal.LatLng, b0.LatLng, b1.LatLng) <= 0 {
 			continue
 		}
 		a0 := b01.Dot(q.normalizedVector(b1, portal)) // acos of angle b0,b1,portal
@@ -85,10 +84,10 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 				if q.nodes[j].length >= bestLength {
 					bestLength = q.nodes[j].length + 1
 					bestNext = portalIndex(j)
-					scaledDistance := float32(r2geo.Distance(q.portals[node.index].LatLng, q.portals[q.nodes[j].index].LatLng) * radiansToMeters)
+					scaledDistance := float32(Distance(q.portals[node.index].LatLng, q.portals[q.nodes[j].index].LatLng) * radiansToMeters)
 					bestWeight = q.weights[q.nodes[j].index] + scaledDistance
 				} else if q.nodes[j].length+1 == bestLength {
-					scaledDistance := float32(r2geo.Distance(q.portals[node.index].LatLng, q.portals[q.nodes[j].index].LatLng) * radiansToMeters)
+					scaledDistance := float32(Distance(q.portals[node.index].LatLng, q.portals[q.nodes[j].index].LatLng) * radiansToMeters)
 					if q.weights[node.index]+scaledDistance < bestWeight {
 						bestLength = q.nodes[j].length + 1
 						bestNext = portalIndex(j)
@@ -103,8 +102,8 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 			q.weights[node.index] = bestWeight
 		} else {
 			q.weights[node.index] = float32(float64Min(
-				r2geo.Distance(q.portals[node.index].LatLng, b0.LatLng),
-				r2geo.Distance(q.portals[node.index].LatLng, b1.LatLng)) * radiansToMeters)
+				Distance(q.portals[node.index].LatLng, b0.LatLng),
+				Distance(q.portals[node.index].LatLng, b1.LatLng)) * radiansToMeters)
 		}
 	}
 	start := invalidPortalIndex
@@ -135,7 +134,6 @@ func LargestHerringboneST(portals []Portal, fixedBaseIndices []int, progressFunc
 	}
 	portalsData := portalsToPortalData(portals)
 
-	index := make([]bestSolution, len(portals))
 	var largestHerringbone []portalIndex
 	var bestB0, bestB1 portalData
 	resultCache := make([]portalIndex, 0, len(portals))
@@ -154,9 +152,6 @@ func LargestHerringboneST(portals []Portal, fixedBaseIndices []int, progressFunc
 			b1 := portalsData[j]
 			if !hasAllIndicesInThePair(fixedBaseIndices, i, j) {
 				continue
-			}
-			for k := 0; k < len(index); k++ {
-				index[k].Length = invalidLength
 			}
 			bestCCW := q.findBestHerringbone(b0, b1, resultCache)
 			if len(bestCCW) > len(largestHerringbone) {

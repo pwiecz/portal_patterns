@@ -4,8 +4,6 @@ import "testing"
 
 import "github.com/golang/geo/s2"
 
-import "github.com/pwiecz/portal_patterns/lib/s2geo"
-
 type indexedPoint struct {
 	Index  int
 	LatLng s2.Point
@@ -15,7 +13,7 @@ func isCorrectThreeCorner(p [3]indexedPoint, portals []indexedPoint) bool {
 	if len(portals) == 0 {
 		return true
 	}
-	triangle := s2geo.NewTriangleQuery(p[0].LatLng, p[1].LatLng, p[2].LatLng)
+	triangle := NewS2TriangleQuery(p[0].LatLng, p[1].LatLng, p[2].LatLng)
 	if !triangle.ContainsPoint(portals[0].LatLng) {
 		return false
 	}

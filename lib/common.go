@@ -6,8 +6,6 @@ import "strings"
 import "github.com/golang/geo/s2"
 import "github.com/golang/geo/r2"
 
-import "github.com/pwiecz/portal_patterns/lib/r2geo"
-
 type portalIndex uint16
 
 const invalidPortalIndex portalIndex = math.MaxUint16
@@ -67,7 +65,7 @@ type bestSolution struct {
 }
 
 func portalsInsideWedge(portals []portalData, a, b, c portalData, result []portalData) []portalData {
-	wedge := r2geo.NewTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
+	wedge := NewWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
 	result = result[:0]
 	for _, p := range portals {
 		if p.Index != a.Index && p.Index != b.Index && p.Index != c.Index &&
@@ -83,8 +81,8 @@ func numPortalsLeftOfTwoLines(portals []portalData, a, b, c portalData) int {
 	result := 0
 	for _, p := range portals {
 		if p.Index != a.Index && p.Index != b.Index && p.Index != c.Index &&
-			r2geo.Sign(a.LatLng, b.LatLng, p.LatLng) > 0 &&
-			r2geo.Sign(b.LatLng, c.LatLng, p.LatLng) > 0 {
+			Sign(a.LatLng, b.LatLng, p.LatLng) > 0 &&
+			Sign(b.LatLng, c.LatLng, p.LatLng) > 0 {
 			result++
 		}
 	}
@@ -95,7 +93,7 @@ func partitionPortalsLeftOfLine(portals []portalData, a, b portalData) []portalD
 	length := len(portals)
 	for i := 0; i < length; {
 		p := portals[i]
-		if p.Index != a.Index && p.Index != b.Index && r2geo.Sign(a.LatLng, b.LatLng, p.LatLng) > 0 {
+		if p.Index != a.Index && p.Index != b.Index && Sign(a.LatLng, b.LatLng, p.LatLng) > 0 {
 			i++
 		} else {
 			portals[i], portals[length-1] = portals[length-1], portals[i]
@@ -108,7 +106,7 @@ func partitionPortalsLeftOfLine(portals []portalData, a, b portalData) []portalD
 // returns a subset of portals from portals that lie inside wedge ab, ac.
 // It reorders the input portals slice and returns its subslice
 func partitionPortalsInsideWedge(portals []portalData, a, b, c portalData) []portalData {
-	wedge := r2geo.NewTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
+	wedge := NewWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
 	length := len(portals)
 	for i := 0; i < length; {
 		p := portals[i]
@@ -124,7 +122,7 @@ func partitionPortalsInsideWedge(portals []portalData, a, b, c portalData) []por
 }
 
 func portalsInsideTriangle(portals []portalData, a, b, c portalData, result []portalData) []portalData {
-	triangle := r2geo.NewTriangleQuery(a.LatLng, b.LatLng, c.LatLng)
+	triangle := NewTriangleQuery(a.LatLng, b.LatLng, c.LatLng)
 	result = result[:0]
 	for _, p := range portals {
 		if p.Index != a.Index && p.Index != b.Index && p.Index != c.Index &&

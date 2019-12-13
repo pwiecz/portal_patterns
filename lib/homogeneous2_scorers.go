@@ -1,7 +1,5 @@
 package lib
 
-import "github.com/pwiecz/portal_patterns/lib/r2geo"
-
 // a scorer that picks a solution that maximises minimal height of a triangle
 // being part of the final solution.
 type thickTrianglesScorer struct {
@@ -26,9 +24,9 @@ type thickTrianglesTriangleScorer struct {
 	perfect              bool
 	validLevel2Candidate bool
 	a, b, c              portalData
-	abDistance           r2geo.DistanceQuery
-	acDistance           r2geo.DistanceQuery
-	bcDistance           r2geo.DistanceQuery
+	abDistance           DistanceQuery
+	acDistance           DistanceQuery
+	bcDistance           DistanceQuery
 	scorePtrs            [6]*float32
 	candidates           [6]portalIndex
 }
@@ -52,9 +50,9 @@ func (s *thickTrianglesTriangleScorer) reset(a, b, c portalData, numCandidates i
 		s.candidates[i] = invalidPortalIndex - 1
 	}
 	s.a, s.b, s.c = a, b, c
-	s.abDistance = r2geo.NewDistanceQuery(a.LatLng, b.LatLng)
-	s.acDistance = r2geo.NewDistanceQuery(a.LatLng, c.LatLng)
-	s.bcDistance = r2geo.NewDistanceQuery(b.LatLng, c.LatLng)
+	s.abDistance = NewDistanceQuery(a.LatLng, b.LatLng)
+	s.acDistance = NewDistanceQuery(a.LatLng, c.LatLng)
+	s.bcDistance = NewDistanceQuery(b.LatLng, c.LatLng)
 	s.validLevel2Candidate = !s.perfect || numCandidates == 1
 }
 func (s *thickTrianglesTriangleScorer) getHeight(a, b, c portalIndex) float32 {

@@ -4,8 +4,6 @@ import "testing"
 
 import "github.com/golang/geo/s2"
 
-import "github.com/pwiecz/portal_patterns/lib/s2geo"
-
 func portalsToS2Points(portals []Portal) []s2.Point {
 	result := make([]s2.Point, 0, len(portals))
 	for _, portal := range portals {
@@ -17,7 +15,7 @@ func isCorrectHerringbone(b0, b1 s2.Point, backbone []s2.Point) bool {
 	if len(backbone) <= 1 {
 		return true
 	}
-	triangle := s2geo.NewTriangleQuery(b0, b1, backbone[0])
+	triangle := NewS2TriangleQuery(b0, b1, backbone[0])
 	if !triangle.ContainsPoint(backbone[1]) {
 		return false
 	}
