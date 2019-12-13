@@ -36,6 +36,13 @@ func main() {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s herringbone [--base_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
 		herringboneCmd.PrintDefaults()
 	}
+	flipHerringboneCmd := flag.NewFlagSet("flip_herringbone", flag.ExitOnError)
+	flipHerringboneCmdNumPortals := flipHerringboneCmd.Int("num_portals", 24, "limit of number of portals in the \"backbone\" of the field")
+	flipHerringboneCmdNumPortalLimit := flipHerringboneCmd.String("portal_limit", "LESS_EQUAL", "limit kind EQUAL, LESS_EQUAL")
+	flipHerringboneCmd.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "%s flip_herringbone <portals_file>\n", fileBase)
+		flipHerringboneCmd.PrintDefaults()
+	}
 	doubleHerringboneCmd := flag.NewFlagSet("double_herringbone", flag.ExitOnError)
 	doubleHerringboneBasePortalsValue := portalsValue{}
 	doubleHerringboneCmd.Var(&doubleHerringboneBasePortalsValue, "base_portal", "fix a base portal of the double herringbone field")
@@ -130,6 +137,29 @@ func main() {
 			atIndex = 1 - atIndex
 		}
 		fmt.Printf("\n[%s]\n", lib.PolylineFromPortalList(portalList))
+	case "flip_herringbone":
+		flipHerringboneCmd.Parse(flag.Args()[1:])
+		fileArgs := flipHerringboneCmd.Args()
+		if len(fileArgs) != 1 {
+			log.Fatalln("flip_herringbone command requires exactly one file argument")
+		}
+		portals, err := lib.ParseFile(fileArgs[0])
+		if err != nil {
+			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
+		}
+		numPortalLimitStr := *flipHerringboneCmdNumPortalLimit
+		numPortalLimit := lib.LESS_EQUAL
+		if numPortalLimitStr == "EQUAL" {
+			numPortalLimit = lib.EQUAL
+		} else if numPortalLimitStr == "LESS_EQUAL" {
+			numPortalLimit = lib.LESS_EQUAL
+		} else {
+			log.Fatalf("portal_limit should be either EQUAL or LESS_EQUAL")
+		}
+		backbone, rest := lib.LargestFlipHerringbone(portals, *flipHerringboneCmdNumPortals, numPortalLimit, progressFunc)
+		fmt.Printf("\nNum backbone portals: %d, num visible portals: %d, num fields: %d\n",
+			len(backbone), len(rest), len(rest)*(2*len(backbone)-1))
+		fmt.Printf("\n[%s,%s]\n", lib.PolylineFromPortalList(backbone), lib.MarkersFromPortalList(rest))
 	case "double_herringbone":
 		doubleHerringboneCmd.Parse(flag.Args()[1:])
 		fileArgs := doubleHerringboneCmd.Args()

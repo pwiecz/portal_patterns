@@ -4,12 +4,14 @@ import "math"
 
 import "github.com/golang/geo/r2"
 
-// triangleQuery helps to answer question whethen a point is contained
+// TriangleQuery helps to answer question whethen a point is contained
 // inside triangle.
 type TriangleQuery struct {
 	a, b, c r2.Point
 }
 
+// Sign returns a positive number if points a,b,c are ordered counterclockwise,
+// and negative number if they are ordered clockwise.
 func Sign(a, b, c r2.Point) float64 {
 	return (a.X-c.X)*(b.Y-c.Y) - (b.X-c.X)*(a.Y-c.Y)
 }
@@ -29,7 +31,7 @@ func (t *TriangleQuery) ContainsPoint(o r2.Point) bool {
 }
 
 // orderedCCWQuery helps to answer question whether semiline ob
-// lies between semilines oa and oc (looking in counter clockwise order).
+// lies between semilines oa and oc (looking in counterclockwise order).
 type orderedCCWQuery struct {
 	a, o, c r2.Point
 	aocSign bool
@@ -146,6 +148,15 @@ func (a *AngleQuery) Angle(c r2.Point) float64 {
 	return math.Acos(a.ab.Dot(bc) / (a.abLen * bcLen))
 }
 
+// equivalent to math.Atan(a0.Y,a0.X) < math.Atan(a1.Y, a1.X)
+func angleLess(a0, a1 r2.Point) bool {
+	if (a0.Y < 0) != (a1.Y < 0) {
+		return a0.Y < 0
+	}
+	return a0.Y*a1.X < a1.Y*a0.X
+}
+
+
 func TriangleArea(p0, p1, p2 r2.Point) float64 {
 	return math.Abs((p0.X*(p1.Y-p2.Y) + p1.X*(p2.Y-p0.Y) + p2.X*(p0.Y-p1.Y)) * 0.5)
 }
@@ -153,4 +164,8 @@ func TriangleArea(p0, p1, p2 r2.Point) float64 {
 func Distance(p0, p1 r2.Point) float64 {
 	dx, dy := p0.X-p1.X, p0.Y-p1.Y
 	return math.Sqrt(dx*dx + dy*dy)
+}
+func DistanceSq(p0, p1 r2.Point) float64 {
+	dx, dy := p0.X-p1.X, p0.Y-p1.Y
+	return dx*dx + dy*dy
 }
