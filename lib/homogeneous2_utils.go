@@ -70,4 +70,3 @@ func indexOrdering(p0, p1, p2 portalIndex, index int) (portalIndex, portalIndex,
 		return p2, p1, p0
 	}
 }
-

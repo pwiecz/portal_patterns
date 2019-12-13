@@ -58,10 +58,11 @@ func (h HomogeneousFixedCornerIndices) apply2(param *homogeneous2Params) {
 type HomogeneousPerfect struct {
 	Perfect bool
 }
-func(h HomogeneousPerfect) apply(param* homogeneousParams) {
+
+func (h HomogeneousPerfect) apply(param *homogeneousParams) {
 	param.perfect = h.Perfect
 }
-func(h HomogeneousPerfect) apply2(param* homogeneous2Params) {
+func (h HomogeneousPerfect) apply2(param *homogeneous2Params) {
 	param.perfect = h.Perfect
 }
 

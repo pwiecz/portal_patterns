@@ -72,7 +72,7 @@ func (h *homogeneousCmd) Run(args []string, progressFunc func(int, int)) {
 	} else if *h.smallestArea {
 		options = append(options, lib.HomogeneousSmallestArea{})
 	} else if *h.pretty {
-		options = append(options, lib.HomogeneousLargestArea{})		
+		options = append(options, lib.HomogeneousLargestArea{})
 	}
 	options = append(options, lib.HomogeneousPerfect{Perfect: *h.perfect})
 

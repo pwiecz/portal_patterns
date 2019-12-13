@@ -26,7 +26,7 @@ func (p *portalsValue) Set(latLngStr string) error {
 	if err != nil {
 		return err
 	}
-	p.Portals = append(p.Portals, /*s2.PointFromLatLng(*/s2.LatLngFromDegrees(lat, lng))/*)*/
+	p.Portals = append(p.Portals, s2.LatLngFromDegrees(lat, lng))
 	p.LatLngStrings = append(p.LatLngStrings, latLngStr)
 	return nil
 }

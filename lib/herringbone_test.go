@@ -26,7 +26,7 @@ func checkValidHerringboneResult(expectedLength int, b0, b1 Portal, backbone []P
 	if len(backbone) != expectedLength {
 		t.Errorf("Expected length %d, actual length %d", expectedLength, len(backbone))
 	}
-	backbonePoints := portalsToS2Points(backbone);
+	backbonePoints := portalsToS2Points(backbone)
 	if !isCorrectHerringbone(s2.PointFromLatLng(b0.LatLng), s2.PointFromLatLng(b1.LatLng), backbonePoints) {
 		t.Errorf("Result is not correct herringbone fielding")
 	}

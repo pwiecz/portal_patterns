@@ -9,7 +9,6 @@ import "github.com/golang/geo/s2"
 const radiansToMeters = 2e+7 / math.Pi
 const unitAreaToSquareMeters = 5.1e+14
 
-
 // TriangleQuery helps to answer question whethen a point is contained
 // inside triangle.
 type TriangleQuery struct {
@@ -190,7 +189,6 @@ func angleLess(a0, a1 r2.Point) bool {
 	return a0.Y*a1.X < a1.Y*a0.X
 }
 
-
 func TriangleArea(p0, p1, p2 r2.Point) float64 {
 	return math.Abs((p0.X*(p1.Y-p2.Y) + p1.X*(p2.Y-p0.Y) + p2.X*(p0.Y-p1.Y)) * 0.5)
 }
@@ -203,4 +201,3 @@ func DistanceSq(p0, p1 r2.Point) float64 {
 	dx, dy := p0.X-p1.X, p0.Y-p1.Y
 	return dx*dx + dy*dy
 }
-

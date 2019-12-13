@@ -20,7 +20,7 @@ func (f *bestFlipHerringboneQuery) solve(bestSolution int) {
 		if len(f.backbone) >= f.maxBackbonePortals {
 			return
 		}
-		if f.maxBackbonePortals * len(f.visiblePortals) < bestSolution {
+		if f.maxBackbonePortals*len(f.visiblePortals) < bestSolution {
 			return
 		}
 		bestNumFields := len(f.visiblePortals) * (2*len(f.backbone) - 1)
@@ -101,9 +101,9 @@ func LargestFlipHerringbone(portals []Portal, maxBackbonePortals int, numPortalL
 			}
 			b, f := findBestFlipHerringbone(p0, p1, portalsData, maxBackbonePortals, numPortalLimit, bestNumFields)
 			if numPortalLimit != EQUAL || len(b) == maxBackbonePortals {
-				numFields := len(f)*(2*len(b)-1)
+				numFields := len(f) * (2*len(b) - 1)
 				distanceSq := DistanceSq(p0.LatLng, p1.LatLng)
-				if  numFields > bestNumFields || (numFields == bestNumFields && distanceSq < bestDistanceSq) {
+				if numFields > bestNumFields || (numFields == bestNumFields && distanceSq < bestDistanceSq) {
 					bestNumFields = numFields
 					bestBackbone = b
 					bestFlipPortals = f

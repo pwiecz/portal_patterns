@@ -3,16 +3,16 @@ package lib
 // a scorer that picks a solution that maximises minimal height of a triangle
 // being part of the final solution.
 type thickTrianglesScorer struct {
-	minHeight    []float32
-	numPortals   uint
+	minHeight  []float32
+	numPortals uint
 }
 
 func newThickTrianglesScorer(numPortals int) *thickTrianglesScorer {
 	numPortals64 := uint(numPortals)
 	minHeight := make([]float32, numPortals64*numPortals64*numPortals64)
 	return &thickTrianglesScorer{
-		minHeight:    minHeight,
-		numPortals:   numPortals64,
+		minHeight:  minHeight,
+		numPortals: numPortals64,
 	}
 }
 
@@ -33,10 +33,10 @@ type thickTrianglesTriangleScorer struct {
 
 func (s *thickTrianglesScorer) newTriangleScorer(maxDepth int, perfect bool) homogeneousTriangleScorer {
 	return &thickTrianglesTriangleScorer{
-		minHeight:    s.minHeight,
-		numPortals:   s.numPortals,
-		maxDepth:     maxDepth,
-		perfect:      perfect,
+		minHeight:  s.minHeight,
+		numPortals: s.numPortals,
+		maxDepth:   maxDepth,
+		perfect:    perfect,
 	}
 }
 
