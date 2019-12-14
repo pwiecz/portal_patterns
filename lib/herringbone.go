@@ -49,8 +49,9 @@ func newBestHerringboneQuery(portals []portalData) *bestHerringboneQuery {
 }
 
 type byDistance []node
-func (d byDistance) Len() int { return len(d)}
-func (d byDistance) Swap(i, j int) { d[i],d[j] = d[j],d[i] }
+
+func (d byDistance) Len() int           { return len(d) }
+func (d byDistance) Swap(i, j int)      { d[i], d[j] = d[j], d[i] }
 func (d byDistance) Less(i, j int) bool { return d[i].distance < d[j].distance }
 
 func (q *bestHerringboneQuery) normalizedVector(b0, b1 portalData) r3.Vector {
