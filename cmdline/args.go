@@ -55,3 +55,26 @@ func portalsToIndices(arg portalsValue, portals []lib.Portal) []int {
 	return indices
 
 }
+
+type numberLimitValue struct {
+	Value   int
+	Exactly bool
+}
+
+func (n *numberLimitValue) Set(numLimitStr string) error {
+	numStr := strings.TrimPrefix(numLimitStr, "<=")
+	num, err := strconv.ParseUint(numStr, 10, 16)
+	if err != nil {
+		return fmt.Errorf("Cannot parse \"%s\" as a 16bit unsigned int", numStr)
+	}
+	n.Value = int(num)
+	n.Exactly = len(numStr) == len(numLimitStr)
+	return nil
+}
+
+func (n numberLimitValue) String() string {
+	if n.Exactly {
+		return strconv.FormatUint(uint64(n.Value), 10)
+	}
+	return "<=" + strconv.FormatUint(uint64(n.Value), 10)
+}

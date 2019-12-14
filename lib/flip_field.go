@@ -3,11 +3,11 @@ package lib
 import "github.com/golang/geo/s2"
 
 // LargestFlipField -
-func LargestFlipField(portals []Portal, numPortals int, numPortalLimit PortalLimit, numWorkers int, progressFunc func(int, int)) ([]Portal, []Portal) {
+func LargestFlipField(portals []Portal, maxBackbonePortals int, numPortalLimit PortalLimit, numWorkers int, progressFunc func(int, int)) ([]Portal, []Portal) {
 	if numWorkers == 1 {
-		return LargestFlipFieldST(portals, numPortals, numPortalLimit, progressFunc)
+		return LargestFlipFieldST(portals, maxBackbonePortals, numPortalLimit, progressFunc)
 	}
-	return LargestFlipFieldMT(portals, numPortals, numPortalLimit, numWorkers, progressFunc)
+	return LargestFlipFieldMT(portals, maxBackbonePortals, numPortalLimit, numWorkers, progressFunc)
 }
 
 type PortalLimit int
@@ -23,8 +23,7 @@ type bestFlipFieldQuery struct {
 	bestSolution       int // best solution found so far
 	portals            []portalData
 	backbone           []portalData
-	//	visiblePortals     []portalData
-	candidates []portalData
+	candidates         []portalData
 }
 
 func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPortalLimit PortalLimit) bestFlipFieldQuery {

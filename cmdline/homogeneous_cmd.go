@@ -33,17 +33,17 @@ func NewHomogeneousCmd() homogeneousCmd {
 }
 
 func (h *homogeneousCmd) Usage(fileBase string) {
-	fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [-max_depth=<n>] [-pretty] [-largest_area|-smallest_area] [--corner_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
+	fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [-max_depth=<n>] [-pretty] [-largest_area|-smallest_area] [-corner_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
 	h.flags.PrintDefaults()
 }
 
 func (h *homogeneousCmd) Run(args []string, progressFunc func(int, int)) {
 	h.flags.Parse(args)
 	if *h.maxDepth < 1 {
-		log.Fatalln("--max_depth must by at least 1")
+		log.Fatalln("-max_depth must by at least 1")
 	}
 	if *h.largestArea && *h.smallestArea {
-		log.Fatalln("--largest_area and --smallest_area cannot be both specified at the same time")
+		log.Fatalln("-largest_area and -smallest_area cannot be both specified at the same time")
 	}
 	fileArgs := h.flags.Args()
 	if len(fileArgs) != 1 {
@@ -59,7 +59,7 @@ func (h *homogeneousCmd) Run(args []string, progressFunc func(int, int)) {
 	cornerPortalIndices := portalsToIndices(*h.cornerPortals, portals)
 	if *h.pretty {
 		if *h.maxDepth > 7 {
-			log.Fatalln("if --pretty is specified --max_depth must be at most 7")
+			log.Fatalln("if -pretty is specified -max_depth must be at most 7")
 		}
 	}
 	options := []lib.HomogeneousOption{
