@@ -49,6 +49,12 @@ func newBestHerringboneQuery(portals []portalData) *bestHerringboneQuery {
 		weights: make([]float32, len(portals)),
 	}
 }
+
+type byDistance []node
+func (d byDistance) Len() int { return len(d)}
+func (d byDistance) Swap(i, j int) { d[i],d[j] = d[j],d[i] }
+func (d byDistance) Less(i, j int) bool { return d[i].distance < d[j].distance }
+
 func (q *bestHerringboneQuery) normalizedVector(b0, b1 portalData) r2.Point {
 	return q.norms[uint(b0.Index)*uint(len(q.portals))+uint(b1.Index)]
 }
@@ -69,9 +75,7 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 		dist := distQuery.DistanceSq(portal.LatLng)
 		q.nodes = append(q.nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
 	}
-	sort.Slice(q.nodes, func(i, j int) bool {
-		return q.nodes[i].distance < q.nodes[j].distance
-	})
+	sort.Sort(byDistance(q.nodes))
 	for i := 0; i < len(q.weights); i++ {
 		q.weights[i] = 0
 	}
