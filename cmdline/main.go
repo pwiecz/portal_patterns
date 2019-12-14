@@ -43,6 +43,13 @@ func main() {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s double_herringbone [--base_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
 		doubleHerringboneCmd.PrintDefaults()
 	}
+	flipFieldCmd := flag.NewFlagSet("flip_field", flag.ExitOnError)
+	flipFieldCmdNumPortals := flipFieldCmd.Int("num_portals", 24, "limit of number of portals in the \"backbone\" of the field")
+	flipFieldCmdNumPortalLimit := flipFieldCmd.String("portal_limit", "LESS_EQUAL", "limit kind EQUAL, LESS_EQUAL")
+	flipFieldCmd.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "%s flip_field <portals_file>\n", fileBase)
+		flipFieldCmd.PrintDefaults()
+	}
 	homogeneousCmd := NewHomogeneousCmd()
 
 	defaultUsage := flag.Usage
@@ -52,6 +59,7 @@ func main() {
 		threeCornersCmd.Usage()
 		herringboneCmd.Usage()
 		doubleHerringboneCmd.Usage()
+		flipFieldCmd.Usage()
 		homogeneousCmd.Usage(fileBase)
 	}
 	flag.Parse()
@@ -170,6 +178,33 @@ func main() {
 			atIndex = 1 - atIndex
 		}
 		fmt.Printf("\n[%s]\n", lib.PolylineFromPortalList(portalList))
+		case "flip_field":
+		flipFieldCmd.Parse(flag.Args()[1:])
+		fileArgs := flipFieldCmd.Args()
+		if len(fileArgs) != 1 {
+			log.Fatalln("flip_field command requires exactly one file argument")
+		}
+		portals, err := lib.ParseFile(fileArgs[0])
+		if err != nil {
+			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
+		}
+		numPortalLimitStr := *flipFieldCmdNumPortalLimit
+		numPortalLimit := lib.LESS_EQUAL
+		if numPortalLimitStr == "EQUAL" {
+			numPortalLimit = lib.EQUAL
+		} else if numPortalLimitStr == "LESS_EQUAL" {
+			numPortalLimit = lib.LESS_EQUAL
+		} else {
+			log.Fatalf("portal_limit should be either EQUAL or LESS_EQUAL")
+		}
+		numFlipFieldWorkers := runtime.GOMAXPROCS(0)
+		if *numWorkers > 0 {
+			numFlipFieldWorkers = *numWorkers
+		}
+		backbone, rest := lib.LargestFlipField(portals, *flipFieldCmdNumPortals, numPortalLimit, numFlipFieldWorkers, progressFunc)
+		fmt.Printf("\nNum backbone portals: %d, num visible portals: %d, num fields: %d\n",
+			len(backbone), len(rest), len(rest)*(2*len(backbone)-1))
+		fmt.Printf("\n[%s,%s]\n", lib.PolylineFromPortalList(backbone), lib.MarkersFromPortalList(rest))
 	case "three_corners":
 		threeCornersCmd.Parse(flag.Args()[1:])
 		fileArgs := threeCornersCmd.Args()

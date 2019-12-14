@@ -107,6 +107,9 @@ func triangleArea(p0, p1, p2 portalData) float64 {
 func distance(p0, p1 portalData) float64 {
 	return p0.LatLng.Sub(p1.LatLng.Vector).Norm()
 }
+func distanceSq(p0, p1 portalData) float64 {
+	return p0.LatLng.Sub(p1.LatLng.Vector).Norm2()
+}
 
  
 type AngleQuery struct {
