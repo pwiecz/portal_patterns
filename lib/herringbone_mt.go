@@ -52,9 +52,7 @@ func (q *bestHerringboneMtQuery) findBestHerringbone(b0, b1 portalData, nodes []
 		dist := distQuery.ChordAngle(portal.LatLng)
 		nodes = append(nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
 	}
-	sort.Slice(nodes, func(i, j int) bool {
-		return nodes[i].distance < nodes[j].distance
-	})
+	sort.Sort(byDistance(nodes))
 	for i := 0; i < len(weights); i++ {
 		weights[i] = 0
 	}
