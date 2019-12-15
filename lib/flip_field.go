@@ -85,6 +85,12 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData) ([]portalData,
 		f.candidates[bestCandidate], f.candidates[len(f.candidates)-1] =
 			f.candidates[len(f.candidates)-1], f.candidates[bestCandidate]
 		f.candidates = f.candidates[:len(f.candidates)-1]
+		// If candidates and flipPortals were the same slice, we must shrink it before partitioning
+		// otherwise reordering may bring the removed object back among candidates and confuse the algorithm
+		// (and also possibly remove a proper candidate).
+		if len(flipPortals) > len(f.candidates) {
+			flipPortals = flipPortals[:len(flipPortals)-1]
+		}
 		flipPortals = partitionPortalsLeftOfLine(flipPortals, f.backbone[bestInsertPosition-1], f.backbone[bestInsertPosition])
 		flipPortals = partitionPortalsLeftOfLine(flipPortals, f.backbone[bestInsertPosition], f.backbone[bestInsertPosition+1])
 	}
