@@ -3,13 +3,15 @@ package lib
 import "github.com/golang/geo/s2"
 
 // LargestFlipField -
-func LargestFlipField(portals []Portal, maxBackbonePortals int, numPortalLimit PortalLimit,
-	maxFlipPortals int,
-	numWorkers int, progressFunc func(int, int)) ([]Portal, []Portal) {
-	if numWorkers == 1 {
-		return LargestFlipFieldST(portals, maxBackbonePortals, numPortalLimit, maxFlipPortals, progressFunc)
+func LargestFlipField(portals []Portal, options ...FlipFieldOption) ([]Portal, []Portal) {
+	params := defaultFlipFieldParams()
+	for _, option := range options {
+		option.apply(&params)
 	}
-	return LargestFlipFieldMT(portals, maxBackbonePortals, numPortalLimit, maxFlipPortals, numWorkers, progressFunc)
+	if params.numWorkers == 1 {
+		return LargestFlipFieldST(portals, params)
+	}
+	return LargestFlipFieldMT(portals, params)
 }
 
 type PortalLimit int
@@ -124,7 +126,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData) ([]portalData,
 	return f.backbone, flipPortals, backboneLength
 }
 
-func LargestFlipFieldST(portals []Portal, maxBackbonePortals int, numPortalLimit PortalLimit, maxFlipPortals int, progressFunc func(int, int)) ([]Portal, []Portal) {
+func LargestFlipFieldST(portals []Portal, params flipFieldParams) ([]Portal, []Portal) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -137,22 +139,22 @@ func LargestFlipFieldST(portals []Portal, maxBackbonePortals int, numPortalLimit
 	}
 	numProcessedPairs := 0
 	numProcessedPairsModN := 0
-	progressFunc(0, numPairs)
+	params.progressFunc(0, numPairs)
 
 	var bestNumFields int
 	bestBackbone, bestFlipPortals := []portalData(nil), []portalData(nil)
 	var bestBackboneLength float64
-	q := newBestFlipFieldQuery(portalsData, maxBackbonePortals, numPortalLimit, maxFlipPortals)
+	q := newBestFlipFieldQuery(portalsData, params.maxBackbonePortals, params.backbonePortalLimit, params.maxFlipPortals)
 	for _, p0 := range portalsData {
 		for _, p1 := range portalsData {
 			if p0.Index == p1.Index {
 				continue
 			}
 			b, f, bl := q.findBestFlipField(p0, p1)
-			if numPortalLimit != EQUAL || len(b) == maxBackbonePortals {
+			if params.backbonePortalLimit != EQUAL || len(b) == params.maxBackbonePortals {
 				numFlipPortals := len(f)
-				if maxFlipPortals > 0 && numFlipPortals > maxFlipPortals {
-					numFlipPortals = maxFlipPortals
+				if params.maxFlipPortals > 0 && numFlipPortals > params.maxFlipPortals {
+					numFlipPortals = params.maxFlipPortals
 				}
 				numFields := numFlipPortals * (2*len(b) - 1)
 				if numFields > bestNumFields || (numFields == bestNumFields && bl < bestBackboneLength) {
@@ -166,11 +168,11 @@ func LargestFlipFieldST(portals []Portal, maxBackbonePortals int, numPortalLimit
 			numProcessedPairsModN++
 			if numProcessedPairsModN == everyNth {
 				numProcessedPairsModN = 0
-				progressFunc(numProcessedPairs, numPairs)
+				params.progressFunc(numProcessedPairs, numPairs)
 			}
 		}
 	}
-	progressFunc(numPairs, numPairs)
+	params.progressFunc(numPairs, numPairs)
 
 	resultBackbone := make([]Portal, 0, len(bestBackbone))
 	for _, p := range bestBackbone {
