@@ -3,11 +3,13 @@ package lib
 import "github.com/golang/geo/s2"
 
 // LargestFlipField -
-func LargestFlipField(portals []Portal, maxBackbonePortals int, numPortalLimit PortalLimit, numWorkers int, progressFunc func(int, int)) ([]Portal, []Portal) {
+func LargestFlipField(portals []Portal, maxBackbonePortals int, numPortalLimit PortalLimit,
+	maxFlipPortals int,
+	numWorkers int, progressFunc func(int, int)) ([]Portal, []Portal) {
 	if numWorkers == 1 {
-		return LargestFlipFieldST(portals, maxBackbonePortals, numPortalLimit, progressFunc)
+		return LargestFlipFieldST(portals, maxBackbonePortals, numPortalLimit, maxFlipPortals, progressFunc)
 	}
-	return LargestFlipFieldMT(portals, maxBackbonePortals, numPortalLimit, numWorkers, progressFunc)
+	return LargestFlipFieldMT(portals, maxBackbonePortals, numPortalLimit, maxFlipPortals, numWorkers, progressFunc)
 }
 
 type PortalLimit int
@@ -20,16 +22,19 @@ const (
 type bestFlipFieldQuery struct {
 	maxBackbonePortals int
 	numPortalLimit     PortalLimit
-	bestSolution       int // best solution found so far
-	portals            []portalData
-	backbone           []portalData
-	candidates         []portalData
+	maxFlipPortals     int
+	// Best solution found so far, we can abort early if we're sure we won't improve current best solution
+	bestSolution int
+	portals      []portalData
+	backbone     []portalData
+	candidates   []portalData
 }
 
-func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPortalLimit PortalLimit) bestFlipFieldQuery {
+func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPortalLimit PortalLimit, maxFlipPortals int) bestFlipFieldQuery {
 	return bestFlipFieldQuery{
 		maxBackbonePortals: maxBackbonePortals,
 		numPortalLimit:     numPortalLimit,
+		maxFlipPortals:     maxFlipPortals,
 		portals:            portals,
 		backbone:           make([]portalData, 0, maxBackbonePortals),
 		candidates:         make([]portalData, 0, len(portals)),
@@ -39,7 +44,7 @@ func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPort
 func (f *bestFlipFieldQuery) solve(bestSolution int) {
 }
 
-func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData) ([]portalData, []portalData) {
+func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData) ([]portalData, []portalData, float64) {
 	f.candidates = f.candidates[:0]
 	for _, portal := range f.portals {
 		if portal.Index == p0.Index || portal.Index == p1.Index {
@@ -52,6 +57,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData) ([]portalData,
 	}
 	flipPortals := f.candidates
 	f.backbone = append(f.backbone[:0], p0, p1)
+	backboneLength := distance(p0, p1)
 	for {
 		if len(f.backbone) >= f.maxBackbonePortals {
 			break
@@ -60,6 +66,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData) ([]portalData,
 			break
 		}
 		bestNumFields := len(flipPortals) * (2*len(f.backbone) - 1)
+		bestBackboneLength := backboneLength
 		if f.numPortalLimit == EQUAL {
 			bestNumFields = 0
 		}
@@ -73,6 +80,15 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData) ([]portalData,
 					bestNumFields = numFields
 					bestCandidate = i
 					bestInsertPosition = pos
+					bestBackboneLength = backboneLength - distance(f.backbone[pos-1], f.backbone[pos]) + distance(f.backbone[pos-1], candidate) + distance(candidate, f.backbone[pos])
+				} else if numFields == bestNumFields {
+					newBackboneLength := backboneLength - distance(f.backbone[pos-1], f.backbone[pos]) + distance(f.backbone[pos-1], candidate) + distance(candidate, f.backbone[pos])
+					if newBackboneLength < bestBackboneLength {
+						bestNumFields = numFields
+						bestCandidate = i
+						bestInsertPosition = pos
+						bestBackboneLength = newBackboneLength
+					}
 				}
 			}
 		}
@@ -82,6 +98,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData) ([]portalData,
 		f.backbone = append(f.backbone, portalData{})
 		copy(f.backbone[bestInsertPosition+1:], f.backbone[bestInsertPosition:])
 		f.backbone[bestInsertPosition] = f.candidates[bestCandidate]
+		backboneLength = bestBackboneLength
 		f.candidates[bestCandidate], f.candidates[len(f.candidates)-1] =
 			f.candidates[len(f.candidates)-1], f.candidates[bestCandidate]
 		f.candidates = f.candidates[:len(f.candidates)-1]
@@ -95,15 +112,19 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData) ([]portalData,
 		flipPortals = partitionPortalsLeftOfLine(flipPortals, f.backbone[bestInsertPosition], f.backbone[bestInsertPosition+1])
 	}
 	if f.numPortalLimit != EQUAL || len(f.backbone) == f.maxBackbonePortals {
-		numFields := len(flipPortals) * (2*len(f.backbone) - 1)
+		numFlipPortals := len(flipPortals)
+		if f.maxFlipPortals > 0 && numFlipPortals > f.maxFlipPortals {
+			numFlipPortals = f.maxFlipPortals
+		}
+		numFields := numFlipPortals * (2*len(f.backbone) - 1)
 		if numFields > f.bestSolution {
 			f.bestSolution = numFields
 		}
 	}
-	return f.backbone, flipPortals
+	return f.backbone, flipPortals, backboneLength
 }
 
-func LargestFlipFieldST(portals []Portal, maxBackbonePortals int, numPortalLimit PortalLimit, progressFunc func(int, int)) ([]Portal, []Portal) {
+func LargestFlipFieldST(portals []Portal, maxBackbonePortals int, numPortalLimit PortalLimit, maxFlipPortals int, progressFunc func(int, int)) ([]Portal, []Portal) {
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
@@ -120,22 +141,25 @@ func LargestFlipFieldST(portals []Portal, maxBackbonePortals int, numPortalLimit
 
 	var bestNumFields int
 	bestBackbone, bestFlipPortals := []portalData(nil), []portalData(nil)
-	var bestDistanceSq float64
-	q := newBestFlipFieldQuery(portalsData, maxBackbonePortals, numPortalLimit)
+	var bestBackboneLength float64
+	q := newBestFlipFieldQuery(portalsData, maxBackbonePortals, numPortalLimit, maxFlipPortals)
 	for _, p0 := range portalsData {
 		for _, p1 := range portalsData {
 			if p0.Index == p1.Index {
 				continue
 			}
-			b, f := q.findBestFlipField(p0, p1)
+			b, f, bl := q.findBestFlipField(p0, p1)
 			if numPortalLimit != EQUAL || len(b) == maxBackbonePortals {
-				numFields := len(f) * (2*len(b) - 1)
-				distanceSq := distanceSq(p0, p1)
-				if numFields > bestNumFields || (numFields == bestNumFields && distanceSq < bestDistanceSq) {
+				numFlipPortals := len(f)
+				if maxFlipPortals > 0 && numFlipPortals > maxFlipPortals {
+					numFlipPortals = maxFlipPortals
+				}
+				numFields := numFlipPortals * (2*len(b) - 1)
+				if numFields > bestNumFields || (numFields == bestNumFields && bl < bestBackboneLength) {
 					bestNumFields = numFields
 					bestBackbone = append(bestBackbone[:0], b...)
 					bestFlipPortals = append(bestFlipPortals[:0], f...)
-					bestDistanceSq = distanceSq
+					bestBackboneLength = bl
 				}
 			}
 			numProcessedPairs++
