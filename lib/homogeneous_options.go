@@ -4,15 +4,13 @@ type HomogeneousOption interface {
 	apply(param *homogeneousParams)
 	apply2(param *homogeneous2Params)
 }
-type HomogeneousMaxDepth struct {
-	MaxDepth int
-}
+type HomogeneousMaxDepth int
 
 func (h HomogeneousMaxDepth) apply(param *homogeneousParams) {
-	param.maxDepth = h.MaxDepth
+	param.maxDepth = int(h)
 }
 func (h HomogeneousMaxDepth) apply2(param *homogeneous2Params) {
-	param.maxDepth = h.MaxDepth
+	param.maxDepth = int(h)
 }
 
 type HomogeneousLargestArea struct{}
@@ -33,36 +31,31 @@ func (h HomogeneousSmallestArea) apply2(param *homogeneous2Params) {
 	param.topLevelScorer = smallestTriangleScorer{}
 }
 
-type HomogeneousProgressFunc struct {
-	ProgressFunc func(int, int)
-}
+type HomogeneousProgressFunc func(int, int)
 
 func (h HomogeneousProgressFunc) apply(param *homogeneousParams) {
-	param.progressFunc = h.ProgressFunc
+	param.progressFunc = (func(int, int))(h)
 }
 func (h HomogeneousProgressFunc) apply2(param *homogeneous2Params) {
-	param.progressFunc = h.ProgressFunc
+	param.progressFunc = (func(int, int))(h)
 }
 
-type HomogeneousFixedCornerIndices struct {
-	Indices []int
-}
+type HomogeneousFixedCornerIndices []int
 
 func (h HomogeneousFixedCornerIndices) apply(param *homogeneousParams) {
-	param.fixedCornerIndices = h.Indices
+	param.fixedCornerIndices = []int(h)
 }
 func (h HomogeneousFixedCornerIndices) apply2(param *homogeneous2Params) {
-	param.fixedCornerIndices = h.Indices
+	param.fixedCornerIndices = []int(h)
 }
 
-type HomogeneousPerfect struct {
-	Perfect bool
+type HomogeneousPerfect bool
+
+func (h HomogeneousPerfect) apply(param *homogeneousParams) {
+	param.perfect = bool(h)
 }
-func(h HomogeneousPerfect) apply(param* homogeneousParams) {
-	param.perfect = h.Perfect
-}
-func(h HomogeneousPerfect) apply2(param* homogeneous2Params) {
-	param.perfect = h.Perfect
+func (h HomogeneousPerfect) apply2(param *homogeneous2Params) {
+	param.perfect = bool(h)
 }
 
 type homogeneousParams struct {

@@ -48,7 +48,7 @@ func TestFlipFieldMultiThreaded(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	backbone, flipPortals := LargestFlipField(portals, FlipFieldBackbonePortalLimit{8, EQUAL}, FlipFieldMaxFlipPortals{0}, FlipFieldNumWorkers{6})
+	backbone, flipPortals := LargestFlipField(portals, FlipFieldBackbonePortalLimit{8, EQUAL}, FlipFieldMaxFlipPortals(0), FlipFieldNumWorkers(6))
 	checkValidFlipFieldResult(8, 105, backbone, flipPortals, t)
 }
 
@@ -63,7 +63,7 @@ func TestFlipFieldSingleThread(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	backbone, flipPortals := LargestFlipField(portals, FlipFieldBackbonePortalLimit{8, EQUAL}, FlipFieldMaxFlipPortals{0}, FlipFieldNumWorkers{1})
+	backbone, flipPortals := LargestFlipField(portals, FlipFieldBackbonePortalLimit{8, EQUAL}, FlipFieldMaxFlipPortals(0), FlipFieldNumWorkers(1))
 	checkValidFlipFieldResult(8, 105, backbone, flipPortals, t)
 }
 
@@ -78,6 +78,6 @@ func TestFlipFieldLessEqual(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	backbone, flipPortals := LargestFlipField(portals, FlipFieldBackbonePortalLimit{16, LESS_EQUAL}, FlipFieldMaxFlipPortals{0}, FlipFieldNumWorkers{6})
+	backbone, flipPortals := LargestFlipField(portals, FlipFieldBackbonePortalLimit{16, LESS_EQUAL}, FlipFieldMaxFlipPortals(0), FlipFieldNumWorkers(6))
 	checkValidFlipFieldResult(9, 103, backbone, flipPortals, t)
 }
