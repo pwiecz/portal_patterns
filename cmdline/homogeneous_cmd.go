@@ -63,9 +63,9 @@ func (h *homogeneousCmd) Run(args []string, progressFunc func(int, int)) {
 		}
 	}
 	options := []lib.HomogeneousOption{
-		lib.HomogeneousProgressFunc{ProgressFunc: progressFunc},
-		lib.HomogeneousMaxDepth{MaxDepth: *h.maxDepth},
-		lib.HomogeneousFixedCornerIndices{Indices: cornerPortalIndices},
+		lib.HomogeneousProgressFunc(progressFunc),
+		lib.HomogeneousMaxDepth(*h.maxDepth),
+		lib.HomogeneousFixedCornerIndices(cornerPortalIndices),
 	}
 	if *h.largestArea {
 		options = append(options, lib.HomogeneousLargestArea{})
@@ -74,7 +74,7 @@ func (h *homogeneousCmd) Run(args []string, progressFunc func(int, int)) {
 	} else if *h.pretty {
 		options = append(options, lib.HomogeneousLargestArea{})
 	}
-	options = append(options, lib.HomogeneousPerfect{Perfect: *h.perfect})
+	options = append(options, lib.HomogeneousPerfect(*h.perfect))
 
 	var result []lib.Portal
 	var depth uint16

@@ -13,28 +13,22 @@ func (f FlipFieldBackbonePortalLimit) apply(param *flipFieldParams) {
 	param.backbonePortalLimit = f.LimitType
 }
 
-type FlipFieldMaxFlipPortals struct {
-	Value int
-}
+type FlipFieldMaxFlipPortals int
 
 func (f FlipFieldMaxFlipPortals) apply(param *flipFieldParams) {
-	param.maxFlipPortals = f.Value
+	param.maxFlipPortals = int(f)
 }
 
-type FlipFieldProgressFunc struct {
-	ProgressFunc func(int, int)
-}
+type FlipFieldProgressFunc func(int, int)
 
 func (f FlipFieldProgressFunc) apply(param *flipFieldParams) {
-	param.progressFunc = f.ProgressFunc
+	param.progressFunc = (func(int, int))(f)
 }
 
-type FlipFieldNumWorkers struct {
-	NumWorkers int
-}
+type FlipFieldNumWorkers int
 
 func (f FlipFieldNumWorkers) apply(param *flipFieldParams) {
-	param.numWorkers = f.NumWorkers
+	param.numWorkers = int(f)
 }
 
 type FlipFieldSimpleBackbone bool

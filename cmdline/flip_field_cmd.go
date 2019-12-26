@@ -58,10 +58,10 @@ func (f *flipFieldCmd) Run(args []string, numWorkers int, progressFunc func(int,
 		numFlipFieldWorkers = numWorkers
 	}
 	options := []lib.FlipFieldOption{
-		lib.FlipFieldProgressFunc{ProgressFunc: progressFunc},
-		lib.FlipFieldNumWorkers{NumWorkers: numFlipFieldWorkers},
+		lib.FlipFieldProgressFunc(progressFunc),
+		lib.FlipFieldNumWorkers(numFlipFieldWorkers),
 		lib.FlipFieldBackbonePortalLimit{Value: f.numBackbonePortals.Value, LimitType: numPortalLimit},
-		lib.FlipFieldMaxFlipPortals{Value: *f.maxFlipPortals},
+		lib.FlipFieldMaxFlipPortals(*f.maxFlipPortals),
 		lib.FlipFieldSimpleBackbone(*f.simpleBackbone),
 	}
 	backbone, rest := lib.LargestFlipField(portals, options...)
