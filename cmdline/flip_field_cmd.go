@@ -10,16 +10,18 @@ import "github.com/pwiecz/portal_patterns/lib"
 type flipFieldCmd struct {
 	flags              *flag.FlagSet
 	numBackbonePortals *numberLimitValue
+	maxFlipPortals     *int
 }
 
 func NewFlipFieldCmd() flipFieldCmd {
 	flags := flag.NewFlagSet("flip_field", flag.ExitOnError)
 	cmd := flipFieldCmd{
-		flags:              flags,
+		flags: flags,
 		numBackbonePortals: &numberLimitValue{
-			Value: 16,
+			Value:   16,
 			Exactly: true,
 		},
+		maxFlipPortals: flags.Int("max_flip_portals", 0, "if >0 don't try to optimize for number of flip portals above this value"),
 	}
 	flags.Var(cmd.numBackbonePortals, "num_backbone_portals", "limit of number of portals in the \"backbone\" of the field. May be a number of have a format of \"<=number\"")
 	return cmd
