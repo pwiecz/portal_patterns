@@ -11,6 +11,7 @@ type flipFieldCmd struct {
 	flags              *flag.FlagSet
 	numBackbonePortals *numberLimitValue
 	maxFlipPortals     *int
+	simpleBackbone     *bool
 }
 
 func NewFlipFieldCmd() flipFieldCmd {
@@ -22,13 +23,14 @@ func NewFlipFieldCmd() flipFieldCmd {
 			Exactly: true,
 		},
 		maxFlipPortals: flags.Int("max_flip_portals", 0, "if >0 don't try to optimize for number of flip portals above this value"),
+		simpleBackbone: flags.Bool("simple_backbone", false, "make all backbone portals linkable from the first backbone portal"),
 	}
 	flags.Var(cmd.numBackbonePortals, "num_backbone_portals", "limit of number of portals in the \"backbone\" of the field. May be a number of have a format of \"<=number\"")
 	return cmd
 }
 
 func (f *flipFieldCmd) Usage(fileBase string) {
-	fmt.Fprintf(flag.CommandLine.Output(), "%s flip_field [-num_backbone_portals=[<=]<number>]\n", fileBase)
+	fmt.Fprintf(flag.CommandLine.Output(), "%s flip_field [-num_backbone_portals=[<=]<number>] [--max_flip_portals=<number>] [--simple_backbone]\n", fileBase)
 	f.flags.PrintDefaults()
 }
 
@@ -60,6 +62,7 @@ func (f *flipFieldCmd) Run(args []string, numWorkers int, progressFunc func(int,
 		lib.FlipFieldNumWorkers{NumWorkers: numFlipFieldWorkers},
 		lib.FlipFieldBackbonePortalLimit{Value: f.numBackbonePortals.Value, LimitType: numPortalLimit},
 		lib.FlipFieldMaxFlipPortals{Value: *f.maxFlipPortals},
+		lib.FlipFieldSimpleBackbone(*f.simpleBackbone),
 	}
 	backbone, rest := lib.LargestFlipField(portals, options...)
 	fmt.Printf("\nNum backbone portals: %d, num flip portals: %d, num fields: %d\nBackbone:\n",

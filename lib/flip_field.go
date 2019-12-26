@@ -25,6 +25,7 @@ type bestFlipFieldQuery struct {
 	maxBackbonePortals int
 	numPortalLimit     PortalLimit
 	maxFlipPortals     int
+	simpleBackbone     bool
 	// Best solution found so far, we can abort early if we're sure we won't improve current best solution
 	bestSolution int
 	portals      []portalData
@@ -32,7 +33,7 @@ type bestFlipFieldQuery struct {
 	candidates   []portalData
 }
 
-func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPortalLimit PortalLimit, maxFlipPortals int) bestFlipFieldQuery {
+func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPortalLimit PortalLimit, maxFlipPortals int, simpleBackbone bool) bestFlipFieldQuery {
 	return bestFlipFieldQuery{
 		maxBackbonePortals: maxBackbonePortals,
 		numPortalLimit:     numPortalLimit,
@@ -40,6 +41,7 @@ func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPort
 		portals:            portals,
 		backbone:           make([]portalData, 0, maxBackbonePortals),
 		candidates:         make([]portalData, 0, len(portals)),
+		simpleBackbone:     simpleBackbone,
 	}
 }
 
@@ -76,6 +78,12 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData) ([]portalData,
 		bestInsertPosition := -1
 		for i, candidate := range f.candidates {
 			for pos := 1; pos < len(f.backbone); pos++ {
+				if f.simpleBackbone {
+					q := newTriangleWedgeQuery(f.backbone[0].LatLng, f.backbone[pos-1].LatLng, f.backbone[pos].LatLng)
+					if !q.ContainsPoint(candidate.LatLng) || !s2.Sign(f.backbone[pos].LatLng, candidate.LatLng, f.backbone[pos-1].LatLng) {
+						continue
+					}
+				}
 				numFlipPortals := numPortalsLeftOfTwoLines(flipPortals, f.backbone[pos-1], candidate, f.backbone[pos])
 				numFields := numFlipPortals * (2*len(f.backbone) + 1)
 				if numFields > bestNumFields {
@@ -144,7 +152,7 @@ func LargestFlipFieldST(portals []Portal, params flipFieldParams) ([]Portal, []P
 	var bestNumFields int
 	bestBackbone, bestFlipPortals := []portalData(nil), []portalData(nil)
 	var bestBackboneLength float64
-	q := newBestFlipFieldQuery(portalsData, params.maxBackbonePortals, params.backbonePortalLimit, params.maxFlipPortals)
+	q := newBestFlipFieldQuery(portalsData, params.maxBackbonePortals, params.backbonePortalLimit, params.maxFlipPortals, params.simpleBackbone)
 	for _, p0 := range portalsData {
 		for _, p1 := range portalsData {
 			if p0.Index == p1.Index {

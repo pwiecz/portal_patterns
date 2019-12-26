@@ -7,6 +7,7 @@ type bestFlipFieldMtQuery struct {
 	maxBackbonePortals int
 	numPortalLimit     PortalLimit
 	maxFlipPortals     int
+	simpleBackbone     bool
 	portals            []portalData
 }
 
@@ -40,6 +41,12 @@ func (f *bestFlipFieldMtQuery) findBestFlipField(p0, p1 portalData, backbone, ca
 		bestInsertPosition := -1
 		for i, candidate := range candidates {
 			for pos := 1; pos < len(backbone); pos++ {
+				if f.simpleBackbone {
+					q := newTriangleWedgeQuery(backbone[0].LatLng, backbone[pos-1].LatLng, backbone[pos].LatLng)
+					if !q.ContainsPoint(candidate.LatLng) || !s2.Sign(backbone[pos].LatLng, candidate.LatLng, backbone[pos-1].LatLng) {
+						continue
+					}
+				}
 				numFlipPortals := numPortalsLeftOfTwoLines(flipPortals, backbone[pos-1], candidate, backbone[pos])
 				numFields := numFlipPortals * (2*len(backbone) + 1)
 				if numFields > bestNumFields {
@@ -133,7 +140,7 @@ func LargestFlipFieldMT(portals []Portal, params flipFieldParams) ([]Portal, []P
 	responseChannel := make(chan flipFieldRequest, params.numWorkers)
 	var wg sync.WaitGroup
 	wg.Add(params.numWorkers)
-	q := &bestFlipFieldMtQuery{params.maxBackbonePortals, params.backbonePortalLimit, params.maxFlipPortals, portalsData}
+	q := &bestFlipFieldMtQuery{params.maxBackbonePortals, params.backbonePortalLimit, params.maxFlipPortals, params.simpleBackbone, portalsData}
 	for i := 0; i < params.numWorkers; i++ {
 		go bestFlipFieldWorker(q, requestChannel, responseChannel, &wg)
 	}
