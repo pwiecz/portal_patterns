@@ -177,7 +177,7 @@ func LargestFlipFieldMT(portals []Portal, params flipFieldParams) ([]Portal, []P
 		wg.Wait()
 		close(responseChannel)
 	}()
-	numPairs := len(portals) * (len(portals) - 1)
+	numPairs := len(portals) * (len(portals) - 1) * 2
 	everyNth := numPairs / 1000
 	if everyNth < 50 {
 		everyNth = 2
