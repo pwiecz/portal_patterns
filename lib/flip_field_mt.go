@@ -10,13 +10,14 @@ type bestFlipFieldMtQuery struct {
 	portals            []portalData
 }
 
-func (f *bestFlipFieldMtQuery) findBestFlipField(p0, p1 portalData, backbone, candidates []portalData, bestSolution int) ([]portalData, []portalData, float64) {
+func (f *bestFlipFieldMtQuery) findBestFlipField(p0, p1 portalData, ccw bool, backbone, candidates []portalData, bestSolution int) ([]portalData, []portalData, float64) {
 	candidates = candidates[:0]
 	for _, portal := range f.portals {
 		if portal.Index == p0.Index || portal.Index == p1.Index {
 			continue
 		}
-		if Sign(p0.LatLng, p1.LatLng, portal.LatLng) <= 0 {
+		if (ccw && Sign(p0.LatLng, p1.LatLng, portal.LatLng) <= 0) ||
+			(!ccw && Sign(p0.LatLng, p1.LatLng, portal.LatLng) >= 0) {
 			continue
 		}
 		candidates = append(candidates, portal)
@@ -42,11 +43,16 @@ func (f *bestFlipFieldMtQuery) findBestFlipField(p0, p1 portalData, backbone, ca
 			for pos := 1; pos < len(backbone); pos++ {
 				if f.simpleBackbone {
 					q := NewWedgeQuery(backbone[0].LatLng, backbone[pos-1].LatLng, backbone[pos].LatLng)
-					if !q.ContainsPoint(candidate.LatLng) || Sign(backbone[pos].LatLng, candidate.LatLng, backbone[pos-1].LatLng) <= 0 {
+					if !q.ContainsPoint(candidate.LatLng) {
 						continue
 					}
 				}
-				numFlipPortals := numPortalsLeftOfTwoLines(flipPortals, backbone[pos-1], candidate, backbone[pos])
+				var numFlipPortals int
+				if ccw {
+					numFlipPortals = numPortalsLeftOfTwoLines(flipPortals, backbone[pos-1], candidate, backbone[pos])
+				} else {
+					numFlipPortals = numPortalsLeftOfTwoLines(flipPortals, backbone[pos], candidate, backbone[pos-1])
+				}
 				numFields := numFlipPortals * (2*len(backbone) + 1)
 				if numFields > bestNumFields {
 					bestNumFields = numFields
@@ -80,14 +86,20 @@ func (f *bestFlipFieldMtQuery) findBestFlipField(p0, p1 portalData, backbone, ca
 		if len(flipPortals) > len(candidates) {
 			flipPortals = flipPortals[:len(flipPortals)-1]
 		}
-		flipPortals = partitionPortalsLeftOfLine(flipPortals, backbone[bestInsertPosition-1], backbone[bestInsertPosition])
-		flipPortals = partitionPortalsLeftOfLine(flipPortals, backbone[bestInsertPosition], backbone[bestInsertPosition+1])
+		if ccw {
+			flipPortals = partitionPortalsLeftOfLine(flipPortals, backbone[bestInsertPosition-1], backbone[bestInsertPosition])
+			flipPortals = partitionPortalsLeftOfLine(flipPortals, backbone[bestInsertPosition], backbone[bestInsertPosition+1])
+		} else {
+			flipPortals = partitionPortalsLeftOfLine(flipPortals, backbone[bestInsertPosition+1], backbone[bestInsertPosition])
+			flipPortals = partitionPortalsLeftOfLine(flipPortals, backbone[bestInsertPosition], backbone[bestInsertPosition-1])
+		}
 	}
 	return backbone, flipPortals, backboneLength
 }
 
 type flipFieldRequest struct {
 	p0, p1                portalData
+	ccw                   bool
 	backbone, flipPortals []portalData
 	backboneLength        float64
 }
@@ -98,7 +110,7 @@ func bestFlipFieldWorker(
 	wg *sync.WaitGroup) {
 	var localBestNumFields int
 	for req := range requestChannel {
-		b, f, bl := q.findBestFlipField(req.p0, req.p1, req.backbone, req.flipPortals, localBestNumFields)
+		b, f, bl := q.findBestFlipField(req.p0, req.p1, req.ccw, req.backbone, req.flipPortals, localBestNumFields)
 		if q.numPortalLimit != EQUAL || len(b) == q.maxBackbonePortals {
 			numFlipPortals := len(f)
 			if q.maxFlipPortals > 0 && numFlipPortals > q.maxFlipPortals {
@@ -148,11 +160,14 @@ func LargestFlipFieldMT(portals []Portal, params flipFieldParams) ([]Portal, []P
 				if p0.Index == p1.Index {
 					continue
 				}
-				requestChannel <- flipFieldRequest{
-					p0:          p0,
-					p1:          p1,
-					backbone:    backboneCache.Get().([]portalData),
-					flipPortals: flipPortalsCache.Get().([]portalData),
+				for _, ccw := range []bool{true, false} {
+					requestChannel <- flipFieldRequest{
+						p0:          p0,
+						p1:          p1,
+						ccw:         ccw,
+						backbone:    backboneCache.Get().([]portalData),
+						flipPortals: flipPortalsCache.Get().([]portalData),
+					}
 				}
 			}
 		}

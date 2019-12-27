@@ -4,7 +4,7 @@ import "testing"
 
 import "github.com/golang/geo/s2"
 
-func isCorrectFlipField(backbone, flipPortals []s2.Point) bool {
+func isCorrectCCWFlipField(backbone, flipPortals []s2.Point) bool {
 	if len(backbone) < 2 {
 		return true
 	}
@@ -23,6 +23,25 @@ func isCorrectFlipField(backbone, flipPortals []s2.Point) bool {
 	return true
 }
 
+func isCorrectCWFlipField(backbone, flipPortals []s2.Point) bool {
+	if len(backbone) < 2 {
+		return true
+	}
+	for i := 1; i+1 < len(backbone); i++ {
+		if s2.Sign(backbone[0], backbone[len(backbone)-1], backbone[i]) {
+			return false
+		}
+	}
+	for i := 1; i < len(backbone); i++ {
+		for _, portal := range flipPortals {
+			if s2.Sign(backbone[i-1], backbone[i], portal) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func checkValidFlipFieldResult(expectedBackboneLength, expectedNumFlipPortals int, backbone, flipPortals []Portal, t *testing.T) {
 	if len(backbone) != expectedBackboneLength {
 		t.Errorf("Expected backbone length %d, actual length %d", expectedBackboneLength, len(backbone))
@@ -32,7 +51,7 @@ func checkValidFlipFieldResult(expectedBackboneLength, expectedNumFlipPortals in
 	}
 	backboneData := portalsToS2Points(backbone)
 	flipPortalData := portalsToS2Points(flipPortals)
-	if !isCorrectFlipField(backboneData, flipPortalData) {
+	if !isCorrectCCWFlipField(backboneData, flipPortalData) && !isCorrectCWFlipField(backboneData, flipPortalData) {
 		t.Errorf("Result is not correct flip fielding")
 	}
 }
