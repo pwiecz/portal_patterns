@@ -86,6 +86,22 @@ func numPortalsLeftOfTwoLines(portals []portalData, a, b, c portalData) int {
        return result
 }
 
+func isPortalLeftOfLine(p, a, b portalData) bool {
+	return p.Index != a.Index && p.Index != b.Index && s2.Sign(a.LatLng, b.LatLng, p.LatLng)
+}
+
+// Number of portals on the left of line ab.
+func numPortalsLeftOfLine(portals []portalData, a, b portalData) int {
+       result := 0
+       for _, p := range portals {
+               if p.Index != a.Index && p.Index != b.Index &&
+                       s2.Sign(a.LatLng, b.LatLng, p.LatLng) {
+                       result++
+               }
+       }
+       return result
+}
+
 func partitionPortalsLeftOfLine(portals []portalData, a, b portalData) []portalData {
        length := len(portals)
        for i := 0; i < length; {
@@ -98,6 +114,16 @@ func partitionPortalsLeftOfLine(portals []portalData, a, b portalData) []portalD
                }
        }
        return portals[:length]
+}
+
+func portalsLeftOfLine(portals []portalData, a, b portalData, result []portalData) []portalData {
+	result = result[:0]
+	for _, p := range portals {
+               if p.Index != a.Index && p.Index != b.Index && s2.Sign(a.LatLng, b.LatLng, p.LatLng) {
+		       result = append(result, p)
+	       }
+	}
+	return result
 }
 
 func float64Min(v0, v1 float64) float64 {
@@ -113,6 +139,12 @@ func float64Max(v0, v1 float64) float64 {
 	return v1
 }
 func float32Min(v0, v1 float32) float32 {
+	if v0 < v1 {
+		return v0
+	}
+	return v1
+}
+func intMin(v0, v1 int) int {
 	if v0 < v1 {
 		return v0
 	}
