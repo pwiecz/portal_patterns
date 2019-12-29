@@ -71,9 +71,17 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 		for i, candidate := range f.candidates {
 			for pos := 1; pos < len(f.backbone); pos++ {
 				if f.simpleBackbone {
-					q := newTriangleWedgeQuery(f.backbone[0].LatLng, f.backbone[pos-1].LatLng, f.backbone[pos].LatLng)
-					if !q.ContainsPoint(candidate.LatLng) {
-						continue
+					if pos == 1 {
+						if ccw && !s2.Sign(f.backbone[0].LatLng, f.backbone[1].LatLng, candidate.LatLng) {
+							continue
+						} else if !ccw && s2.Sign(f.backbone[0].LatLng, f.backbone[1].LatLng, candidate.LatLng) {
+							continue
+						}
+					} else {
+						q := newTriangleWedgeQuery(f.backbone[0].LatLng, f.backbone[pos-1].LatLng, f.backbone[pos].LatLng)
+						if !q.ContainsPoint(candidate.LatLng) {
+							continue
+						}
 					}
 				}
 				var numFlipPortals int
@@ -135,7 +143,8 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				}
 			}
 		}
-		if bestCandidate < 0 {
+		if !f.simpleBackbone && bestCandidate < 0 {
+			// TODO: what if simpleBackbone == true
 			for i, candidate := range f.portals {
 				if f.backbone[len(f.backbone)-1].Index == candidate.Index || f.backbone[0].Index == candidate.Index {
 					continue
