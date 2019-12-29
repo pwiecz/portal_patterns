@@ -27,21 +27,21 @@ type bestFlipFieldQuery struct {
 	maxFlipPortals     int
 	simpleBackbone     bool
 	// Best solution found so far, we can abort early if we're sure we won't improve current best solution
-	bestSolution          int
-	portals               []portalData
-	backbone              []portalData
-	candidates            []portalData
+	bestSolution int
+	portals      []portalData
+	backbone     []portalData
+	candidates   []portalData
 }
 
 func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPortalLimit PortalLimit, maxFlipPortals int, simpleBackbone bool) bestFlipFieldQuery {
 	return bestFlipFieldQuery{
-		maxBackbonePortals:    maxBackbonePortals,
-		numPortalLimit:        numPortalLimit,
-		maxFlipPortals:        maxFlipPortals,
-		simpleBackbone:        simpleBackbone,
-		portals:               portals,
-		backbone:              make([]portalData, 0, maxBackbonePortals),
-		candidates:            make([]portalData, 0, len(portals)),
+		maxBackbonePortals: maxBackbonePortals,
+		numPortalLimit:     numPortalLimit,
+		maxFlipPortals:     maxFlipPortals,
+		simpleBackbone:     simpleBackbone,
+		portals:            portals,
+		backbone:           make([]portalData, 0, maxBackbonePortals),
+		candidates:         make([]portalData, 0, len(portals)),
 	}
 }
 
