@@ -136,9 +136,78 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			}
 		}
 		if bestCandidate < 0 {
+			for i, candidate := range f.portals {
+				if f.backbone[len(f.backbone)-1].Index == candidate.Index || f.backbone[0].Index == candidate.Index {
+					continue
+				}
+				var numFlipPortals int
+				if ccw {
+					if s2.Sign(f.backbone[0].LatLng, f.backbone[len(f.backbone)-1].LatLng, candidate.LatLng) {
+						continue
+					}
+					numFlipPortals = numPortalsLeftOfLine(flipPortals, candidate, f.backbone[0])
+				} else {
+					if s2.Sign(f.backbone[len(f.backbone)-1].LatLng, f.backbone[0].LatLng, candidate.LatLng) {
+						continue
+					}
+					numFlipPortals = numPortalsLeftOfLine(flipPortals, f.backbone[0], candidate)
+				}
+				numFields := numFlipPortals * (2*len(f.backbone) + 1)
+				if numFields > bestNumFields {
+					bestNumFields = numFields
+					bestCandidate = i
+					bestInsertPosition = 0
+					bestBackboneLength = backboneLength + distance(f.backbone[0], candidate)
+				} else if numFields == bestNumFields {
+					newBackboneLength := backboneLength + distance(f.backbone[0], candidate)
+					if newBackboneLength < bestBackboneLength {
+						bestNumFields = numFields
+						bestCandidate = i
+						bestInsertPosition = 0
+						bestBackboneLength = newBackboneLength
+					}
+				}
+
+			}
+		}
+		if bestCandidate < 0 {
 			break
 		}
-		if bestInsertPosition < len(f.backbone) {
+		if bestInsertPosition == 0 {
+			f.backbone = append(f.backbone, portalData{})
+			copy(f.backbone[1:], f.backbone[0:])
+			f.backbone[0] = f.portals[bestCandidate]
+			tq := newTriangleQuery(f.backbone[0].LatLng, f.backbone[1].LatLng, f.backbone[len(f.backbone)-1].LatLng)
+			for _, portal := range f.portals {
+				if tq.ContainsPoint(portal.LatLng) {
+					foundDup := false
+					for _, c := range f.candidates {
+						if c.Index == portal.Index {
+							foundDup = true
+							break
+						}
+					}
+					if foundDup {
+						continue
+					}
+					for _, c := range f.backbone {
+						if c.Index == portal.Index {
+							foundDup = true
+							break
+						}
+					}
+					if foundDup {
+						continue
+					}
+					f.candidates = append(f.candidates, portal)
+				}
+			}
+			if ccw {
+				flipPortals = partitionPortalsLeftOfLine(flipPortals, f.backbone[0], f.backbone[1])
+			} else {
+				flipPortals = partitionPortalsLeftOfLine(flipPortals, f.backbone[1], f.backbone[0])
+			}
+		} else if bestInsertPosition < len(f.backbone) {
 			f.backbone = append(f.backbone, portalData{})
 			copy(f.backbone[bestInsertPosition+1:], f.backbone[bestInsertPosition:])
 			f.backbone[bestInsertPosition] = f.candidates[bestCandidate]
