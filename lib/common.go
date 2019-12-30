@@ -19,7 +19,7 @@ func portalsToPortalData(portals []Portal) []portalData {
 	portalsData := make([]portalData, 0, len(portals))
 	for i, portal := range portals {
 		portalsData = append(portalsData, portalData{
-			Index: portalIndex(i), 
+			Index:  portalIndex(i),
 			LatLng: s2.PointFromLatLng(portal.LatLng)})
 	}
 	return portalsData
@@ -43,7 +43,8 @@ func portalsInsideWedge(portals []portalData, a, b, c portalData, result []porta
 	}
 	return result
 }
-// returns a subset of portals from portals that lie inside wedge ab, ac. 
+
+// returns a subset of portals from portals that lie inside wedge ab, ac.
 // It reorders the input portals slice and returns its subslice
 func partitionPortalsInsideWedge(portals []portalData, a, b, c portalData) []portalData {
 	wedge := newTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
@@ -75,15 +76,15 @@ func portalsInsideTriangle(portals []portalData, a, b, c portalData, result []po
 
 // Number of portals on the left of lines ab and bc.
 func numPortalsLeftOfTwoLines(portals []portalData, a, b, c portalData) int {
-       result := 0
-       for _, p := range portals {
-               if p.Index != a.Index && p.Index != b.Index && p.Index != c.Index &&
-                       s2.Sign(a.LatLng, b.LatLng, p.LatLng) &&
-                       s2.Sign(b.LatLng, c.LatLng, p.LatLng) {
-                       result++
-               }
-       }
-       return result
+	result := 0
+	aCrossB := a.LatLng.Cross(b.LatLng.Vector)
+	bCrossC := b.LatLng.Cross(c.LatLng.Vector)
+	for _, p := range portals {
+		if aCrossB.Dot(p.LatLng.Vector) > 0 && bCrossC.Dot(p.LatLng.Vector) > 0 {
+			result++
+		}
+	}
+	return result
 }
 
 func isPortalLeftOfLine(p, a, b portalData) bool {
@@ -92,36 +93,36 @@ func isPortalLeftOfLine(p, a, b portalData) bool {
 
 // Number of portals on the left of line ab.
 func numPortalsLeftOfLine(portals []portalData, a, b portalData) int {
-       result := 0
-       for _, p := range portals {
-               if p.Index != a.Index && p.Index != b.Index &&
-                       s2.Sign(a.LatLng, b.LatLng, p.LatLng) {
-                       result++
-               }
-       }
-       return result
+	result := 0
+	for _, p := range portals {
+		if p.Index != a.Index && p.Index != b.Index &&
+			s2.Sign(a.LatLng, b.LatLng, p.LatLng) {
+			result++
+		}
+	}
+	return result
 }
 
 func partitionPortalsLeftOfLine(portals []portalData, a, b portalData) []portalData {
-       length := len(portals)
-       for i := 0; i < length; {
-               p := portals[i]
-               if p.Index != a.Index && p.Index != b.Index && s2.Sign(a.LatLng, b.LatLng, p.LatLng) {
-                       i++
-               } else {
-                       portals[i], portals[length-1] = portals[length-1], portals[i]
-                       length--
-               }
-       }
-       return portals[:length]
+	length := len(portals)
+	for i := 0; i < length; {
+		p := portals[i]
+		if p.Index != a.Index && p.Index != b.Index && s2.Sign(a.LatLng, b.LatLng, p.LatLng) {
+			i++
+		} else {
+			portals[i], portals[length-1] = portals[length-1], portals[i]
+			length--
+		}
+	}
+	return portals[:length]
 }
 
 func portalsLeftOfLine(portals []portalData, a, b portalData, result []portalData) []portalData {
 	result = result[:0]
 	for _, p := range portals {
-               if p.Index != a.Index && p.Index != b.Index && s2.Sign(a.LatLng, b.LatLng, p.LatLng) {
-		       result = append(result, p)
-	       }
+		if p.Index != a.Index && p.Index != b.Index && s2.Sign(a.LatLng, b.LatLng, p.LatLng) {
+			result = append(result, p)
+		}
 	}
 	return result
 }
@@ -188,16 +189,16 @@ func PolylineFromPortalList(portals []Portal) string {
 	return json.String()
 }
 func MarkersFromPortalList(portals []Portal) string {
-       var json strings.Builder
-       for i, portal := range portals {
-               if i > 0 {
-                       fmt.Fprintf(&json, ", ")
-               }
-               fmt.Fprintf(&json, `{"type":"marker","latLng":`)
-               fmt.Fprintf(&json, "%s", latLngToJSONCoords(portal.LatLng))
-               fmt.Fprintf(&json, `,"color":"#a24ac3"}`)
-       }
-       return json.String()
+	var json strings.Builder
+	for i, portal := range portals {
+		if i > 0 {
+			fmt.Fprintf(&json, ", ")
+		}
+		fmt.Fprintf(&json, `{"type":"marker","latLng":`)
+		fmt.Fprintf(&json, "%s", latLngToJSONCoords(portal.LatLng))
+		fmt.Fprintf(&json, `,"color":"#a24ac3"}`)
+	}
+	return json.String()
 }
 
 func PrintProgressBar(done int, total int) {
