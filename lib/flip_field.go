@@ -74,9 +74,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			for pos := 1; pos < len(f.backbone); pos++ {
 				if f.simpleBackbone {
 					if pos == 1 {
-						if ccw && !s2.Sign(f.backbone[0].LatLng, f.backbone[1].LatLng, candidate.LatLng) {
-							continue
-						} else if !ccw && s2.Sign(f.backbone[0].LatLng, f.backbone[1].LatLng, candidate.LatLng) {
+						if ccw != s2.Sign(f.backbone[0].LatLng, f.backbone[1].LatLng, candidate.LatLng) {
 							continue
 						}
 					} else {
@@ -151,39 +149,24 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					continue
 				}
 				var numFlipPortals int
-				if ccw {
-					if s2.Sign(f.backbone[0].LatLng, f.backbone[len(f.backbone)-1].LatLng, candidate.LatLng) {
+				if ccw == s2.Sign(f.backbone[0].LatLng, f.backbone[len(f.backbone)-1].LatLng, candidate.LatLng) {
+					continue
+				}
+				if f.simpleBackbone {
+					ok := true
+					for i := 1; i < len(f.backbone); i++ {
+						if ccw == s2.Sign(candidate.LatLng, f.backbone[i-1].LatLng, f.backbone[i].LatLng) {
+							ok = false
+							break
+						}
+					}
+					if !ok {
 						continue
 					}
-					if f.simpleBackbone {
-						ok := true
-						for i := 1; i < len(f.backbone); i++ {
-							if s2.Sign(candidate.LatLng, f.backbone[i-1].LatLng, f.backbone[i].LatLng) {
-								ok = false
-								break
-							}
-						}
-						if !ok {
-							continue
-						}
-					}
+				}
+				if ccw {
 					numFlipPortals = numPortalsLeftOfLine(f.flipPortals, candidate, f.backbone[0])
 				} else {
-					if s2.Sign(f.backbone[len(f.backbone)-1].LatLng, f.backbone[0].LatLng, candidate.LatLng) {
-						continue
-					}
-					if f.simpleBackbone {
-						ok := true
-						for i := 1; i < len(f.backbone); i++ {
-							if !s2.Sign(candidate.LatLng, f.backbone[i-1].LatLng, f.backbone[i].LatLng) {
-								ok = false
-								break
-							}
-						}
-						if !ok {
-							continue
-						}
-					}
 					numFlipPortals = numPortalsLeftOfLine(f.flipPortals, f.backbone[0], candidate)
 				}
 				numFields := numFlipPortals * (2*len(f.backbone) + 1)
