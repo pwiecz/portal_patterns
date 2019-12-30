@@ -1,6 +1,5 @@
 package lib
 
-import "fmt"
 import "testing"
 import "github.com/golang/geo/s2"
 
