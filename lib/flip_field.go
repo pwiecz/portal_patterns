@@ -145,8 +145,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				}
 			}
 		}
-		if !f.simpleBackbone && bestCandidate < 0 {
-			// TODO: what if simpleBackbone == true
+		if bestCandidate < 0 {
 			for i, candidate := range f.portals {
 				if f.backbone[len(f.backbone)-1].Index == candidate.Index || f.backbone[0].Index == candidate.Index {
 					continue
@@ -156,10 +155,34 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					if s2.Sign(f.backbone[0].LatLng, f.backbone[len(f.backbone)-1].LatLng, candidate.LatLng) {
 						continue
 					}
+					if f.simpleBackbone {
+						ok := true
+						for i := 1; i < len(f.backbone); i++ {
+							if s2.Sign(candidate.LatLng, f.backbone[i-1].LatLng, f.backbone[i].LatLng) {
+								ok = false
+								break
+							}
+						}
+						if !ok {
+							continue
+						}
+					}
 					numFlipPortals = numPortalsLeftOfLine(f.flipPortals, candidate, f.backbone[0])
 				} else {
 					if s2.Sign(f.backbone[len(f.backbone)-1].LatLng, f.backbone[0].LatLng, candidate.LatLng) {
 						continue
+					}
+					if f.simpleBackbone {
+						ok := true
+						for i := 1; i < len(f.backbone); i++ {
+							if !s2.Sign(candidate.LatLng, f.backbone[i-1].LatLng, f.backbone[i].LatLng) {
+								ok = false
+								break
+							}
+						}
+						if !ok {
+							continue
+						}
 					}
 					numFlipPortals = numPortalsLeftOfLine(f.flipPortals, f.backbone[0], candidate)
 				}

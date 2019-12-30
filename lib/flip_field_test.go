@@ -1,9 +1,10 @@
 package lib
 
+import "fmt"
 import "testing"
 import "github.com/golang/geo/s2"
 
-func isCorrectCCWFlipField(backbone, flipPortals []portalData) bool {
+func isCorrectCCWFlipField(backbone, flipPortals []portalData, simpleBackbone bool) bool {
 	if len(backbone) < 2 {
 		return true
 	}
@@ -18,10 +19,13 @@ func isCorrectCCWFlipField(backbone, flipPortals []portalData) bool {
 				return false
 			}
 		}
+		if simpleBackbone && i > 1 && s2.Sign(backbone[0].LatLng, backbone[i-1].LatLng, backbone[i].LatLng) {
+			return false
+		}
 	}
 	return true
 }
-func isCorrectCWFlipField(backbone, flipPortals []portalData) bool {
+func isCorrectCWFlipField(backbone, flipPortals []portalData, simpleBackbone bool) bool {
 	if len(backbone) < 2 {
 		return true
 	}
@@ -36,11 +40,14 @@ func isCorrectCWFlipField(backbone, flipPortals []portalData) bool {
 				return false
 			}
 		}
+		if simpleBackbone && i > 1 && !s2.Sign(backbone[0].LatLng, backbone[i-1].LatLng, backbone[i].LatLng) {
+			return false
+		}
 	}
 	return true
 }
 
-func checkValidFlipFieldResult(expectedBackboneLength, expectedNumFlipPortals int, backbone, flipPortals []Portal, t *testing.T) {
+func checkValidFlipFieldResult(expectedBackboneLength, expectedNumFlipPortals int, simpleBackbone bool, backbone, flipPortals []Portal, t *testing.T) {
 	if len(backbone) != expectedBackboneLength {
 		t.Errorf("Expected backbone length %d, actual length %d", expectedBackboneLength, len(backbone))
 	}
@@ -49,7 +56,7 @@ func checkValidFlipFieldResult(expectedBackboneLength, expectedNumFlipPortals in
 	}
 	backboneData := portalsToPortalData(backbone)
 	flipPortalData := portalsToPortalData(flipPortals)
-	if !isCorrectCCWFlipField(backboneData, flipPortalData) && !isCorrectCWFlipField(backboneData, flipPortalData) {
+	if !isCorrectCCWFlipField(backboneData, flipPortalData, simpleBackbone) && !isCorrectCWFlipField(backboneData, flipPortalData, simpleBackbone) {
 		t.Errorf("Result is not correct flip fielding")
 	}
 }
@@ -66,7 +73,7 @@ func TestFlipFieldMultiThreaded(t *testing.T) {
 		t.FailNow()
 	}
 	backbone, flipPortals := LargestFlipField(portals, FlipFieldBackbonePortalLimit{8, EQUAL}, FlipFieldMaxFlipPortals(0), FlipFieldNumWorkers(6))
-	checkValidFlipFieldResult(8, 105, backbone, flipPortals, t)
+	checkValidFlipFieldResult(8, 105, false, backbone, flipPortals, t)
 }
 
 func TestFlipFieldSingleThread(t *testing.T) {
@@ -81,7 +88,7 @@ func TestFlipFieldSingleThread(t *testing.T) {
 		t.FailNow()
 	}
 	backbone, flipPortals := LargestFlipField(portals, FlipFieldBackbonePortalLimit{8, EQUAL}, FlipFieldMaxFlipPortals(0), FlipFieldNumWorkers(1))
-	checkValidFlipFieldResult(8, 105, backbone, flipPortals, t)
+	checkValidFlipFieldResult(8, 105, false, backbone, flipPortals, t)
 }
 
 func TestFlipFieldLessEqual(t *testing.T) {
@@ -96,5 +103,20 @@ func TestFlipFieldLessEqual(t *testing.T) {
 		t.FailNow()
 	}
 	backbone, flipPortals := LargestFlipField(portals, FlipFieldBackbonePortalLimit{16, LESS_EQUAL}, FlipFieldMaxFlipPortals(0), FlipFieldNumWorkers(6))
-	checkValidFlipFieldResult(9, 103, backbone, flipPortals, t)
+	checkValidFlipFieldResult(9, 103, false, backbone, flipPortals, t)
+}
+
+func TestFlipFieldSimple(t *testing.T) {
+	portals, err := ParseFile("testdata/portals_test.json")
+	if err != nil {
+		panic(err)
+	}
+	if testing.Short() {
+		t.Skip()
+	}
+	if len(portals) < 3 {
+		t.FailNow()
+	}
+	backbone, flipPortals := LargestFlipField(portals, FlipFieldBackbonePortalLimit{8, EQUAL}, FlipFieldMaxFlipPortals(0), FlipFieldNumWorkers(6), FlipFieldSimpleBackbone(true))
+	checkValidFlipFieldResult(8, 105, true, backbone, flipPortals, t)
 }
