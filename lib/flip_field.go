@@ -67,9 +67,9 @@ func numPortalsLeftOfTwoLines(portals []portalData, a, b, c portalData) int {
 // Number of portals on the left of line ab.
 func numPortalsLeftOfLine(portals []portalData, a, b portalData) int {
 	result := 0
+	aCrossB := a.LatLng.Cross(b.LatLng.Vector)
 	for _, p := range portals {
-		if p.Index != a.Index && p.Index != b.Index &&
-			s2.Sign(a.LatLng, b.LatLng, p.LatLng) {
+		if p.Index != a.Index && p.Index != b.Index && aCrossB.Dot(p.LatLng.Vector) > 0 {
 			result++
 		}
 	}
