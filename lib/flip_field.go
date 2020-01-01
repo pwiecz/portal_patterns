@@ -47,6 +47,50 @@ func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPort
 	}
 }
 
+// Number of portals on the left of lines ab and bc.
+// We only check for b to be among the portals.
+func numPortalsLeftOfTwoLines(portals []portalData, a, b, c portalData) int {
+	result := 0
+	aCrossB := a.LatLng.Cross(b.LatLng.Vector)
+	bCrossC := b.LatLng.Cross(c.LatLng.Vector)
+	for _, p := range portals {
+		if p.Index == b.Index {
+			continue
+		}
+		if aCrossB.Dot(p.LatLng.Vector) > 0 && bCrossC.Dot(p.LatLng.Vector) > 0 {
+			result++
+		}
+	}
+	return result
+}
+
+// Number of portals on the left of line ab.
+func numPortalsLeftOfLine(portals []portalData, a, b portalData) int {
+	result := 0
+	for _, p := range portals {
+		if p.Index != a.Index && p.Index != b.Index &&
+			s2.Sign(a.LatLng, b.LatLng, p.LatLng) {
+			result++
+		}
+	}
+	return result
+}
+
+func partitionPortalsLeftOfLine(portals []portalData, a, b portalData) []portalData {
+	length := len(portals)
+	aCrossB := a.LatLng.Cross(b.LatLng.Vector)
+	for i := 0; i < length; {
+		p := portals[i]
+		if p.Index != a.Index && p.Index != b.Index && aCrossB.Dot(p.LatLng.Vector) > 0 {
+			i++
+		} else {
+			portals[i], portals[length-1] = portals[length-1], portals[i]
+			length--
+		}
+	}
+	return portals[:length]
+}
+
 func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]portalData, []portalData, float64) {
 	if ccw {
 		f.candidates = portalsLeftOfLine(f.portals, p0, p1, f.candidates[:0])
@@ -90,6 +134,9 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				} else {
 					numFlipPortals = numPortalsLeftOfTwoLines(f.flipPortals, f.backbone[pos], candidate, f.backbone[pos-1])
 				}
+				if numFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
+					continue
+				}
 				numFields := numFlipPortals * (2*len(f.backbone) + 1)
 				if numFields > bestNumFields {
 					bestNumFields = numFields
@@ -125,7 +172,9 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					}
 					numFlipPortals = numPortalsLeftOfLine(f.flipPortals, candidate, f.backbone[pos])
 				}
-
+				if numFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
+					continue
+				}
 				numFields := numFlipPortals * (2*len(f.backbone) + 1)
 				if numFields > bestNumFields {
 					bestNumFields = numFields
@@ -148,7 +197,6 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				if f.backbone[len(f.backbone)-1].Index == candidate.Index || f.backbone[0].Index == candidate.Index {
 					continue
 				}
-				var numFlipPortals int
 				if ccw == s2.Sign(f.backbone[0].LatLng, f.backbone[len(f.backbone)-1].LatLng, candidate.LatLng) {
 					continue
 				}
@@ -164,10 +212,14 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 						continue
 					}
 				}
+				var numFlipPortals int
 				if ccw {
 					numFlipPortals = numPortalsLeftOfLine(f.flipPortals, candidate, f.backbone[0])
 				} else {
 					numFlipPortals = numPortalsLeftOfLine(f.flipPortals, f.backbone[0], candidate)
+				}
+				if numFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
+					continue
 				}
 				numFields := numFlipPortals * (2*len(f.backbone) + 1)
 				if numFields > bestNumFields {
@@ -194,6 +246,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			f.backbone = append(f.backbone, portalData{})
 			copy(f.backbone[1:], f.backbone[0:])
 			f.backbone[0] = f.portals[bestCandidate]
+			backboneLength = bestBackboneLength
 			tq := newTriangleWedgeQuery(f.backbone[len(f.backbone)-1].LatLng, f.backbone[0].LatLng, f.backbone[1].LatLng)
 			for _, portal := range f.portals {
 				if portal.Index != f.backbone[0].Index &&
