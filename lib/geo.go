@@ -9,6 +9,17 @@ import "github.com/golang/geo/s2"
 const radiansToMeters = 2e+7 / math.Pi
 const unitAreaToSquareMeters = 5.1e+14
 
+// ccwQuery helps answer question whether three points a, b, p are counterclockwise
+type ccwQuery r3.Vector
+
+func newCCWQuery(a, b s2.Point) ccwQuery {
+	return ccwQuery(a.Cross(b.Vector))
+}
+
+func (c ccwQuery) IsCCW(p s2.Point) bool {
+	return r3.Vector(c).Dot(p.Vector) > 0
+}
+
 // triangleQuery helps to answer question whethen a point is contained
 // inside triangle.
 type triangleQuery struct {
@@ -111,14 +122,14 @@ func distanceSq(p0, p1 portalData) float64 {
 	return p0.LatLng.Sub(p1.LatLng.Vector).Norm2()
 }
 
- 
 type AngleQuery struct {
-	a s2.Point
+	a  s2.Point
 	ab r3.Vector
 }
+
 func NewAngleQuery(a, b s2.Point) AngleQuery {
 	return AngleQuery{
-		a: a,
+		a:  a,
 		ab: b.PointCross(a).Vector,
 	}
 }

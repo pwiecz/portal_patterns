@@ -74,16 +74,6 @@ func portalsInsideTriangle(portals []portalData, a, b, c portalData, result []po
 	return result
 }
 
-func portalsLeftOfLine(portals []portalData, a, b portalData, result []portalData) []portalData {
-	result = result[:0]
-	for _, p := range portals {
-		if p.Index != a.Index && p.Index != b.Index && s2.Sign(a.LatLng, b.LatLng, p.LatLng) {
-			result = append(result, p)
-		}
-	}
-	return result
-}
-
 func float64Min(v0, v1 float64) float64 {
 	if v0 < v1 {
 		return v0
