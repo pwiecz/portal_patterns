@@ -1,5 +1,8 @@
 package lib
 
+import "fmt"
+import "sort"
+import "github.com/golang/geo/r3"
 import "github.com/golang/geo/s2"
 
 // LargestFlipField -
@@ -21,6 +24,13 @@ const (
 	LESS_EQUAL PortalLimit = 1
 )
 
+type flipFieldCandidatePortal struct {
+	isFlipPortal       bool
+	visitedInThisRound bool
+	index              portalIndex
+	latLng             s2.Point
+}
+
 type bestFlipFieldQuery struct {
 	maxBackbonePortals int
 	numPortalLimit     PortalLimit
@@ -30,8 +40,10 @@ type bestFlipFieldQuery struct {
 	bestSolution int
 	portals      []portalData
 	backbone     []portalData
-	candidates   []portalData
-	flipPortals  []portalData
+	candidates   []flipFieldCandidatePortal
+	//	candidates   []portalData
+	//	flipPortals  []portalData
+
 }
 
 func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPortalLimit PortalLimit, maxFlipPortals int, simpleBackbone bool) bestFlipFieldQuery {
@@ -42,8 +54,9 @@ func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPort
 		simpleBackbone:     simpleBackbone,
 		portals:            portals,
 		backbone:           make([]portalData, 0, maxBackbonePortals),
-		candidates:         make([]portalData, 0, len(portals)),
-		flipPortals:        make([]portalData, 0, len(portals)),
+		//		candidates:         make([]portalData, 0, len(portals)),
+		//		flipPortals:        make([]portalData, 0, len(portals)),
+		candidates: make([]flipFieldCandidatePortal, 0, len(portals)),
 	}
 }
 
@@ -102,18 +115,82 @@ func partitionPortalsLeftOfLine(portals []portalData, a, b portalData) []portalD
 	return portals[:length]
 }
 
-func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]portalData, []portalData, float64) {
-	if ccw {
-		f.candidates = portalsLeftOfLine(f.portals, p0, p1, f.candidates[:0])
-	} else {
-		f.candidates = portalsLeftOfLine(f.portals, p1, p0, f.candidates[:0])
+func newByAngleFrom(p0, p1, s portalData, portals []portalData) *byAngleFrom {
+	return &byAngleFrom{
+		portals: portals,
+		p01:     p1.LatLng.Cross(p0.LatLng.Vector).Normalize(),
+		s:       s.LatLng.Vector,
 	}
-	f.flipPortals = append(f.flipPortals[:0], f.candidates...)
+}
+
+type byAngleFrom struct {
+	portals []portalData
+	p01     r3.Vector
+	s       r3.Vector
+}
+
+func (b *byAngleFrom) angleTo(p portalData) float64 {
+	return b.p01.Dot(p.LatLng.Cross(b.s).Normalize())
+}
+func (b *byAngleFrom) Len() int {
+	return len(b.portals)
+}
+func (b *byAngleFrom) Swap(i, j int) {
+	b.portals[i], b.portals[j] = b.portals[j], b.portals[i]
+}
+func (b *byAngleFrom) Less(i, j int) bool {
+	return b.p01.Dot(b.portals[i].LatLng.Cross(b.s).Normalize()) <
+		b.p01.Dot(b.portals[j].LatLng.Cross(b.s).Normalize())
+}
+func (b *byAngleFrom) PortalLess(p portalData, i int) bool {
+	return b.p01.Dot(p.LatLng.Cross(b.s).Normalize()) >
+		b.p01.Dot(b.portals[i].LatLng.Cross(b.s).Normalize())
+}
+
+type byDistFrom struct {
+	candidates []flipFieldCandidatePortal
+	//p0, p1 s2.Point
+	distQuery distanceQuery
+}
+
+func (b *byDistFrom) Len() int {
+	return len(b.candidates)
+}
+func (b *byDistFrom) Swap(i, j int) {
+	b.candidates[i], b.candidates[j] = b.candidates[j], b.candidates[i]
+}
+func (b *byDistFrom) Less(i, j int) bool {
+	return b.distQuery.ChordAngle(b.candidates[i].latLng) < b.distQuery.ChordAngle(b.canidates[j].latLng)
+}
+
+func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]portalData, []portalData, float64) {
+	var candidateCCWQuery ccwQuery
+	if ccw {
+		candidateCCWQuery = newCCWQuery(p0.LatLng, p1.LatLng)
+		//f.candidates = portalsLeftOfLine(f.portals, p0, p1, f.candidates[:0])
+	} else {
+		candidateCCWQuery = newCCWQuery(p0.LatLng, p1.LatLng)
+
+		//f.candidates = portalsLeftOfLine(f.portals, p1, p0, f.candidates[:0])
+	}
+	for _, portal := range f.portals {
+		if portal.Index != p0.Index && portal.Index != p1.Index && candidateCCWQuery.IsCCW(portal.LatLng) {
+			f.candidates = append(f.candidates, flipFieldCandidatePortal{
+				isFlipPortal:       true,
+				visitedInThisRound: false,
+				index:              portal.Index,
+				latLng:             portal.LatLng,
+			})
+		}
+	}
+	//	f.flipPortals = append(f.flipPortals[:0], f.candidates...)
 	f.backbone = append(f.backbone[:0], p0, p1)
 	backboneLength := distance(p0, p1)
+	//	flipPortals0 := make([]portalData, 0, len(f.flipPortals))
+	//	flipPortals1 := make([]portalData, 0, len(f.flipPortals))
 	for {
 		if len(f.backbone) >= f.maxBackbonePortals {
-			break
+			breakp
 		}
 		if len(f.flipPortals)*(2*f.maxBackbonePortals-1) < f.bestSolution {
 			break
@@ -125,10 +202,28 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 		}
 		bestCandidate := -1
 		bestInsertPosition := -1
+		//flipPortals0 = append(flipPortals0[:0], f.flipPortals...)
+		//flipPortals1 = append(flipPortals1[:0], f.flipPortals...)
 		for pos := 1; pos < len(f.backbone); pos++ {
+			//byAngle0 := newByAngleFrom(f.backbone[pos-1], f.backbone[pos], f.backbone[pos], flipPortals0)
+			//byAngle1 := newByAngleFrom(f.backbone[pos-1], f.backbone[pos], f.backbone[pos-1], flipPortals1)
+			byDist := byDistFrom{
+				candidates: f.candidates,
+				distQuery:  newDistanceQuery(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng),
+			}
+			sort.Sort(byDist)
+			//sort.Sort(byAngle0)
+			//sort.Sort(byAngle1)
 			posCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos].LatLng)
 			prevPosCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos-1].LatLng)
+			segCCW := newCCWQuery(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng)
+			for i := range f.candidates {
+				f.candidates[i].visitedInThisRound = false
+			}
 			for i, candidate := range f.candidates {
+				if candidate.visitedInThisRound {
+					continue
+				}
 				if f.simpleBackbone {
 					if ccw != posCCW.IsCCW(candidate.LatLng) {
 						continue
@@ -137,11 +232,34 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 						continue
 					}
 				}
-				var numFlipPortals int
+				if ccw != segCCW.IsCCW(candidate.LatLng) {
+					continue
+				}
+				var visQ1, visQ2 ccwQuery
 				if ccw {
-					numFlipPortals = numPortalsLeftOfTwoLines(f.flipPortals, f.backbone[pos-1], candidate, f.backbone[pos])
+					visQ1 = newCCWQuery(f.backbone[pos-1].LatLng, candidate.LatLng)
+					visQ2 = newCCWQuery(candidate.LatLng, f.backbone[pos].LatLng)
+					//					numFlipPortals = numPortalsLeftOfTwoLines(f.flipPortals, f.backbone[pos-1], candidate, f.backbone[pos])
+					//						n0 := sort.Search(len(flipPortals0), func(i int) bool { return byAngle0.PortalLess(candidate, i) })
+					//						n1 := sort.Search(len(flipPortals1), func(i int) bool { return byAngle1.PortalLess(candidate, i) })
+					//							fmt.Println("ccw", len(f.flipPortals), n0, n1, "vs", numFlipPortals)
 				} else {
-					numFlipPortals = numPortalsLeftOfTwoLines(f.flipPortals, f.backbone[pos], candidate, f.backbone[pos-1])
+					visQ1 = newCCWQuery(f.backbone[pos].LatLng, candidate.LatLng)
+					visQ2 = newCCWQuery(candidate.LatLng, f.backbone[pos-1].LatLng)
+					//					numFlipPortals = numPortalsLeftOfTwoLines(f.flipPortals, f.backbone[pos], candidate, f.backbone[pos-1])
+					//						n0 := sort.Search(len(flipPortals0), func(i int) bool { return byAngle0.PortalLess(candidate, i) })
+					//						n1 := sort.Search(len(flipPortals1), func(i int) bool { return byAngle1.PortalLess(candidate, i) })
+					//							fmt.Println("cw", len(f.flipPortals), n0, n1, "vs", numFlipPortals)
+					//					}
+				}
+				numFlipPortals := 0
+				for j := i + 1; j < len(f.candidates); j++ {
+					if !f.candidates[j].isFlipPortal {
+						continue
+					}
+					if visQ1.IsCCW(f.candidates[j].latLng) && visQ2.IsCCW(f.candidates[j].latLng) {
+						numFlipPortals++
+					}
 				}
 				if numFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
 					continue
@@ -261,7 +379,12 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					portal.Index != f.backbone[1].Index &&
 					portal.Index != f.backbone[len(f.backbone)-1].Index &&
 					tq.ContainsPoint(portal.LatLng) {
-					f.candidates = append(f.candidates, portal)
+					f.candidates = append(f.candidates, flipFieldCandidatePortal{
+						isFlipPortal:       false,
+						visitedInThisRound: false,
+						portalIndex:        portal.Index,
+						latLng:             portal.LatLng,
+					})
 				}
 			}
 			if ccw {
