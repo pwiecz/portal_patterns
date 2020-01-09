@@ -128,6 +128,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 		for pos := 1; pos < len(f.backbone); pos++ {
 			posCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos].LatLng)
 			prevPosCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos-1].LatLng)
+			segCCW := newCCWQuery(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng)
 			for i, candidate := range f.candidates {
 				if f.simpleBackbone {
 					if ccw != posCCW.IsCCW(candidate.LatLng) {
@@ -138,6 +139,11 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					}
 				}
 				var numFlipPortals int
+				// Don't consider candidates "behind" the backbone, they don't tend to bring any benefit,
+				// and it takes time to check them.
+				if ccw != segCCW.IsCCW(candidate.LatLng) {
+					continue
+				}
 				if ccw {
 					numFlipPortals = numPortalsLeftOfTwoLines(f.flipPortals, f.backbone[pos-1], candidate, f.backbone[pos])
 				} else {
