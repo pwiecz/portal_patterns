@@ -1,6 +1,7 @@
 package lib
 
 import "sort"
+import "github.com/golang/geo/s1"
 import "github.com/golang/geo/s2"
 
 // LargestFlipField -
@@ -27,6 +28,7 @@ type flipFieldCandidatePortal struct {
 	visitedInThisRound bool
 	index              portalIndex
 	latLng             s2.Point
+	distance           s1.ChordAngle // distance from the currently considered backbone segment
 }
 
 type bestFlipFieldQuery struct {
@@ -55,19 +57,16 @@ func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPort
 	}
 }
 
-type byDistFrom struct {
-	candidates []flipFieldCandidatePortal
-	distQuery  distanceQuery
-}
+type byDistFrom []flipFieldCandidatePortal
 
-func (b *byDistFrom) Len() int {
-	return len(b.candidates)
+func (b byDistFrom) Len() int {
+	return len(b)
 }
-func (b *byDistFrom) Swap(i, j int) {
-	b.candidates[i], b.candidates[j] = b.candidates[j], b.candidates[i]
+func (b byDistFrom) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
 }
-func (b *byDistFrom) Less(i, j int) bool {
-	return b.distQuery.ChordAngle(b.candidates[i].latLng) < b.distQuery.ChordAngle(b.candidates[j].latLng)
+func (b byDistFrom) Less(i, j int) bool {
+	return b[i].distance < b[j].distance
 }
 
 func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]portalData, []portalData, float64) {
@@ -106,11 +105,11 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 		bestCandidate := -1
 		bestInsertPosition := -1
 		for pos := 1; pos < len(f.backbone); pos++ {
-			byDist := &byDistFrom{
-				candidates: f.candidates,
-				distQuery:  newDistanceQuery(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng),
+			distQuery := newDistanceQuery(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng)
+			for i := range f.candidates {
+				f.candidates[i].distance = distQuery.ChordAngle(f.candidates[i].latLng)
 			}
-			sort.Sort(byDist)
+			sort.Sort(byDistFrom(f.candidates))
 			posCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos].LatLng)
 			prevPosCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos-1].LatLng)
 			segCCW := newCCWQuery(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng)
@@ -158,7 +157,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				if numFields > bestNumFields {
 					bestNumFlipPortals = numFlipPortals
 					bestNumFields = numFields
-					bestCandidate = i
+					bestCandidate = int(candidate.index)
 					bestInsertPosition = pos
 					bestBackboneLength = backboneLength - distance(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng) + distance(f.backbone[pos-1].LatLng, candidate.latLng) + distance(candidate.latLng, f.backbone[pos].LatLng)
 				} else if numFields == bestNumFields {
@@ -166,7 +165,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					if newBackboneLength < bestBackboneLength {
 						bestNumFlipPortals = numFlipPortals
 						bestNumFields = numFields
-						bestCandidate = i
+						bestCandidate = int(candidate.index)
 						bestInsertPosition = pos
 						bestBackboneLength = newBackboneLength
 					}
@@ -288,18 +287,13 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			f.backbone[0] = f.portals[bestCandidate]
 			backboneLength = bestBackboneLength
 			tq := newTriangleWedgeQuery(f.backbone[len(f.backbone)-1].LatLng, f.backbone[0].LatLng, f.backbone[1].LatLng)
-			var zeroOneCCW ccwQuery
-			if ccw {
-				zeroOneCCW = newCCWQuery(f.backbone[0].LatLng, f.backbone[1].LatLng)
-			} else {
-				zeroOneCCW = newCCWQuery(f.backbone[1].LatLng, f.backbone[0].LatLng)
-			}
+			zeroOneCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[1].LatLng)
 			for _, portal := range f.portals {
 				if portal.Index != f.backbone[0].Index &&
 					portal.Index != f.backbone[1].Index &&
 					portal.Index != f.backbone[len(f.backbone)-1].Index &&
 					tq.ContainsPoint(portal.LatLng) &&
-					zeroOneCCW.IsCCW(portal.LatLng) {
+					ccw == zeroOneCCW.IsCCW(portal.LatLng) {
 					f.candidates = append(f.candidates, flipFieldCandidatePortal{
 						isFlipPortal:       false,
 						visitedInThisRound: false,
@@ -309,7 +303,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				}
 			}
 			for i := range f.candidates {
-				if !zeroOneCCW.IsCCW(f.candidates[i].latLng) {
+				if ccw != zeroOneCCW.IsCCW(f.candidates[i].latLng) {
 					f.candidates[i].isFlipPortal = false
 				}
 			}
@@ -323,15 +317,22 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				}
 			}
 		} else if bestInsertPosition < len(f.backbone) {
+			bestCandidateIndex := -1
+			for i, candidate := range f.candidates {
+				if int(candidate.index) == bestCandidate {
+					bestCandidateIndex = i
+					break
+				}
+			}
 			f.backbone = append(f.backbone, portalData{})
 			copy(f.backbone[bestInsertPosition+1:], f.backbone[bestInsertPosition:])
 			f.backbone[bestInsertPosition] = portalData{
-				LatLng: f.candidates[bestCandidate].latLng,
-				Index:  f.candidates[bestCandidate].index,
+				LatLng: f.candidates[bestCandidateIndex].latLng,
+				Index:  f.candidates[bestCandidateIndex].index,
 			}
 			backboneLength = bestBackboneLength
-			f.candidates[bestCandidate], f.candidates[len(f.candidates)-1] =
-				f.candidates[len(f.candidates)-1], f.candidates[bestCandidate]
+			f.candidates[bestCandidateIndex], f.candidates[len(f.candidates)-1] =
+				f.candidates[len(f.candidates)-1], f.candidates[bestCandidateIndex]
 			f.candidates = f.candidates[:len(f.candidates)-1]
 			var seg1CCW, seg2CCW ccwQuery
 			if ccw {
@@ -344,6 +345,15 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			for i := range f.candidates {
 				if !seg1CCW.IsCCW(f.candidates[i].latLng) || !seg2CCW.IsCCW(f.candidates[i].latLng) {
 					f.candidates[i].isFlipPortal = false
+				}
+			}
+			newTriangle := newTriangleQuery(f.backbone[bestInsertPosition-1].LatLng, f.backbone[bestInsertPosition].LatLng, f.backbone[bestInsertPosition+1].LatLng)
+			for i := 0; i < len(f.candidates); {
+				if newTriangle.ContainsPoint(f.candidates[i].latLng) {
+					f.candidates[i], f.candidates[len(f.candidates)-1] = f.candidates[len(f.candidates)-1], f.candidates[i]
+					f.candidates = f.candidates[:len(f.candidates)-1]
+				} else {
+					i++
 				}
 			}
 		} else {
