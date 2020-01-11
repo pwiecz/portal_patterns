@@ -288,18 +288,11 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			f.backbone[0] = f.portals[bestCandidate]
 			backboneLength = bestBackboneLength
 			tq := newTriangleWedgeQuery(f.backbone[len(f.backbone)-1].LatLng, f.backbone[0].LatLng, f.backbone[1].LatLng)
-			var zeroOneCCW ccwQuery
-			if ccw {
-				zeroOneCCW = newCCWQuery(f.backbone[0].LatLng, f.backbone[1].LatLng)
-			} else {
-				zeroOneCCW = newCCWQuery(f.backbone[1].LatLng, f.backbone[0].LatLng)
-			}
 			for _, portal := range f.portals {
 				if portal.Index != f.backbone[0].Index &&
 					portal.Index != f.backbone[1].Index &&
 					portal.Index != f.backbone[len(f.backbone)-1].Index &&
-					tq.ContainsPoint(portal.LatLng) &&
-					zeroOneCCW.IsCCW(portal.LatLng) {
+					tq.ContainsPoint(portal.LatLng) {
 					f.candidates = append(f.candidates, flipFieldCandidatePortal{
 						isFlipPortal:       false,
 						visitedInThisRound: false,
@@ -308,18 +301,15 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					})
 				}
 			}
+			var zeroOneCCW ccwQuery
+			if ccw {
+				zeroOneCCW = newCCWQuery(f.backbone[0].LatLng, f.backbone[1].LatLng)
+			} else {
+				zeroOneCCW = newCCWQuery(f.backbone[1].LatLng, f.backbone[0].LatLng)
+			}
 			for i := range f.candidates {
 				if !zeroOneCCW.IsCCW(f.candidates[i].latLng) {
 					f.candidates[i].isFlipPortal = false
-				}
-			}
-			baseCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[len(f.backbone)-1].LatLng)
-			for i := 0; i < len(f.candidates); {
-				if ccw != baseCCW.IsCCW(f.candidates[i].latLng) {
-					f.candidates[i], f.candidates[len(f.candidates)-1] = f.candidates[len(f.candidates)-1], f.candidates[i]
-					f.candidates = f.candidates[:len(f.candidates)-1]
-				} else {
-					i++
 				}
 			}
 		} else if bestInsertPosition < len(f.backbone) {
@@ -350,18 +340,11 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			f.backbone = append(f.backbone, f.portals[bestCandidate])
 			backboneLength = bestBackboneLength
 			tq := newTriangleWedgeQuery(f.backbone[0].LatLng, f.backbone[len(f.backbone)-1].LatLng, f.backbone[len(f.backbone)-2].LatLng)
-			var lastTwoCCW ccwQuery
-			if ccw {
-				lastTwoCCW = newCCWQuery(f.backbone[len(f.backbone)-2].LatLng, f.backbone[len(f.backbone)-1].LatLng)
-			} else {
-				lastTwoCCW = newCCWQuery(f.backbone[len(f.backbone)-1].LatLng, f.backbone[len(f.backbone)-2].LatLng)
-			}
 			for _, portal := range f.portals {
 				if portal.Index != f.backbone[0].Index &&
 					portal.Index != f.backbone[len(f.backbone)-1].Index &&
 					portal.Index != f.backbone[len(f.backbone)-2].Index &&
-					tq.ContainsPoint(portal.LatLng) &&
-					lastTwoCCW.IsCCW(portal.LatLng) {
+					tq.ContainsPoint(portal.LatLng) {
 					f.candidates = append(f.candidates, flipFieldCandidatePortal{
 						isFlipPortal:       false,
 						visitedInThisRound: false,
@@ -370,14 +353,22 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					})
 				}
 			}
+			var lastTwoCCW ccwQuery
+			var baseCCW ccwQuery
+			if ccw {
+				lastTwoCCW = newCCWQuery(f.backbone[len(f.backbone)-2].LatLng, f.backbone[len(f.backbone)-1].LatLng)
+				baseCCW = newCCWQuery(f.backbone[0].LatLng, f.backbone[len(f.backbone)-1].LatLng)
+			} else {
+				lastTwoCCW = newCCWQuery(f.backbone[len(f.backbone)-1].LatLng, f.backbone[len(f.backbone)-2].LatLng)
+				baseCCW = newCCWQuery(f.backbone[len(f.backbone)-1].LatLng, f.backbone[0].LatLng)
+			}
 			for i := range f.candidates {
 				if !lastTwoCCW.IsCCW(f.candidates[i].latLng) {
 					f.candidates[i].isFlipPortal = false
 				}
 			}
-			baseCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[len(f.backbone)-1].LatLng)
 			for i := 0; i < len(f.candidates); {
-				if ccw != baseCCW.IsCCW(f.candidates[i].latLng) {
+				if !baseCCW.IsCCW(f.candidates[i].latLng) {
 					f.candidates[i], f.candidates[len(f.candidates)-1] = f.candidates[len(f.candidates)-1], f.candidates[i]
 					f.candidates = f.candidates[:len(f.candidates)-1]
 				} else {
