@@ -1,6 +1,5 @@
 package lib
 
-import "sort"
 import "github.com/golang/geo/s2"
 
 // LargestFlipField -
@@ -22,13 +21,6 @@ const (
 	LESS_EQUAL PortalLimit = 1
 )
 
-type flipFieldCandidatePortal struct {
-	isFlipPortal       bool
-	visitedInThisRound bool
-	index              portalIndex
-	latLng             s2.Point
-}
-
 type bestFlipFieldQuery struct {
 	maxBackbonePortals int
 	numPortalLimit     PortalLimit
@@ -38,7 +30,7 @@ type bestFlipFieldQuery struct {
 	bestSolution int
 	portals      []portalData
 	backbone     []portalData
-	candidates   []flipFieldCandidatePortal
+	candidates   []portalData
 	flipPortals  []portalData
 }
 
@@ -50,55 +42,83 @@ func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPort
 		simpleBackbone:     simpleBackbone,
 		portals:            portals,
 		backbone:           make([]portalData, 0, maxBackbonePortals),
+		candidates:         make([]portalData, 0, len(portals)),
 		flipPortals:        make([]portalData, 0, len(portals)),
-		candidates:         make([]flipFieldCandidatePortal, 0, len(portals)),
 	}
 }
 
-type byDistFrom struct {
-	candidates []flipFieldCandidatePortal
-	distQuery  distanceQuery
+// Number of portals on the left of lines ab and bc.
+// We only check for b to be among the portals.
+func numPortalsLeftOfTwoLines(portals []portalData, a, b, c portalData) int {
+	result := 0
+	ab := newCCWQuery(a.LatLng, b.LatLng)
+	bc := newCCWQuery(b.LatLng, c.LatLng)
+	for _, p := range portals {
+		if p.Index == b.Index {
+			continue
+		}
+		if ab.IsCCW(p.LatLng) && bc.IsCCW(p.LatLng) {
+			result++
+		}
+	}
+	return result
 }
 
-func (b *byDistFrom) Len() int {
-	return len(b.candidates)
+// Number of portals on the left of line ab.
+func numPortalsLeftOfLine(portals []portalData, a, b portalData) int {
+	result := 0
+	ab := newCCWQuery(a.LatLng, b.LatLng)
+	for _, p := range portals {
+		if p.Index != a.Index && p.Index != b.Index && ab.IsCCW(p.LatLng) {
+			result++
+		}
+	}
+	return result
 }
-func (b *byDistFrom) Swap(i, j int) {
-	b.candidates[i], b.candidates[j] = b.candidates[j], b.candidates[i]
+
+func portalsLeftOfLine(portals []portalData, a, b portalData, result []portalData) []portalData {
+	result = result[:0]
+	ab := newCCWQuery(a.LatLng, b.LatLng)
+	for _, p := range portals {
+		if p.Index != a.Index && p.Index != b.Index && ab.IsCCW(p.LatLng) {
+			result = append(result, p)
+		}
+	}
+	return result
 }
-func (b *byDistFrom) Less(i, j int) bool {
-	return b.distQuery.ChordAngle(b.candidates[i].latLng) < b.distQuery.ChordAngle(b.candidates[j].latLng)
+
+func partitionPortalsLeftOfLine(portals []portalData, a, b portalData) []portalData {
+	length := len(portals)
+	ab := newCCWQuery(a.LatLng, b.LatLng)
+	for i := 0; i < length; {
+		p := portals[i]
+		if p.Index != a.Index && p.Index != b.Index && ab.IsCCW(p.LatLng) {
+			i++
+		} else {
+			portals[i], portals[length-1] = portals[length-1], portals[i]
+			length--
+		}
+	}
+	return portals[:length]
 }
 
 func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]portalData, []portalData, float64) {
-	var candidateCCWQuery ccwQuery
 	if ccw {
-		candidateCCWQuery = newCCWQuery(p0.LatLng, p1.LatLng)
+		f.candidates = portalsLeftOfLine(f.portals, p0, p1, f.candidates[:0])
 	} else {
-		candidateCCWQuery = newCCWQuery(p1.LatLng, p0.LatLng)
+		f.candidates = portalsLeftOfLine(f.portals, p1, p0, f.candidates[:0])
 	}
-	f.candidates = f.candidates[:0]
-	for _, portal := range f.portals {
-		if portal.Index != p0.Index && portal.Index != p1.Index && candidateCCWQuery.IsCCW(portal.LatLng) {
-			f.candidates = append(f.candidates, flipFieldCandidatePortal{
-				isFlipPortal:       true,
-				visitedInThisRound: false,
-				index:              portal.Index,
-				latLng:             portal.LatLng,
-			})
-		}
-	}
+	f.flipPortals = append(f.flipPortals[:0], f.candidates...)
 	f.backbone = append(f.backbone[:0], p0, p1)
-	backboneLength := distance(p0.LatLng, p1.LatLng)
-	bestNumFlipPortals := len(f.candidates)
+	backboneLength := distance(p0, p1)
 	for {
 		if len(f.backbone) >= f.maxBackbonePortals {
 			break
 		}
-		if bestNumFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
+		if len(f.flipPortals)*(2*f.maxBackbonePortals-1) < f.bestSolution {
 			break
 		}
-		bestNumFields := bestNumFlipPortals * (2*len(f.backbone) - 1)
+		bestNumFields := len(f.flipPortals) * (2*len(f.backbone) - 1)
 		bestBackboneLength := backboneLength
 		if f.numPortalLimit == EQUAL {
 			bestNumFields = 0
@@ -106,66 +126,41 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 		bestCandidate := -1
 		bestInsertPosition := -1
 		for pos := 1; pos < len(f.backbone); pos++ {
-			byDist := &byDistFrom{
-				candidates: f.candidates,
-				distQuery:  newDistanceQuery(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng),
-			}
-			sort.Sort(byDist)
 			posCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos].LatLng)
 			prevPosCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos-1].LatLng)
 			segCCW := newCCWQuery(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng)
-			for i := range f.candidates {
-				f.candidates[i].visitedInThisRound = false
-			}
 			for i, candidate := range f.candidates {
-				if candidate.visitedInThisRound {
-					continue
-				}
 				if f.simpleBackbone {
-					if ccw != posCCW.IsCCW(candidate.latLng) {
+					if ccw != posCCW.IsCCW(candidate.LatLng) {
 						continue
 					}
-					if pos > 1 && ccw == prevPosCCW.IsCCW(candidate.latLng) {
+					if pos > 1 && ccw == prevPosCCW.IsCCW(candidate.LatLng) {
 						continue
 					}
-				}
-				// Don't consider candidates "behind" the backbone, they don't tend to bring any benefit,
-				// and it takes time to check them.
-				if ccw != segCCW.IsCCW(candidate.latLng) {
-					continue
-				}
-				var visQ1, visQ2 ccwQuery
-				if ccw {
-					visQ1 = newCCWQuery(f.backbone[pos-1].LatLng, candidate.latLng)
-					visQ2 = newCCWQuery(candidate.latLng, f.backbone[pos].LatLng)
-				} else {
-					visQ1 = newCCWQuery(f.backbone[pos].LatLng, candidate.latLng)
-					visQ2 = newCCWQuery(candidate.latLng, f.backbone[pos-1].LatLng)
 				}
 				var numFlipPortals int
-				for j := i + 1; j < len(f.candidates); j++ {
-					if !f.candidates[j].isFlipPortal {
-						continue
-					}
-					if visQ1.IsCCW(f.candidates[j].latLng) && visQ2.IsCCW(f.candidates[j].latLng) {
-						numFlipPortals++
-						f.candidates[j].visitedInThisRound = true
-					}
+				// Don't consider candidates "behind" the backbone, they don't tend to bring any benefit,
+				// and it takes time to check them.
+				if ccw != segCCW.IsCCW(candidate.LatLng) {
+					continue
+				}
+				if ccw {
+					numFlipPortals = numPortalsLeftOfTwoLines(f.flipPortals, f.backbone[pos-1], candidate, f.backbone[pos])
+				} else {
+					numFlipPortals = numPortalsLeftOfTwoLines(f.flipPortals, f.backbone[pos], candidate, f.backbone[pos-1])
 				}
 				if numFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
 					continue
 				}
 				numFields := numFlipPortals * (2*len(f.backbone) + 1)
 				if numFields > bestNumFields {
-					bestNumFlipPortals = numFlipPortals
 					bestNumFields = numFields
 					bestCandidate = i
 					bestInsertPosition = pos
-					bestBackboneLength = backboneLength - distance(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng) + distance(f.backbone[pos-1].LatLng, candidate.latLng) + distance(candidate.latLng, f.backbone[pos].LatLng)
+					bestBackboneLength = backboneLength - distance(f.backbone[pos-1], f.backbone[pos]) + distance(f.backbone[pos-1], candidate) + distance(candidate, f.backbone[pos])
 				} else if numFields == bestNumFields {
-					newBackboneLength := backboneLength - distance(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng) + distance(f.backbone[pos-1].LatLng, candidate.latLng) + distance(candidate.latLng, f.backbone[pos].LatLng)
+					newBackboneLength := backboneLength - distance(f.backbone[pos-1], f.backbone[pos]) + distance(f.backbone[pos-1], candidate) + distance(candidate, f.backbone[pos])
 					if newBackboneLength < bestBackboneLength {
-						bestNumFlipPortals = numFlipPortals
 						bestNumFields = numFields
 						bestCandidate = i
 						bestInsertPosition = pos
@@ -184,35 +179,24 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				if ccw == zeroLast.IsCCW(candidate.LatLng) {
 					continue
 				}
-				var visQ ccwQuery
-				if ccw {
-					visQ = newCCWQuery(f.backbone[pos].LatLng, candidate.LatLng)
-				} else {
-					visQ = newCCWQuery(candidate.LatLng, f.backbone[pos].LatLng)
-				}
 				var numFlipPortals int
-				for _, p := range f.candidates {
-					if !p.isFlipPortal {
-						continue
-					}
-					if visQ.IsCCW(p.latLng) {
-						numFlipPortals++
-					}
+				if ccw {
+					numFlipPortals = numPortalsLeftOfLine(f.flipPortals, f.backbone[pos], candidate)
+				} else {
+					numFlipPortals = numPortalsLeftOfLine(f.flipPortals, candidate, f.backbone[pos])
 				}
 				if numFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
 					continue
 				}
 				numFields := numFlipPortals * (2*len(f.backbone) + 1)
 				if numFields > bestNumFields {
-					bestNumFlipPortals = numFlipPortals
 					bestNumFields = numFields
 					bestCandidate = i
 					bestInsertPosition = len(f.backbone)
-					bestBackboneLength = backboneLength + distance(f.backbone[pos].LatLng, candidate.LatLng)
+					bestBackboneLength = backboneLength + distance(f.backbone[pos], candidate)
 				} else if numFields == bestNumFields {
-					newBackboneLength := backboneLength + distance(f.backbone[pos].LatLng, candidate.LatLng)
+					newBackboneLength := backboneLength + distance(f.backbone[pos], candidate)
 					if newBackboneLength < bestBackboneLength {
-						bestNumFlipPortals = numFlipPortals
 						bestNumFields = numFields
 						bestCandidate = i
 						bestInsertPosition = len(f.backbone)
@@ -242,35 +226,24 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 						continue
 					}
 				}
-				var visQ ccwQuery
-				if ccw {
-					visQ = newCCWQuery(candidate.LatLng, f.backbone[0].LatLng)
-				} else {
-					visQ = newCCWQuery(f.backbone[0].LatLng, candidate.LatLng)
-				}
 				var numFlipPortals int
-				for _, p := range f.candidates {
-					if !p.isFlipPortal {
-						continue
-					}
-					if visQ.IsCCW(p.latLng) {
-						numFlipPortals++
-					}
+				if ccw {
+					numFlipPortals = numPortalsLeftOfLine(f.flipPortals, candidate, f.backbone[0])
+				} else {
+					numFlipPortals = numPortalsLeftOfLine(f.flipPortals, f.backbone[0], candidate)
 				}
 				if numFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
 					continue
 				}
 				numFields := numFlipPortals * (2*len(f.backbone) + 1)
 				if numFields > bestNumFields {
-					bestNumFlipPortals = numFlipPortals
 					bestNumFields = numFields
 					bestCandidate = i
 					bestInsertPosition = 0
-					bestBackboneLength = backboneLength + distance(f.backbone[0].LatLng, candidate.LatLng)
+					bestBackboneLength = backboneLength + distance(f.backbone[0], candidate)
 				} else if numFields == bestNumFields {
-					newBackboneLength := backboneLength + distance(f.backbone[0].LatLng, candidate.LatLng)
+					newBackboneLength := backboneLength + distance(f.backbone[0], candidate)
 					if newBackboneLength < bestBackboneLength {
-						bestNumFlipPortals = numFlipPortals
 						bestNumFields = numFields
 						bestCandidate = i
 						bestInsertPosition = 0
@@ -294,48 +267,30 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					portal.Index != f.backbone[1].Index &&
 					portal.Index != f.backbone[len(f.backbone)-1].Index &&
 					tq.ContainsPoint(portal.LatLng) {
-					f.candidates = append(f.candidates, flipFieldCandidatePortal{
-						isFlipPortal:       false,
-						visitedInThisRound: false,
-						index:              portal.Index,
-						latLng:             portal.LatLng,
-					})
+					f.candidates = append(f.candidates, portal)
 				}
 			}
-			var zeroOneCCW ccwQuery
 			if ccw {
-				zeroOneCCW = newCCWQuery(f.backbone[0].LatLng, f.backbone[1].LatLng)
+				f.flipPortals = partitionPortalsLeftOfLine(f.flipPortals, f.backbone[0], f.backbone[1])
+				f.candidates = partitionPortalsLeftOfLine(f.candidates, f.backbone[0], f.backbone[1])
 			} else {
-				zeroOneCCW = newCCWQuery(f.backbone[1].LatLng, f.backbone[0].LatLng)
-			}
-			for i := range f.candidates {
-				if !zeroOneCCW.IsCCW(f.candidates[i].latLng) {
-					f.candidates[i].isFlipPortal = false
-				}
+				f.flipPortals = partitionPortalsLeftOfLine(f.flipPortals, f.backbone[1], f.backbone[0])
+				f.candidates = partitionPortalsLeftOfLine(f.candidates, f.backbone[1], f.backbone[0])
 			}
 		} else if bestInsertPosition < len(f.backbone) {
 			f.backbone = append(f.backbone, portalData{})
 			copy(f.backbone[bestInsertPosition+1:], f.backbone[bestInsertPosition:])
-			f.backbone[bestInsertPosition] = portalData{
-				LatLng: f.candidates[bestCandidate].latLng,
-				Index:  f.candidates[bestCandidate].index,
-			}
+			f.backbone[bestInsertPosition] = f.candidates[bestCandidate]
 			backboneLength = bestBackboneLength
 			f.candidates[bestCandidate], f.candidates[len(f.candidates)-1] =
 				f.candidates[len(f.candidates)-1], f.candidates[bestCandidate]
 			f.candidates = f.candidates[:len(f.candidates)-1]
-			var seg1CCW, seg2CCW ccwQuery
 			if ccw {
-				seg1CCW = newCCWQuery(f.backbone[bestInsertPosition-1].LatLng, f.backbone[bestInsertPosition].LatLng)
-				seg2CCW = newCCWQuery(f.backbone[bestInsertPosition].LatLng, f.backbone[bestInsertPosition+1].LatLng)
+				f.flipPortals = partitionPortalsLeftOfLine(f.flipPortals, f.backbone[bestInsertPosition-1], f.backbone[bestInsertPosition])
+				f.flipPortals = partitionPortalsLeftOfLine(f.flipPortals, f.backbone[bestInsertPosition], f.backbone[bestInsertPosition+1])
 			} else {
-				seg1CCW = newCCWQuery(f.backbone[bestInsertPosition+1].LatLng, f.backbone[bestInsertPosition].LatLng)
-				seg2CCW = newCCWQuery(f.backbone[bestInsertPosition].LatLng, f.backbone[bestInsertPosition-1].LatLng)
-			}
-			for i := range f.candidates {
-				if !seg1CCW.IsCCW(f.candidates[i].latLng) || !seg2CCW.IsCCW(f.candidates[i].latLng) {
-					f.candidates[i].isFlipPortal = false
-				}
+				f.flipPortals = partitionPortalsLeftOfLine(f.flipPortals, f.backbone[bestInsertPosition+1], f.backbone[bestInsertPosition])
+				f.flipPortals = partitionPortalsLeftOfLine(f.flipPortals, f.backbone[bestInsertPosition], f.backbone[bestInsertPosition-1])
 			}
 		} else {
 			f.backbone = append(f.backbone, f.portals[bestCandidate])
@@ -346,55 +301,26 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					portal.Index != f.backbone[len(f.backbone)-1].Index &&
 					portal.Index != f.backbone[len(f.backbone)-2].Index &&
 					tq.ContainsPoint(portal.LatLng) {
-					f.candidates = append(f.candidates, flipFieldCandidatePortal{
-						isFlipPortal:       false,
-						visitedInThisRound: false,
-						index:              portal.Index,
-						latLng:             portal.LatLng,
-					})
+					f.candidates = append(f.candidates, portal)
 				}
 			}
-			var lastTwoCCW ccwQuery
-			var baseCCW ccwQuery
 			if ccw {
-				lastTwoCCW = newCCWQuery(f.backbone[len(f.backbone)-2].LatLng, f.backbone[len(f.backbone)-1].LatLng)
-				baseCCW = newCCWQuery(f.backbone[0].LatLng, f.backbone[len(f.backbone)-1].LatLng)
+				f.flipPortals = partitionPortalsLeftOfLine(f.flipPortals, f.backbone[len(f.backbone)-2], f.backbone[len(f.backbone)-1])
+				f.candidates = partitionPortalsLeftOfLine(f.candidates, f.backbone[len(f.backbone)-2], f.backbone[len(f.backbone)-1])
 			} else {
-				lastTwoCCW = newCCWQuery(f.backbone[len(f.backbone)-1].LatLng, f.backbone[len(f.backbone)-2].LatLng)
-				baseCCW = newCCWQuery(f.backbone[len(f.backbone)-1].LatLng, f.backbone[0].LatLng)
-			}
-			for i := range f.candidates {
-				if !lastTwoCCW.IsCCW(f.candidates[i].latLng) {
-					f.candidates[i].isFlipPortal = false
-				}
-			}
-			for i := 0; i < len(f.candidates); {
-				if !baseCCW.IsCCW(f.candidates[i].latLng) {
-					f.candidates[i], f.candidates[len(f.candidates)-1] = f.candidates[len(f.candidates)-1], f.candidates[i]
-					f.candidates = f.candidates[:len(f.candidates)-1]
-				} else {
-					i++
-				}
+				f.flipPortals = partitionPortalsLeftOfLine(f.flipPortals, f.backbone[len(f.backbone)-1], f.backbone[len(f.backbone)-2])
+				f.candidates = partitionPortalsLeftOfLine(f.candidates, f.backbone[len(f.backbone)-1], f.backbone[len(f.backbone)-2])
 			}
 		}
 	}
 	if f.numPortalLimit != EQUAL || len(f.backbone) == f.maxBackbonePortals {
-		numFlipPortals := bestNumFlipPortals
+		numFlipPortals := len(f.flipPortals)
 		if f.maxFlipPortals > 0 && numFlipPortals > f.maxFlipPortals {
 			numFlipPortals = f.maxFlipPortals
 		}
 		numFields := numFlipPortals * (2*len(f.backbone) - 1)
 		if numFields > f.bestSolution {
 			f.bestSolution = numFields
-		}
-	}
-	f.flipPortals = f.flipPortals[:0]
-	for _, portal := range f.candidates {
-		if portal.isFlipPortal {
-			f.flipPortals = append(f.flipPortals, portalData{
-				Index:  portal.index,
-				LatLng: portal.latLng,
-			})
 		}
 	}
 	return f.backbone, f.flipPortals, backboneLength
@@ -449,6 +375,7 @@ func LargestFlipFieldST(portals []Portal, params flipFieldParams) ([]Portal, []P
 		}
 	}
 	params.progressFunc(numPairs, numPairs)
+
 	resultBackbone := make([]Portal, 0, len(bestBackbone))
 	for _, p := range bestBackbone {
 		resultBackbone = append(resultBackbone, portals[p.Index])

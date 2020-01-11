@@ -10,7 +10,7 @@ type bestFlipFieldMtQuery struct {
 	portals            []portalData
 }
 
-func (f *bestFlipFieldMtQuery) findBestFlipField(p0, p1 portalData, ccw bool, backbone, flipPortals []portalData, candidates []flipFieldCandidatePortal, bestSolution int) ([]portalData, []portalData, float64) {
+func (f *bestFlipFieldMtQuery) findBestFlipField(p0, p1 portalData, ccw bool, backbone, flipPortals, candidates []portalData, bestSolution int) ([]portalData, []portalData, float64) {
 	fq := bestFlipFieldQuery{
 		maxBackbonePortals: f.maxBackbonePortals,
 		numPortalLimit:     f.numPortalLimit,
@@ -37,7 +37,7 @@ func bestFlipFieldWorker(
 	requestChannel, responseChannel chan flipFieldRequest,
 	wg *sync.WaitGroup) {
 	var localBestNumFields int
-	candidates := make([]flipFieldCandidatePortal, 0, len(q.portals))
+	candidates := make([]portalData, 0, len(q.portals))
 	for req := range requestChannel {
 		b, f, bl := q.findBestFlipField(req.p0, req.p1, req.ccw, req.backbone, req.flipPortals, candidates, localBestNumFields)
 		if q.numPortalLimit != EQUAL || len(b) == q.maxBackbonePortals {
