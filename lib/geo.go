@@ -115,11 +115,11 @@ func triangleArea(p0, p1, p2 portalData) float64 {
 	return s2.GirardArea(p0.LatLng, p1.LatLng, p2.LatLng)
 }
 
-func distance(p0, p1 portalData) float64 {
-	return p0.LatLng.Sub(p1.LatLng.Vector).Norm()
+func distance(p0, p1 s2.Point) float64 {
+	return p0.Sub(p1.Vector).Norm()
 }
-func distanceSq(p0, p1 portalData) float64 {
-	return p0.LatLng.Sub(p1.LatLng.Vector).Norm2()
+func distanceSq(p0, p1 s2.Point) float64 {
+	return p0.Sub(p1.Vector).Norm2()
 }
 
 type AngleQuery struct {
