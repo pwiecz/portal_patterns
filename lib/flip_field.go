@@ -144,12 +144,11 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				}
 				var numFlipPortals int
 				for j := i + 1; j < len(f.candidates); j++ {
-					if !f.candidates[j].isFlipPortal {
-						continue
-					}
 					if visQ1.IsCCW(f.candidates[j].latLng) && visQ2.IsCCW(f.candidates[j].latLng) {
-						numFlipPortals++
 						f.candidates[j].visitedInThisRound = true
+						if f.candidates[j].isFlipPortal {
+							numFlipPortals++
+						}
 					}
 				}
 				if numFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
