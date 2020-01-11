@@ -1,6 +1,5 @@
 package lib
 
-import "fmt"
 import "sort"
 import "github.com/golang/geo/s2"
 
@@ -396,9 +395,6 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			})
 		}
 	}
-	if false {
-		fmt.Println("num", len(f.flipPortals))
-	}
 	return f.backbone, f.flipPortals, backboneLength
 }
 
@@ -451,7 +447,6 @@ func LargestFlipFieldST(portals []Portal, params flipFieldParams) ([]Portal, []P
 		}
 	}
 	params.progressFunc(numPairs, numPairs)
-	fmt.Println("\nBest backbone length:",bestBackboneLength)
 	resultBackbone := make([]Portal, 0, len(bestBackbone))
 	for _, p := range bestBackbone {
 		resultBackbone = append(resultBackbone, portals[p.Index])
