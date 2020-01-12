@@ -68,8 +68,8 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 		if !s2.Sign(portal.LatLng, b0.LatLng, b1.LatLng) {
 			continue
 		}
-		a0 := b01.Dot(q.normalizedVector(b1, portal)) // acos of angle b0,b1,portal
-		a1 := b10.Dot(q.normalizedVector(b0, portal)) // acos of angle b1,b0,portal
+		a0 := b01.Dot(q.normalizedVector(b1, portal)) // cos of angle b0,b1,portal
+		a1 := b10.Dot(q.normalizedVector(b0, portal)) // cos of angle b1,b0,portal
 		dist := distQuery.ChordAngle(portal.LatLng)
 		q.nodes = append(q.nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
 	}
