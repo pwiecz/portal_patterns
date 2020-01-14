@@ -131,7 +131,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			}
 			sort.Sort(byAngle0(f.candidates))
 			sort.Sort(indexByAngle1{
-				indices: candidatesP1,
+				indices:    candidatesP1,
 				candidates: f.candidates,
 			})
 			posCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos].LatLng)
