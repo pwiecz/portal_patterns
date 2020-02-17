@@ -2,6 +2,7 @@ package main
 
 import "flag"
 import "fmt"
+import "io"
 import "log"
 import "strings"
 
@@ -37,7 +38,7 @@ func (h *homogeneousCmd) Usage(fileBase string) {
 	h.flags.PrintDefaults()
 }
 
-func (h *homogeneousCmd) Run(args []string, progressFunc func(int, int)) {
+func (h *homogeneousCmd) Run(args []string, output io.Writer, progressFunc func(int, int)) {
 	h.flags.Parse(args)
 	if *h.maxDepth < 1 {
 		log.Fatalln("-max_depth must by at least 1")
@@ -83,11 +84,11 @@ func (h *homogeneousCmd) Run(args []string, progressFunc func(int, int)) {
 	} else {
 		result, depth = lib.DeepestHomogeneous(portals, options...)
 	}
-	fmt.Printf("\nDepth: %d\n", depth)
+	fmt.Fprintf(output, "\nDepth: %d\n", depth)
 	for i, portal := range result {
-		fmt.Printf("%d: %s\n", i, portal.Name)
+		fmt.Fprintf(output, "%d: %s\n", i, portal.Name)
 	}
 	polylines := []string{lib.PolylineFromPortalList([]lib.Portal{result[0], result[1], result[2], result[0]})}
 	polylines, _ = lib.AppendHomogeneousPolylines(result[0], result[1], result[2], uint16(depth), polylines, result[3:])
-	fmt.Printf("\n[%s]\n", strings.Join(polylines, ","))
+	fmt.Fprintf(output, "\n[%s]\n", strings.Join(polylines, ","))
 }

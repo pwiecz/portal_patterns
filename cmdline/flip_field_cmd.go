@@ -2,6 +2,7 @@ package main
 
 import "flag"
 import "fmt"
+import "io"
 import "log"
 import "runtime"
 
@@ -34,7 +35,7 @@ func (f *flipFieldCmd) Usage(fileBase string) {
 	f.flags.PrintDefaults()
 }
 
-func (f *flipFieldCmd) Run(args []string, numWorkers int, progressFunc func(int, int)) {
+func (f *flipFieldCmd) Run(args []string, numWorkers int, output io.Writer, progressFunc func(int, int)) {
 	f.flags.Parse(flag.Args()[1:])
 	if f.numBackbonePortals.Value <= 2 {
 		log.Fatalln("-num_backbone_portals limit must be at least 2")
@@ -65,11 +66,11 @@ func (f *flipFieldCmd) Run(args []string, numWorkers int, progressFunc func(int,
 		lib.FlipFieldSimpleBackbone(*f.simpleBackbone),
 	}
 	backbone, rest := lib.LargestFlipField(portals, options...)
-	fmt.Printf("\nNum backbone portals: %d, num flip portals: %d, num fields: %d\nBackbone:\n",
-		len(backbone), len(rest), len(rest)*(2*len(backbone)-1))
+	fmt.Fprintf(output, "\nNum backbone portals: %d, num flip portals: %d, num fields: %d\nBackbone:\n",
+		len(backbone), len(rest), len(rest)*(2*len(backbone)-3))
 	for i, portal := range backbone {
-		fmt.Printf("%d: %s\n", i, portal.Name)
+		fmt.Fprintf(output, "%d: %s\n", i, portal.Name)
 	}
-	fmt.Printf("\n[%s,%s]\n", lib.PolylineFromPortalList(backbone), lib.MarkersFromPortalList(rest))
+	fmt.Fprintf(output, "\n[%s,%s]\n", lib.PolylineFromPortalList(backbone), lib.MarkersFromPortalList(rest))
 
 }

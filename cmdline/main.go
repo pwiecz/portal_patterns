@@ -1,7 +1,9 @@
 package main
 
+import "bufio"
 import "flag"
 import "fmt"
+import "io"
 import "log"
 import "math"
 import "os"
@@ -17,6 +19,7 @@ func main() {
 	cpuprofile := flag.String("cpuprofile", "", "write CPU profile to this file")
 	numWorkers := flag.Int("num_workers", 0, "if applicable for given algorithm use that many worker threads. If <= 0 use as many as there are CPUs on the machine")
 	showProgress := flag.Bool("progress", true, "show progress bar")
+	output := flag.String("output", "-", "write output to this file, instead of printing it to stdout")
 	flag.BoolVar(showProgress, "P", true, "show progress bar")
 	cobwebCmd := flag.NewFlagSet("cobweb", flag.ExitOnError)
 	cobwebCornerPortalsValue := portalsValue{}
@@ -61,6 +64,18 @@ func main() {
 		flag.Usage()
 		os.Exit(0)
 	}
+	var outputWriter io.Writer
+	outputWriter = os.Stdout
+	if *output != "-" {
+		outputFile, err := os.Create(*output)
+		if err != nil {
+			log.Fatal("cannot write to file ", *output, " : ", err)
+		}
+		defer outputFile.Close()
+		outputFileWriter := bufio.NewWriter(outputFile)
+		defer outputFileWriter.Flush()
+		outputWriter = outputFileWriter
+	}
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
@@ -93,15 +108,15 @@ func main() {
 		cobwebCornerPortalIndices := portalsToIndices(cobwebCornerPortalsValue, portals)
 
 		result := lib.LargestCobweb(portals, cobwebCornerPortalIndices, progressFunc)
-		fmt.Println("")
+		fmt.Fprintln(outputWriter, "")
 		for i, portal := range result {
-			fmt.Printf("%d: %s\n", i, portal.Name)
+			fmt.Fprintf(outputWriter, "%d: %s\n", i, portal.Name)
 		}
 		portalList := []lib.Portal{result[1], result[0]}
 		for _, portal := range result[2:] {
 			portalList = append(portalList, portal, portalList[len(portalList)-2])
 		}
-		fmt.Printf("\n[%s]\n", lib.PolylineFromPortalList(portalList))
+		fmt.Fprintf(outputWriter, "\n[%s]\n", lib.PolylineFromPortalList(portalList))
 	case "herringbone":
 		herringboneCmd.Parse(flag.Args()[1:])
 		fileArgs := herringboneCmd.Args()
@@ -121,9 +136,9 @@ func main() {
 			numHerringboneWorkers = *numWorkers
 		}
 		b0, b1, result := lib.LargestHerringbone(portals, herringboneBasePortalIndices, numHerringboneWorkers, progressFunc)
-		fmt.Printf("\nBase (%s) (%s)\n", b0.Name, b1.Name)
+		fmt.Fprintf(outputWriter, "\nBase (%s) (%s)\n", b0.Name, b1.Name)
 		for i, portal := range result {
-			fmt.Printf("%d: %s\n", i, portal.Name)
+			fmt.Fprintf(outputWriter, "%d: %s\n", i, portal.Name)
 		}
 		portalList := []lib.Portal{b0, b1}
 		atIndex := 1
@@ -131,7 +146,7 @@ func main() {
 			portalList = append(portalList, portal, portalList[atIndex])
 			atIndex = 1 - atIndex
 		}
-		fmt.Printf("\n[%s]\n", lib.PolylineFromPortalList(portalList))
+		fmt.Fprintf(outputWriter, "\n[%s]\n", lib.PolylineFromPortalList(portalList))
 	case "double_herringbone":
 		doubleHerringboneCmd.Parse(flag.Args()[1:])
 		fileArgs := doubleHerringboneCmd.Args()
@@ -151,14 +166,14 @@ func main() {
 			numHerringboneWorkers = *numWorkers
 		}
 		b0, b1, result0, result1 := lib.LargestDoubleHerringbone(portals, doubleHerringboneBasePortalIndices, numHerringboneWorkers, progressFunc)
-		fmt.Printf("\nBase (%s) (%s)\n", b0.Name, b1.Name)
-		fmt.Println("First part:")
+		fmt.Fprintf(outputWriter, "\nBase (%s) (%s)\n", b0.Name, b1.Name)
+		fmt.Fprintln(outputWriter, "First part:")
 		for i, portal := range result0 {
-			fmt.Printf("%d: %s\n", i, portal.Name)
+			fmt.Fprintf(outputWriter, "%d: %s\n", i, portal.Name)
 		}
-		fmt.Println("Second part:")
+		fmt.Fprintln(outputWriter, "Second part:")
 		for i, portal := range result1 {
-			fmt.Printf("%d: %s\n", i, portal.Name)
+			fmt.Fprintf(outputWriter, "%d: %s\n", i, portal.Name)
 
 		}
 		portalList := []lib.Portal{b0, b1}
@@ -171,9 +186,9 @@ func main() {
 			portalList = append(portalList, portal, portalList[atIndex])
 			atIndex = 1 - atIndex
 		}
-		fmt.Printf("\n[%s]\n", lib.PolylineFromPortalList(portalList))
+		fmt.Fprintf(outputWriter, "\n[%s]\n", lib.PolylineFromPortalList(portalList))
 	case "flip_field":
-		flipFieldCmd.Run(flag.Args()[1:], *numWorkers, progressFunc)
+		flipFieldCmd.Run(flag.Args()[1:], *numWorkers, outputWriter, progressFunc)
 	case "three_corners":
 		threeCornersCmd.Parse(flag.Args()[1:])
 		fileArgs := threeCornersCmd.Args()
@@ -197,9 +212,9 @@ func main() {
 		}
 
 		result := lib.LargestThreeCorner(portals1, portals2, portals3, progressFunc)
-		fmt.Println("")
+		fmt.Fprintln(outputWriter, "")
 		for i, indexedPortal := range result {
-			fmt.Printf("%d: %s\n", i, indexedPortal.Portal.Name)
+			fmt.Fprintf(outputWriter, "%d: %s\n", i, indexedPortal.Portal.Name)
 		}
 		indexedPortalList := []lib.IndexedPortal{result[0], result[1]}
 		lastIndexPortal := [3]lib.IndexedPortal{result[0], result[1], {}}
@@ -217,11 +232,11 @@ func main() {
 		for _, indexedPortal := range indexedPortalList {
 			portalList = append(portalList, indexedPortal.Portal)
 		}
-		fmt.Printf("\n[%s]\n", lib.PolylineFromPortalList(portalList))
+		fmt.Fprintf(outputWriter, "\n[%s]\n", lib.PolylineFromPortalList(portalList))
 	case "homogeneous":
 		fallthrough
 	case "homogenous":
-		homogeneousCmd.Run(flag.Args()[1:], progressFunc)
+		homogeneousCmd.Run(flag.Args()[1:], outputWriter, progressFunc)
 	default:
 		log.Fatalf("Unknown command: \"%s\"\n", flag.Args()[0])
 	}
