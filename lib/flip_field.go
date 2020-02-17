@@ -118,7 +118,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 		if len(f.flipPortals)*(2*f.maxBackbonePortals-1) < f.bestSolution {
 			break
 		}
-		bestNumFields := len(f.flipPortals) * (2*len(f.backbone) - 1)
+		bestNumFields := len(f.flipPortals) * (2*len(f.backbone) - 3)
 		bestBackboneLength := backboneLength
 		if f.numPortalLimit == EQUAL {
 			bestNumFields = 0
@@ -152,7 +152,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				if numFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
 					continue
 				}
-				numFields := numFlipPortals * (2*len(f.backbone) + 1)
+				numFields := numFlipPortals * (2*len(f.backbone) - 1)
 				if numFields > bestNumFields {
 					bestNumFields = numFields
 					bestCandidate = i
@@ -188,7 +188,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				if numFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
 					continue
 				}
-				numFields := numFlipPortals * (2*len(f.backbone) + 1)
+				numFields := numFlipPortals * (2*len(f.backbone) - 1)
 				if numFields > bestNumFields {
 					bestNumFields = numFields
 					bestCandidate = i
@@ -235,7 +235,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				if numFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
 					continue
 				}
-				numFields := numFlipPortals * (2*len(f.backbone) + 1)
+				numFields := numFlipPortals * (2*len(f.backbone) - 1)
 				if numFields > bestNumFields {
 					bestNumFields = numFields
 					bestCandidate = i
@@ -318,7 +318,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 		if f.maxFlipPortals > 0 && numFlipPortals > f.maxFlipPortals {
 			numFlipPortals = f.maxFlipPortals
 		}
-		numFields := numFlipPortals * (2*len(f.backbone) - 1)
+		numFields := numFlipPortals * (2*len(f.backbone) - 3)
 		if numFields > f.bestSolution {
 			f.bestSolution = numFields
 		}
@@ -357,7 +357,7 @@ func LargestFlipFieldST(portals []Portal, params flipFieldParams) ([]Portal, []P
 					if params.maxFlipPortals > 0 && numFlipPortals > params.maxFlipPortals {
 						numFlipPortals = params.maxFlipPortals
 					}
-					numFields := numFlipPortals * (2*len(b) - 1)
+					numFields := numFlipPortals * (2*len(b) - 3)
 					if numFields > bestNumFields || (numFields == bestNumFields && bl < bestBackboneLength) {
 						bestNumFields = numFields
 						bestBackbone = append(bestBackbone[:0], b...)
