@@ -16,6 +16,7 @@ import "github.com/golang/geo/s2"
 
 // Portal - portal with geographic coordinates in s2.Point format
 type Portal struct {
+	Guid   string
 	Name   string
 	LatLng s2.LatLng
 }
@@ -34,6 +35,7 @@ type PortalCoordinates struct {
 
 // PortalInfo - portal with geographic coordinated in textual format
 type PortalInfo struct {
+	Guid        string            `json:"guid"`
 	Name        string            `json:"title"`
 	Coordinates PortalCoordinates `json:"coordinates"`
 }
@@ -134,7 +136,7 @@ func parseCSVFileAsPortalInfo(filename string) ([]PortalInfo, error) {
 			return portals, errors.New("Cannot parse longitude: \"" + record[3] + "\"")
 		}
 		portalCoordinates := PortalCoordinates{Lat: record[2], Lng: record[3]}
-		portals = append(portals, PortalInfo{Name: record[1], Coordinates: portalCoordinates})
+		portals = append(portals, PortalInfo{Guid: record[0], Name: record[1], Coordinates: portalCoordinates})
 		if len(portals) >= math.MaxUint16-1 {
 			return portals, errors.New("Too many portals")
 		}
@@ -176,7 +178,7 @@ func portalInfoToPortal(portalInfo []PortalInfo) ([]Portal, error) {
 			return portals, errors.New("Cannot parse longitude: \"" + latlng.Lng + "\"")
 		}
 		point := s2.LatLngFromDegrees(lat, lng)
-		portals = append(portals, Portal{Name: portal.Name, LatLng: point})
+		portals = append(portals, Portal{Guid: portal.Guid, Name: portal.Name, LatLng: point})
 		if len(portals) >= math.MaxUint16-1 {
 			return portals, errors.New("Too many portals")
 		}
