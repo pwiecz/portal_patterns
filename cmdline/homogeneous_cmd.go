@@ -88,7 +88,6 @@ func (h *homogeneousCmd) Run(args []string, output io.Writer, progressFunc func(
 	for i, portal := range result {
 		fmt.Fprintf(output, "%d: %s\n", i, portal.Name)
 	}
-	polylines := []string{lib.PolylineFromPortalList([]lib.Portal{result[0], result[1], result[2], result[0]})}
-	polylines, _ = lib.AppendHomogeneousPolylines(result[0], result[1], result[2], uint16(depth), polylines, result[3:])
-	fmt.Fprintf(output, "\n[%s]\n", strings.Join(polylines, ","))
+	drawTools := lib.HomogeneousSolutionToDrawToolsString(depth, result)
+	fmt.Fprintf(output, "\n%s\n", drawTools)
 }
