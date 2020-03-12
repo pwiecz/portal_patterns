@@ -57,6 +57,13 @@ func NewSolutionMap(parent tk.Widget, title string) *SolutionMap {
 	s.canvas.BindEvent("<ButtonPress-1>", func(e *tk.Event) { s.OnButtonPress(e) })
 	s.canvas.BindEvent("<ButtonPress-4>", func(e *tk.Event) { s.OnScrollUp(e) })
 	s.canvas.BindEvent("<ButtonPress-5>", func(e *tk.Event) { s.OnScrollDown(e) })
+	s.canvas.BindEvent("<MouseWheel>", func(e *tk.Event) {
+		if e.WheelDelta < 0 {
+			s.OnScrollDown(e)
+		} else {
+			s.OnScrollUp(e)
+		}
+	})
 	s.canvas.BindEvent("<KeyRelease-plus>", func(e *tk.Event) {
 		s.OnZoomIn(s.canvas.Width()/2, s.canvas.Height()/2)
 	})
