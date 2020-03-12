@@ -1,0 +1,82 @@
+package main
+
+import "github.com/pwiecz/atk/tk"
+
+type PortalList struct {
+	*tk.TreeViewEx
+	// portal guid to item
+	items              map[string]*tk.TreeItem
+	// item id to portal guid
+	guids              map[string]string
+	onPortalLeftClick  func(string)
+	onPortalRightClick func(string, int, int)
+}
+
+func NewPortalList(parent *Window) *PortalList {
+	l := &PortalList{}
+	l.TreeViewEx = tk.NewTreeViewEx(parent)
+	l.items = make(map[string]*tk.TreeItem)
+	l.guids = make(map[string]string)
+	l.SetColumnCount(2)
+	l.SetHeaderLabels([]string{"Title", "State"})
+	l.BindEvent("<Button-3>", func(e *tk.Event) {
+		clickedItem := l.ItemAt(e.PosX, e.PosY)
+		l.SetSelections(clickedItem)
+		if guid, ok := l.guids[clickedItem.Id()]; ok {
+			if l.onPortalRightClick != nil {
+				l.onPortalRightClick(guid, e.GlobalPosX, e.GlobalPosY)
+			}
+		}
+	})
+	return l
+}
+
+func (l *PortalList) Clear() {
+	l.DeleteAllItems()
+	l.items = make(map[string]*tk.TreeItem)
+	l.guids = make(map[string]string)
+}
+
+func (l *PortalList) ScrollToPortal(guid string) {
+	if item, ok := l.items[guid]; ok {
+		l.ScrollTo(item)
+	}
+}
+func (l *PortalList) SelectedPortals() []string {
+	items := l.SelectionList()
+	var portals []string
+	for _, item := range items {
+		if guid, ok := l.guids[item.Id()]; ok {
+			portals = append(portals, guid)
+		}
+	}
+	return portals
+}
+func (l *PortalList) SetSelectedPortals(guids map[string]bool) {
+	var selectedItems []*tk.TreeItem
+	for guid, _ := range guids {
+		if item, ok := l.items[guid]; ok {
+			selectedItems = append(selectedItems, item)
+		}
+	}
+	l.SetSelectionList(selectedItems)
+}
+
+func (l *PortalList) OnPortalRightClick(onPortalRightClick func(string, int, int)) {
+	l.onPortalRightClick = onPortalRightClick
+}
+
+func (l *PortalList) SetPortals(portals []*HomogeneousPortal) {
+	l.Clear()
+	for i, portal := range portals {
+		item := l.InsertItem(nil, i, portal.portal.Name, []string{portal.state.String()})
+		l.items[portal.portal.Guid] = item
+		l.guids[item.Id()] = portal.portal.Guid
+	}
+}
+
+func (l *PortalList) SetPortalState(guid, state string) {
+	if item, ok := l.items[guid]; ok {
+		item.SetColumnText(1, state)
+	}
+}
