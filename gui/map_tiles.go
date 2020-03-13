@@ -51,7 +51,7 @@ type MapTiles struct {
 func NewMapTiles() *MapTiles {
 	cacheDirBase, err := os.UserCacheDir()
 	cacheDir := ""
-	if err != nil {
+	if err == nil {
 		cacheDir = path.Join(cacheDirBase, "portal_patterns")
 	}
 	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
@@ -119,26 +119,30 @@ func (m *MapTiles) getTileSlow(coord tileCoord) (image.Image, error) {
 		if err == nil {
 			return img, err
 		}
+		log.Println("Cannot decode cached file", cachedTilePath, err)
 		os.Remove(cachedTilePath)
 	}
 	img, err := m.fetchTile(coord)
 	if err != nil {
 		return nil, err
 	}
-	tempF, err := ioutil.TempFile(m.cacheDir, "tile.png")
+	tempF, err := ioutil.TempFile(m.cacheDir, ".tile*.png")
 	if err != nil {
-		fmt.Println("Cannot create temp tile file", err)
+		log.Println("Cannot create temp tile file", err)
 		return img, nil
 	}
 	defer os.Remove(tempF.Name())
 	err = png.Encode(tempF, img)
 	if err != nil {
-		fmt.Println("Cannot encode image tile file", err)
+		log.Println("Cannot encode image tile file", err)
 		return img, nil
+	}
+	if err := tempF.Close(); err != nil {
+		log.Println("Cannot close time file", err)
 	}
 	err = os.Rename(tempF.Name(), cachedTilePath)
 	if err != nil {
-		fmt.Println("Cannot rename temp file", err)
+		log.Println("Cannot rename temp file", err)
 	}
 	return img, nil
 }
