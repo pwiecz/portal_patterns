@@ -1,5 +1,6 @@
 package main
 
+import "log"
 import "math"
 import "image"
 
@@ -102,18 +103,21 @@ func (s *SolutionMap) OnDrag(e *tk.Event) {
 	if dx == 0. && dy == 0. {
 		return
 	}
-	s.x0 -= dx
-	s.y0 -= dy
 	s.dragPosX, s.dragPosY = e.PosX, e.PosY
+	s.shiftMap(-dx, -dy)
+}
+func (s *SolutionMap) shiftMap(dx, dy float64) {
+	s.x0 += dx
+	s.y0 += dy
 	for _, portal := range s.portals {
-		portal.shape.Move(dx, dy)
+		portal.shape.Move(-dx, -dy)
 	}
 	for _, line := range s.lines {
-		line.Move(dx, dy)
+		line.Move(-dx, -dy)
 	}
 	for _, tileImage := range s.mapTiles {
 		if tileImage != nil {
-			tileImage.Move(dx, dy)
+			tileImage.Move(-dx, -dy)
 		}
 	}
 	s.showTiles()
@@ -242,6 +246,19 @@ func (s *SolutionMap) GeoToScreenCoordinates(x, y float64) (float64, float64) {
 	return x*s.zoomPow*256.0 - s.x0, y*s.zoomPow*256.0 - s.y0
 
 }
+func (s *SolutionMap) ScrollToPortal(guid string) {
+	portal, ok := s.portals[guid]
+	if !ok {
+		log.Println("Cannot locate portal", guid, "on the map")
+		return
+	}
+	x,y := s.GeoToScreenCoordinates(portal.coords.X, portal.coords.Y)
+	if x >= 0 && x < float64(s.canvas.Width()) &&
+		y >= 0 && x < float64(s.canvas.Height()) {
+		return
+	}
+	s.shiftMap(x - float64(s.canvas.Width())/2, y - float64(s.canvas.Height())/2)
+}
 func (s *SolutionMap) OnScrollUp(e *tk.Event) {
 	s.OnZoomIn(e.PosX, e.PosY)
 }
@@ -254,7 +271,7 @@ func (s *SolutionMap) OnPortalLeftClick(onPortalLeftClick func(string)) {
 func (s *SolutionMap) OnPortalRightClick(onPortalRightClick func(string, int, int)) {
 	s.onPortalRightClick = onPortalRightClick
 }
-func (s *SolutionMap) SetPortals(portals []*HomogeneousPortal) {
+func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 	for _, portal := range s.portals {
 		s.canvas.DeleteOval(portal.shape)
 	}
@@ -265,14 +282,14 @@ func (s *SolutionMap) SetPortals(portals []*HomogeneousPortal) {
 	if len(portals) == 1 {
 		s.zoom = 19
 		s.zoomPow = math.Pow(2., 19.)
-		mapCoords := projection.FromLatLng(portals[0].portal.LatLng)
+		mapCoords := projection.FromLatLng(portals[0].LatLng)
 		s.x0 = mapCoords.X*s.zoomPow*256. - float64(s.canvas.Width())*0.5
 		s.y0 = mapCoords.Y*s.zoomPow*256. - float64(s.canvas.Height())*0.5
 		s.showTiles()
 		x, y := s.GeoToScreenCoordinates(mapCoords.X, mapCoords.Y)
 		item := s.canvas.CreateOval(x-5, y-5, x+5, y+5, tk.CanvasItemAttrFill("orange"), tk.CanvasItemAttrTags([]string{"portal"}))
 		item.Raise()
-		guid := portals[0].portal.Guid // local copy to make closure captures work correctly
+		guid := portals[0].Guid // local copy to make closure captures work correctly
 		s.portals[guid] = mapPortal{coords: mapCoords, shape: item}
 		item.BindEvent("<Button-1>", func(e *tk.Event) {
 			if s.onPortalLeftClick != nil {
@@ -288,13 +305,13 @@ func (s *SolutionMap) SetPortals(portals []*HomogeneousPortal) {
 	}
 	chQuery := s2.NewConvexHullQuery()
 	for _, portal := range portals {
-		chQuery.AddPoint(s2.PointFromLatLng(portal.portal.LatLng))
+		chQuery.AddPoint(s2.PointFromLatLng(portal.LatLng))
 	}
 	chQuery.ConvexHull()
 
 	minX, minY, maxX, maxY := math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64
 	for _, portal := range portals {
-		mapCoords := projection.FromLatLng(portal.portal.LatLng)
+		mapCoords := projection.FromLatLng(portal.LatLng)
 		minX = math.Min(mapCoords.X, minX)
 		minY = math.Min(mapCoords.Y, minY)
 		maxX = math.Max(mapCoords.X, maxX)
@@ -323,11 +340,11 @@ func (s *SolutionMap) SetPortals(portals []*HomogeneousPortal) {
 	s.y0 = (minY*s.zoomPow - 0.1*dim) * 256.0
 	s.showTiles()
 	for _, portal := range portals {
-		mapCoords := projection.FromLatLng(portal.portal.LatLng)
+		mapCoords := projection.FromLatLng(portal.LatLng)
 		x, y := s.GeoToScreenCoordinates(mapCoords.X, mapCoords.Y)
 		item := s.canvas.CreateOval(x-5, y-5, x+5, y+5, tk.CanvasItemAttrFill("orange"), tk.CanvasItemAttrTags([]string{"portal"}))
 		item.Raise()
-		guid := portal.portal.Guid // local copy to make closure captures work correctly
+		guid := portal.Guid // local copy to make closure captures work correctly
 		s.portals[guid] = mapPortal{coords: mapCoords, shape: item}
 		item.BindEvent("<Button-1>", func(e *tk.Event) {
 			if s.onPortalLeftClick != nil {
@@ -356,7 +373,4 @@ func (s *SolutionMap) SetSolution(lines [][]lib.Portal) {
 	if len(s.lines) > 0 {
 		s.canvas.RaiseItemsAbove("portal", "link")
 	}
-}
-
-func (s *SolutionMap) GetTile(x, y, zoom int) {
 }

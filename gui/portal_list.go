@@ -1,6 +1,7 @@
 package main
 
 import "github.com/pwiecz/atk/tk"
+import "github.com/pwiecz/portal_patterns/lib"
 
 type PortalList struct {
 	*tk.TreeViewEx
@@ -8,7 +9,6 @@ type PortalList struct {
 	items              map[string]*tk.TreeItem
 	// item id to portal guid
 	guids              map[string]string
-	onPortalLeftClick  func(string)
 	onPortalRightClick func(string, int, int)
 }
 
@@ -66,12 +66,12 @@ func (l *PortalList) OnPortalRightClick(onPortalRightClick func(string, int, int
 	l.onPortalRightClick = onPortalRightClick
 }
 
-func (l *PortalList) SetPortals(portals []*HomogeneousPortal) {
+func (l *PortalList) SetPortals(portals []lib.Portal) {
 	l.Clear()
 	for i, portal := range portals {
-		item := l.InsertItem(nil, i, portal.portal.Name, []string{portal.state.String()})
-		l.items[portal.portal.Guid] = item
-		l.guids[item.Id()] = portal.portal.Guid
+		item := l.InsertItem(nil, i, portal.Name, []string{""})
+		l.items[portal.Guid] = item
+		l.guids[item.Id()] = portal.Guid
 	}
 }
 

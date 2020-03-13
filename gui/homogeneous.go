@@ -9,36 +9,6 @@ import "github.com/pwiecz/portal_patterns/lib"
 import "github.com/pwiecz/atk/tk"
 import "github.com/golang/geo/s2"
 
-type HomogeneousPortalState int
-
-const (
-	HomogeneousPortalNormal HomogeneousPortalState = iota
-	HomogeneousPortalDisabled
-	HomogeneousPortalAnchor
-)
-
-func (s HomogeneousPortalState) String() string {
-	switch s {
-	case HomogeneousPortalNormal:
-		return "Normal"
-	case HomogeneousPortalDisabled:
-		return "Disabled"
-	case HomogeneousPortalAnchor:
-		return "Anchor"
-	}
-	return ""
-}
-
-type HomogeneousPortal struct {
-	portal lib.Portal
-	state  HomogeneousPortalState
-}
-
-func NewHomogeneousPortal(portal lib.Portal) *HomogeneousPortal {
-	h := &HomogeneousPortal{portal: portal, state: HomogeneousPortalNormal}
-	return h
-}
-
 type HomogeneousTab struct {
 	*tk.PackLayout
 	add             *tk.Button
@@ -54,11 +24,12 @@ type HomogeneousTab struct {
 	portalScrollBar *tk.ScrollBar
 	solutionMap     *SolutionMap
 	portalCanvas    *tk.Canvas
-	portalMap       map[string]*HomogeneousPortal
-	portals         []*HomogeneousPortal
+	portals         map[string]lib.Portal
 	solution        []lib.Portal
 	depth           uint16
 	selectedPortals map[string]bool
+	anchorPortals   map[string]bool
+	disabledPortals map[string]bool
 }
 
 func NewHomogeneousTab(parent *Window, conf *Configuration) *HomogeneousTab {
@@ -148,8 +119,10 @@ func NewHomogeneousTab(parent *Window, conf *Configuration) *HomogeneousTab {
 		h.OnSelectionChanged(selectedPortals)
 	})
 
-	h.portalMap = make(map[string]*HomogeneousPortal)
+	h.portals = make(map[string]lib.Portal)
 	h.selectedPortals = make(map[string]bool)
+	h.anchorPortals = make(map[string]bool)
+	h.disabledPortals = make(map[string]bool)
 	return h
 }
 
@@ -160,8 +133,10 @@ func (h *HomogeneousTab) onProgress(val int, max int) {
 }
 
 func (h *HomogeneousTab) resetPortals() {
-	h.portals = h.portals[:0]
-	h.portalMap = make(map[string]*HomogeneousPortal)
+	h.portals = make(map[string]lib.Portal)
+	h.selectedPortals = make(map[string]bool)
+	h.anchorPortals = make(map[string]bool)
+	h.disabledPortals = make(map[string]bool)
 	h.find.SetState(tk.StateDisable)
 	if h.solutionMap != nil {
 		h.solutionMap.Clear()
@@ -171,36 +146,45 @@ func (h *HomogeneousTab) resetPortals() {
 	}
 }
 func (h *HomogeneousTab) addPortals(portals []lib.Portal) {
+	newPortals := make(map[string]lib.Portal)
 	for _, portal := range portals {
-		if existing, ok := h.portalMap[portal.Guid]; ok {
-			if existing.portal.LatLng.Lat != portal.LatLng.Lat ||
-				existing.portal.LatLng.Lng != portal.LatLng.Lng {
-				if existing.portal.Name == portal.Name {
-					tk.MessageBox(h, "Conflicting portals", "Portal with guid \""+portal.Guid+"\" already loaded with different location",
-						portal.Name+"\n"+portal.LatLng.String()+" vs "+existing.portal.LatLng.String(), "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
-				} else {
-					tk.MessageBox(h, "Conflicting portals", "Portal with guid \""+portal.Guid+"\" already loaded with different name and location",
-						portal.Name+" vs "+existing.portal.Name+"\n"+portal.LatLng.String()+" vs "+existing.portal.LatLng.String(), "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
-				}
-			}
-			continue
-		}
-		h.portals = append(h.portals, NewHomogeneousPortal(portal))
-		h.portalMap[portal.Guid] = h.portals[len(h.portals)-1]
+		newPortals[portal.Guid] = portal
 	}
-	for i, p0 := range h.portals {
-		for _, p1 := range h.portals[i+1:] {
-			if s2.PointFromLatLng(p0.portal.LatLng).Distance(s2.PointFromLatLng(p1.portal.LatLng)) >= 1. {
-				tk.MessageBox(h, "Too distant portals", "Distances between portals are too large", "E.g. "+p0.portal.Name+" and "+p1.portal.Name, "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
+	for _, portal := range portals {
+		if existing, ok := h.portals[portal.Guid]; ok {
+			if existing.LatLng.Lat != portal.LatLng.Lat ||
+				existing.LatLng.Lng != portal.LatLng.Lng {
+				if existing.Name == portal.Name {
+					tk.MessageBox(h, "Conflicting portals", "Portal with guid \""+portal.Guid+"\" already loaded with different location",
+						portal.Name+"\n"+portal.LatLng.String()+" vs "+existing.LatLng.String(), "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
+					return
+				}
+				tk.MessageBox(h, "Conflicting portals", "Portal with guid \""+portal.Guid+"\" already loaded with different name and location",
+					portal.Name+" vs "+existing.Name+"\n"+portal.LatLng.String()+" vs "+existing.LatLng.String(), "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
+				return
+			}
+		}
+		newPortals[portal.Guid] = portal
+	}
+
+	newPortalList := []lib.Portal{}
+	for _, portal := range newPortals {
+		newPortalList = append(newPortalList, portal)
+	}
+	for i, p0 := range newPortalList {
+		for _, p1 := range newPortalList[i+1:] {
+			if s2.PointFromLatLng(p0.LatLng).Distance(s2.PointFromLatLng(p1.LatLng)) >= 1. {
+				tk.MessageBox(h, "Too distant portals", "Distances between portals are too large", "E.g. "+p0.Name+" and "+p1.Name, "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
+
 				return
 			}
 		}
 
 	}
-	sort.Slice(h.portals, func(i, j int) bool {
-		return h.portals[i].portal.Name < h.portals[j].portal.Name
+	sort.Slice(newPortalList, func(i, j int) bool {
+		return newPortalList[i].Name < newPortalList[j].Name
 	})
-	h.portalList.SetPortals(h.portals)
+	h.portals = newPortals
 	if len(h.portals) >= 3 {
 		h.find.SetState(tk.StateNormal)
 	}
@@ -219,46 +203,42 @@ func (h *HomogeneousTab) addPortals(portals []lib.Portal) {
 		h.solutionMap.ShowNormal()
 		tk.Update()
 	}
-	h.solutionMap.SetPortals(h.portals)
+	h.solutionMap.SetPortals(newPortalList)
+	h.portalList.SetPortals(newPortalList)
+	for _, portal := range newPortalList {
+		h.portalStateChanged(portal.Guid)
+	}
 }
 
-func stateToColor(state HomogeneousPortalState, selected bool) string {
-	switch state {
-	case HomogeneousPortalNormal:
-		if !selected {
-			return "orange"
-		} else {
-			return "red"
-		}
-	case HomogeneousPortalDisabled:
+func stateToName(disabled, isAnchor, selected bool) string {
+	if disabled {
+		return "Disabled"
+	}
+	if isAnchor {
+		return "Anchor"
+	}
+	return "Normal"
+}
+
+func stateToColor(disabled, isAnchor, selected bool) string {
+	if disabled {
 		if !selected {
 			return "gray"
-		} else {
-			return "dark gray"
 		}
-	case HomogeneousPortalAnchor:
+		return "dark gray"
+	}
+	if isAnchor {
 		if !selected {
 			return "green"
-		} else {
-			return "dark green"
 		}
+		return "dark green"
 	}
-	return "yellow"
+	if !selected {
+		return "orange"
+	}
+	return "red"
 }
 
-func portalMapsAreTheSame(map1 map[*HomogeneousPortal]bool, map2 map[*HomogeneousPortal]bool) bool {
-	for portal, _ := range map1 {
-		if !map2[portal] {
-			return false
-		}
-	}
-	for portal, _ := range map2 {
-		if !map1[portal] {
-			return false
-		}
-	}
-	return true
-}
 func stringMapsAreTheSame(map1 map[string]bool, map2 map[string]bool) bool {
 	for s, _ := range map1 {
 		if !map2[s] {
@@ -280,29 +260,36 @@ func (h *HomogeneousTab) OnSelectionChanged(selection []string) {
 	if stringMapsAreTheSame(selectionMap, h.selectedPortals) {
 		return
 	}
-	for portal, _ := range h.selectedPortals {
-		h.solutionMap.SetPortalColor(portal, stateToColor(h.portalMap[portal].state, selectionMap[portal]))
-	}
-	for _, portal := range selection {
-		h.solutionMap.SetPortalColor(portal, stateToColor(h.portalMap[portal].state, true))
-		h.solutionMap.RaisePortal(portal)
+	if h.solutionMap != nil {
+		for portal, _ := range h.selectedPortals {
+			h.solutionMap.SetPortalColor(portal, stateToColor(h.disabledPortals[portal], h.anchorPortals[portal], selectionMap[portal]))
+		}
+		for _, portal := range selection {
+			h.solutionMap.SetPortalColor(portal, stateToColor(h.disabledPortals[portal], h.anchorPortals[portal], true))
+			h.solutionMap.RaisePortal(portal)
+		}
 	}
 	h.selectedPortals = selectionMap
-	h.portalList.SetSelectedPortals(selectionMap)
+	if h.portalList != nil {
+		h.portalList.SetSelectedPortals(h.selectedPortals)
+	}
+	if len(selection) == 1 {
+		if h.portalList != nil {
+			h.portalList.ScrollToPortal(selection[0])
+		}
+		if h.solutionMap != nil {
+			h.solutionMap.ScrollToPortal(selection[0])
+		}
+	}
 }
 func (h *HomogeneousTab) OnPortalSelected(guid string) {
-	if len(h.selectedPortals) == 1 && h.selectedPortals[guid] {
-		return
+	h.OnSelectionChanged([]string{guid})
+	if h.portalList != nil {
+		h.portalList.ScrollToPortal(guid)
 	}
-	for portal, _ := range h.selectedPortals {
-		h.solutionMap.SetPortalColor(portal, stateToColor(h.portalMap[portal].state, false))
+	if h.solutionMap != nil {
+		h.solutionMap.ScrollToPortal(guid)
 	}
-	h.selectedPortals = make(map[string]bool)
-	h.selectedPortals[guid] = true
-	h.solutionMap.SetPortalColor(guid, stateToColor(h.portalMap[guid].state, true))
-	h.solutionMap.RaisePortal(guid)
-	h.portalList.SetSelectedPortals(h.selectedPortals)
-	h.portalList.ScrollToPortal(guid)
 }
 func (h *HomogeneousTab) OnPortalContextMenu(guid string, x, y int) {
 	menu := NewPortalContextMenu(tk.RootWindow(), guid, h)
@@ -310,7 +297,7 @@ func (h *HomogeneousTab) OnPortalContextMenu(guid string, x, y int) {
 }
 
 func (h *HomogeneousTab) search() {
-	if len(h.portals) == 0 {
+	if len(h.portals) < 3 {
 		return
 	}
 	options := []lib.HomogeneousOption{}
@@ -339,11 +326,11 @@ func (h *HomogeneousTab) search() {
 	portals := []lib.Portal{}
 	anchors := []int{}
 	for _, portal := range h.portals {
-		if portal.state != HomogeneousPortalDisabled {
-			portals = append(portals, portal.portal)
-		}
-		if portal.state == HomogeneousPortalAnchor {
-			anchors = append(anchors, len(portals)-1)
+		if !h.disabledPortals[portal.Guid] {
+			portals = append(portals, portal)
+			if h.anchorPortals[portal.Guid] {
+				anchors = append(anchors, len(portals)-1)
+			}
 		}
 	}
 	options = append(options, lib.HomogeneousFixedCornerIndices(anchors))
@@ -367,25 +354,30 @@ func (h *HomogeneousTab) search() {
 	tk.Update()
 }
 
+func (s *HomogeneousTab) portalStateChanged(guid string) {
+	if s.portalList != nil {
+		s.portalList.SetPortalState(guid, stateToName(s.disabledPortals[guid], s.anchorPortals[guid], s.selectedPortals[guid]))
+	}
+	if s.solutionMap != nil {
+		s.solutionMap.SetPortalColor(guid, stateToColor(s.disabledPortals[guid], s.anchorPortals[guid], s.selectedPortals[guid]))
+	}
+}
 func (s *HomogeneousTab) EnablePortal(guid string) {
-	s.portalMap[guid].state = HomogeneousPortalNormal
-	s.portalList.SetPortalState(guid, "Normal")
-	s.solutionMap.SetPortalColor(guid, stateToColor(HomogeneousPortalNormal, s.selectedPortals[guid]))
+	delete(s.disabledPortals, guid)
+	s.portalStateChanged(guid)
 }
 func (s *HomogeneousTab) DisablePortal(guid string) {
-	s.portalMap[guid].state = HomogeneousPortalDisabled
-	s.portalList.SetPortalState(guid, "Disabled")
-	s.solutionMap.SetPortalColor(guid, stateToColor(HomogeneousPortalDisabled, s.selectedPortals[guid]))
+	s.disabledPortals[guid] = true
+	delete(s.anchorPortals, guid)
+	s.portalStateChanged(guid)
 }
 func (s *HomogeneousTab) MakeAnchor(guid string) {
-	s.portalMap[guid].state = HomogeneousPortalAnchor
-	s.portalList.SetPortalState(guid, "Anchor")
-	s.solutionMap.SetPortalColor(guid, stateToColor(HomogeneousPortalAnchor, s.selectedPortals[guid]))
+	s.anchorPortals[guid] = true
+	s.portalStateChanged(guid)
 }
 func (s *HomogeneousTab) UnmakeAnchor(guid string) {
-	s.portalMap[guid].state = HomogeneousPortalNormal
-	s.portalList.SetPortalState(guid, "Normal")
-	s.solutionMap.SetPortalColor(guid, stateToColor(HomogeneousPortalNormal, s.selectedPortals[guid]))
+	delete(s.anchorPortals, guid)
+	s.portalStateChanged(guid)
 }
 
 type PortalContextMenu struct {
@@ -395,26 +387,23 @@ type PortalContextMenu struct {
 func NewPortalContextMenu(parent *tk.Window, guid string, h *HomogeneousTab) *PortalContextMenu {
 	l := &PortalContextMenu{}
 	l.Menu = tk.NewMenu(parent)
-	state := h.portalMap[guid].state
-	if state == HomogeneousPortalDisabled {
+	if h.disabledPortals[guid] {
 		enableAction := tk.NewAction("Enable")
 		enableAction.OnCommand(func() { h.EnablePortal(guid) })
 		l.AddAction(enableAction)
-	}
-	if state == HomogeneousPortalNormal || state == HomogeneousPortalAnchor {
+	} else {
 		disableAction := tk.NewAction("Disable")
 		disableAction.OnCommand(func() { h.DisablePortal(guid) })
 		l.AddAction(disableAction)
 	}
-	if state == HomogeneousPortalNormal {
-		anchorAction := tk.NewAction("Make anchor")
-		anchorAction.OnCommand(func() { h.MakeAnchor(guid) })
-		l.AddAction(anchorAction)
-	}
-	if state == HomogeneousPortalAnchor {
+	if h.anchorPortals[guid] {
 		unanchorAction := tk.NewAction("Unmake anchor")
 		unanchorAction.OnCommand(func() { h.UnmakeAnchor(guid) })
 		l.AddAction(unanchorAction)
+	} else if !h.disabledPortals[guid] && len(h.anchorPortals) < 3 {
+		anchorAction := tk.NewAction("Make anchor")
+		anchorAction.OnCommand(func() { h.MakeAnchor(guid) })
+		l.AddAction(anchorAction)
 	}
 	return l
 }
