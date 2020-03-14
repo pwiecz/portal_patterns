@@ -106,6 +106,18 @@ func (m *MapTiles) GetTile(coord tileCoord) (*tk.Image, bool) {
 			m.onTileRead(coord, tkImg)
 		})
 	}(coord)
+	if wrappedCoord.zoom > 0 {
+		zoomedOutCoord := tileCoord{x:wrappedCoord.x/2, y:wrappedCoord.y/2, zoom:wrappedCoord.zoom-1}
+		if tile, ok := m.memCache.Get(zoomedOutCoord); ok {
+			if tileImage, ok := tile.(*tk.Image); ok {
+				sourceX := (wrappedCoord.x%2)*128
+				sourceY := (wrappedCoord.y%2)*128
+				tkImg := tk.NewImage()
+				tkImg.Copy(tileImage, tk.ImageCopyAttrFrom(sourceX, sourceY, sourceX+128, sourceY+128), tk.ImageCopyAttrZoom(2.0, 2.0))
+				return tkImg, false
+			}
+		}
+	}
 	return nil, false
 }
 

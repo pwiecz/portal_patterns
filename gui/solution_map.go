@@ -26,10 +26,10 @@ type mapPortal struct {
 
 type SolutionMap struct {
 	*tk.Window
-	font *tk.SysFont
-	fontDescription string
-	textAscent int
-	textDescent int
+	font               *tk.SysFont
+	fontDescription    string
+	textAscent         int
+	textDescent        int
 	layout             *tk.PackLayout
 	canvas             *tk.Canvas
 	nameLabel          *tk.CanvasText
@@ -63,7 +63,7 @@ func NewSolutionMap(parent tk.Widget, title string) *SolutionMap {
 	})
 	s.canvas.SetFocus()
 	s.canvas.BindEvent("<Button1-Motion>", func(e *tk.Event) { s.OnDrag(e) })
-	s.canvas.BindEvent("<Control-Button-1>", func(e *tk.Event) {fmt.Println("Ctrl-Click")})
+	//s.canvas.BindEvent("<Control-Button-1>", func(e *tk.Event) { fmt.Println("Ctrl-Click") })
 	s.canvas.BindEvent("<ButtonPress-1>", func(e *tk.Event) { s.OnButtonPress(e) })
 	s.canvas.BindEvent("<ButtonPress-4>", func(e *tk.Event) { s.OnScrollUp(e) })
 	s.canvas.BindEvent("<ButtonPress-5>", func(e *tk.Event) { s.OnScrollDown(e) })
@@ -87,7 +87,6 @@ func NewSolutionMap(parent tk.Widget, title string) *SolutionMap {
 	s.tileCache.SetOnTileRead(func(coord tileCoord, tile *tk.Image) { s.onTileRead(coord, tile) })
 	s.font = tk.LoadSysFont(tk.SysTextFont)
 	s.fontDescription = s.font.Description()
-	fmt.Println("font: \"", s.fontDescription, "\"")
 	s.textAscent = s.font.Ascent()
 	s.textDescent = s.font.Descent()
 	s.layout.Repack()
@@ -187,6 +186,9 @@ func (s *SolutionMap) OnZoomOut(cx, cy int) {
 }
 
 func (s *SolutionMap) showTile(coord tileCoord, tileImage *tk.Image) {
+	if tile, ok := s.mapTiles[coord]; ok {
+		s.canvas.DeleteImage(tile)
+	}
 	dx := float64(coord.x)*256.0 - s.x0
 	dy := float64(coord.y)*256.0 - s.y0
 	mapTile := s.canvas.CreateImage(dx, dy, tk.CanvasItemAttrImage(tileImage), tk.CanvasItemAttrAnchor(tk.AnchorNorthWest), tk.CanvasItemAttrTags([]string{"tile"}))
@@ -223,9 +225,11 @@ func (s *SolutionMap) showTiles() {
 	}
 	s.missingTiles = make(map[tileCoord]bool)
 	for coord, _ := range tileCoords {
-		if tileImage, ok := s.tileCache.GetTile(coord); ok {
+		tileImage, ok := s.tileCache.GetTile(coord)
+		if tileImage != nil {
 			s.showTile(coord, tileImage)
-		} else {
+		} 
+		if !ok {
 			s.missingTiles[coord] = true
 		}
 	}
@@ -262,12 +266,12 @@ func (s *SolutionMap) ScrollToPortal(guid string) {
 		log.Println("Cannot locate portal", guid, "on the map")
 		return
 	}
-	x,y := s.GeoToScreenCoordinates(portal.coords.X, portal.coords.Y)
+	x, y := s.GeoToScreenCoordinates(portal.coords.X, portal.coords.Y)
 	if x >= 0 && x < float64(s.canvas.Width()) &&
 		y >= 0 && x < float64(s.canvas.Height()) {
 		return
 	}
-	s.shiftMap(x - float64(s.canvas.Width())/2, y - float64(s.canvas.Height())/2)
+	s.shiftMap(x-float64(s.canvas.Width())/2, y-float64(s.canvas.Height())/2)
 }
 func (s *SolutionMap) OnScrollUp(e *tk.Event) {
 	s.OnZoomIn(e.PosX, e.PosY)
@@ -287,6 +291,7 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 	}
 	s.portals = make(map[string]mapPortal)
 	if len(portals) == 0 {
+		fmt.Println("empty portals")
 		return
 	}
 	if len(portals) == 1 {
@@ -335,20 +340,21 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 	}
 	numTilesX := math.Ceil(float64(s.canvas.Width()) / 256.)
 	numTilesY := math.Ceil(float64(s.canvas.Height()) / 256.)
-	maxZoom := -1
-	for zoom := 0; zoom <= 18; zoom++ {
-		zoomPow := math.Pow(2., float64(zoom))
+	for s.zoom = 0; s.zoom <= 19; s.zoom++ {
+		zoomPow := math.Pow(2., float64(s.zoom))
 		minXTile, minYTile := math.Floor(minX*zoomPow), math.Floor(minY*zoomPow)
 		maxXTile, maxYTile := math.Floor(maxX*zoomPow), math.Floor(maxY*zoomPow)
 		if maxXTile-minXTile+1 > numTilesX || maxYTile-minYTile+1 > numTilesY {
-			maxZoom = zoom - 1
+			s.zoom--
 			break
 		}
 	}
-	if maxZoom == -1 {
-		return
+	if s.zoom < 0 {
+		s.zoom = 0
 	}
-	s.zoom = maxZoom
+	if s.zoom > 19 {
+		s.zoom = 19
+	}
 	width, height := math.Min(1., (maxX-minX)*1.2), math.Min(1., (maxY-minY)*1.2)
 	s.zoomPow = math.Pow(2., float64(s.zoom))
 	dim := math.Max(width, height) * s.zoomPow
@@ -399,7 +405,7 @@ func (s *SolutionMap) SetSolution(lines [][]lib.Portal) {
 
 func (s *SolutionMap) onPortalEntered(guid string) {
 	if s.nameLabel != nil {
-		s.canvas.DeleteText(s.nameLabel)	
+		s.canvas.DeleteText(s.nameLabel)
 		s.nameLabel = nil
 	}
 	if s.nameLabelBackgound != nil {
@@ -413,8 +419,17 @@ func (s *SolutionMap) onPortalEntered(guid string) {
 	x, y := s.GeoToScreenCoordinates(portal.coords.X, portal.coords.Y)
 	backgroundWidth := float64(s.font.MeasureTextWidth(portal.name) + 6)
 	backgroundHeight := float64(s.textAscent + s.textDescent + 8)
-	s.nameLabelBackgound = s.canvas.CreateRectangle(x - backgroundWidth / 2, y - 9, x + backgroundWidth / 2, y - 7 - backgroundHeight, tk.CanvasItemAttrFill("white"))
-	s.nameLabel = s.canvas.CreateText(x, y-12, tk.CanvasItemAttrText(portal.name), tk.CanvasItemAttrFont(s.fontDescription), tk.CanvasItemAttrAnchor(tk.AnchorSouth))
+	backgroundX, backgroundY := x-backgroundWidth/2, y-9
+	if backgroundX < 0 {
+		backgroundX = 0
+	} else if backgroundX+backgroundWidth >= float64(s.canvas.Width()) {
+		backgroundX = float64(s.canvas.Width()) - backgroundWidth
+	}
+	if backgroundY-backgroundHeight < 0 {
+		backgroundY = y + 5 + backgroundHeight + 4
+	}
+	s.nameLabelBackgound = s.canvas.CreateRectangle(backgroundX, backgroundY, backgroundX+backgroundWidth, backgroundY-backgroundHeight, tk.CanvasItemAttrFill("white"))
+	s.nameLabel = s.canvas.CreateText(backgroundX+backgroundWidth/2, backgroundY-3, tk.CanvasItemAttrText(portal.name), tk.CanvasItemAttrFont(s.fontDescription), tk.CanvasItemAttrAnchor(tk.AnchorSouth))
 }
 func (s *SolutionMap) onPortalLeft(guid string) {
 	if s.nameLabel != nil {
