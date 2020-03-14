@@ -111,7 +111,14 @@ func (m *MapTiles) getTileSlow(coord tileCoord) (image.Image, error) {
 	if m.cacheDir == "" {
 		return m.fetchTile(coord)
 	}
-	cachedTilePath := path.Join(m.cacheDir, strconv.Itoa(coord.zoom), strconv.Itoa(coord.x), strconv.Itoa(coord.y)+".png")
+	cachedTileDir := path.Join(m.cacheDir, strconv.Itoa(coord.zoom), strconv.Itoa(coord.x))
+	if _, err := os.Stat(cachedTileDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(cachedTileDir, 0755); err != nil {
+			log.Println("Cannot create cache dir", err)
+			return m.fetchTile(coord)
+		}
+	}
+	cachedTilePath := path.Join(cachedTileDir, strconv.Itoa(coord.y)+".png")
 	f, err := os.Open(cachedTilePath)
 	if err == nil {
 		img, err := png.Decode(f)
@@ -120,28 +127,33 @@ func (m *MapTiles) getTileSlow(coord tileCoord) (image.Image, error) {
 			return img, err
 		}
 		log.Println("Cannot decode cached file", cachedTilePath, err)
-		os.Remove(cachedTilePath)
+		if err := os.Remove(cachedTilePath); err != nil {
+			log.Println("Cannot remove cached tile", cachedTilePath)
+		}
 	}
 	img, err := m.fetchTile(coord)
 	if err != nil {
 		return nil, err
 	}
-	tempF, err := ioutil.TempFile(m.cacheDir, ".tile*.png")
+	tmpfile, err := ioutil.TempFile(cachedTileDir, ".tile_*.png")
 	if err != nil {
 		log.Println("Cannot create temp tile file", err)
 		return img, nil
 	}
-	defer os.Remove(tempF.Name())
-	err = png.Encode(tempF, img)
-	if err != nil {
+	tmpname := tmpfile.Name()
+	if err := png.Encode(tmpfile, img); err != nil {
 		log.Println("Cannot encode image tile file", err)
+		tmpfile.Close()
+		os.Remove(tmpname)
 		return img, nil
 	}
-	if err := tempF.Close(); err != nil {
-		log.Println("Cannot close time file", err)
+	if err := tmpfile.Sync(); err != nil {
+		log.Println("Cannot sync temp file", err)
 	}
-	err = os.Rename(tempF.Name(), cachedTilePath)
-	if err != nil {
+	if err := tmpfile.Close(); err != nil {
+		log.Println("Cannot close temp file", err)
+	}
+	if err := os.Rename(tmpname, cachedTilePath); err != nil {
 		log.Println("Cannot rename temp file", err)
 	}
 	return img, nil
