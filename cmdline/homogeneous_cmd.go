@@ -4,7 +4,6 @@ import "flag"
 import "fmt"
 import "io"
 import "log"
-import "strings"
 
 import "github.com/pwiecz/portal_patterns/lib"
 
@@ -88,6 +87,6 @@ func (h *homogeneousCmd) Run(args []string, output io.Writer, progressFunc func(
 	for i, portal := range result {
 		fmt.Fprintf(output, "%d: %s\n", i, portal.Name)
 	}
-	drawTools := lib.HomogeneousSolutionToDrawToolsString(depth, result)
+	drawTools := lib.HomogeneousDrawToolsString(depth, result)
 	fmt.Fprintf(output, "\n%s\n", drawTools)
 }
