@@ -12,6 +12,7 @@ import "path"
 import "strconv"
 import "sync"
 import "github.com/golang/groupcache/lru"
+import "github.com/pwiecz/atk/tk"
 
 type tileCoord struct {
 	x, y, zoom int
@@ -45,7 +46,7 @@ type MapTiles struct {
 	cacheDir       string
 	memCache       *SyncCache
 	fetchSemaphore chan empty
-	onTileRead     func(tileCoord, image.Image)
+	onTileRead     func(tileCoord, *tk.Image)
 }
 
 func NewMapTiles() *MapTiles {
@@ -67,7 +68,7 @@ func NewMapTiles() *MapTiles {
 	return &MapTiles{cacheDir: cacheDir, memCache: memCache, fetchSemaphore: semaphore}
 }
 
-func (m *MapTiles) GetTile(coord tileCoord) (image.Image, bool) {
+func (m *MapTiles) GetTile(coord tileCoord) (*tk.Image, bool) {
 	if coord.zoom < 0 || coord.y < 0 {
 		log.Println("Negative tile coordinates", coord)
 		return nil, false
@@ -87,7 +88,7 @@ func (m *MapTiles) GetTile(coord tileCoord) (image.Image, bool) {
 	}
 	wrappedCoord.x %= maxCoord
 	if tile, ok := m.memCache.Get(wrappedCoord); ok {
-		if tileImage, ok := tile.(image.Image); ok {
+		if tileImage, ok := tile.(*tk.Image); ok {
 			return tileImage, true
 		}
 		m.memCache.Remove(wrappedCoord)
@@ -98,13 +99,17 @@ func (m *MapTiles) GetTile(coord tileCoord) (image.Image, bool) {
 			log.Println("Error loading tile ", coord, err)
 			return
 		}
-		m.memCache.Add(wrappedCoord, img)
-		m.onTileRead(coord, img)
+		tk.Async(func() {
+			tkImg := tk.NewImage()
+			tkImg.SetImage(img)
+			m.memCache.Add(wrappedCoord, tkImg)
+			m.onTileRead(coord, tkImg)
+		})
 	}(coord)
 	return nil, false
 }
 
-func (m *MapTiles) SetOnTileRead(onTileRead func(tileCoord, image.Image)) {
+func (m *MapTiles) SetOnTileRead(onTileRead func(tileCoord, *tk.Image)) {
 	m.onTileRead = onTileRead
 }
 func (m *MapTiles) getTileSlow(coord tileCoord) (image.Image, error) {

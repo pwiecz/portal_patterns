@@ -1,5 +1,6 @@
 package main
 
+import "fmt"
 import "log"
 import "math"
 import "image"
@@ -19,13 +20,20 @@ type empty struct{}
 
 type mapPortal struct {
 	coords r2.Point
+	name   string
 	shape  *tk.CanvasOval
 }
 
 type SolutionMap struct {
 	*tk.Window
+	font *tk.SysFont
+	fontDescription string
+	textAscent int
+	textDescent int
 	layout             *tk.PackLayout
 	canvas             *tk.Canvas
+	nameLabel          *tk.CanvasText
+	nameLabelBackgound *tk.CanvasRectangle
 	zoom               int
 	zoomPow            float64
 	x0, y0             float64
@@ -55,6 +63,7 @@ func NewSolutionMap(parent tk.Widget, title string) *SolutionMap {
 	})
 	s.canvas.SetFocus()
 	s.canvas.BindEvent("<Button1-Motion>", func(e *tk.Event) { s.OnDrag(e) })
+	s.canvas.BindEvent("<Control-Button-1>", func(e *tk.Event) {fmt.Println("Ctrl-Click")})
 	s.canvas.BindEvent("<ButtonPress-1>", func(e *tk.Event) { s.OnButtonPress(e) })
 	s.canvas.BindEvent("<ButtonPress-4>", func(e *tk.Event) { s.OnScrollUp(e) })
 	s.canvas.BindEvent("<ButtonPress-5>", func(e *tk.Event) { s.OnScrollDown(e) })
@@ -75,7 +84,12 @@ func NewSolutionMap(parent tk.Widget, title string) *SolutionMap {
 	s.mapTiles = make(map[tileCoord]*tk.CanvasImage)
 	s.missingTiles = make(map[tileCoord]bool)
 	s.tileCache = NewMapTiles()
-	s.tileCache.SetOnTileRead(func(coord tileCoord, tile image.Image) { s.onTileRead(coord, tile) })
+	s.tileCache.SetOnTileRead(func(coord tileCoord, tile *tk.Image) { s.onTileRead(coord, tile) })
+	s.font = tk.LoadSysFont(tk.SysTextFont)
+	s.fontDescription = s.font.Description()
+	fmt.Println("font: \"", s.fontDescription, "\"")
+	s.textAscent = s.font.Ascent()
+	s.textDescent = s.font.Descent()
 	s.layout.Repack()
 	return s
 }
@@ -172,23 +186,19 @@ func (s *SolutionMap) OnZoomOut(cx, cy int) {
 	}
 }
 
-func (s *SolutionMap) showTile(coord tileCoord, tileImage image.Image) {
+func (s *SolutionMap) showTile(coord tileCoord, tileImage *tk.Image) {
 	dx := float64(coord.x)*256.0 - s.x0
 	dy := float64(coord.y)*256.0 - s.y0
-	tkTile := tk.NewImage()
-	tkTile.SetImage(tileImage)
-	mapTile := s.canvas.CreateImage(dx, dy, tk.CanvasImageAttrImage(tkTile), tk.CanvasImageAttrAnchor(tk.AnchorNorthWest), tk.CanvasItemAttrTags([]string{"tile"}))
+	mapTile := s.canvas.CreateImage(dx, dy, tk.CanvasItemAttrImage(tileImage), tk.CanvasItemAttrAnchor(tk.AnchorNorthWest), tk.CanvasItemAttrTags([]string{"tile"}))
 	mapTile.Lower()
 	s.mapTiles[coord] = mapTile
 }
 
-func (s *SolutionMap) onTileRead(coord tileCoord, tileImage image.Image) {
-	tk.Async(func() {
-		if _, ok := s.missingTiles[coord]; ok {
-			s.showTile(coord, tileImage)
-			delete(s.missingTiles, coord)
-		}
-	})
+func (s *SolutionMap) onTileRead(coord tileCoord, tileImage *tk.Image) {
+	if _, ok := s.missingTiles[coord]; ok {
+		s.showTile(coord, tileImage)
+		delete(s.missingTiles, coord)
+	}
 }
 func (s *SolutionMap) showTiles() {
 	if s.zoomPow == 0 {
@@ -290,7 +300,7 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 		item := s.canvas.CreateOval(x-5, y-5, x+5, y+5, tk.CanvasItemAttrFill("orange"), tk.CanvasItemAttrTags([]string{"portal"}))
 		item.Raise()
 		guid := portals[0].Guid // local copy to make closure captures work correctly
-		s.portals[guid] = mapPortal{coords: mapCoords, shape: item}
+		s.portals[guid] = mapPortal{coords: mapCoords, name: portals[0].Name, shape: item}
 		item.BindEvent("<Button-1>", func(e *tk.Event) {
 			if s.onPortalLeftClick != nil {
 				s.onPortalLeftClick(guid)
@@ -300,6 +310,12 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 			if s.onPortalRightClick != nil {
 				s.onPortalRightClick(guid, e.GlobalPosX, e.GlobalPosY)
 			}
+		})
+		item.BindEvent("<Enter>", func(e *tk.Event) {
+			s.onPortalEntered(guid)
+		})
+		item.BindEvent("<Leave>", func(e *tk.Event) {
+			s.onPortalLeft(guid)
 		})
 		return
 	}
@@ -345,7 +361,7 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 		item := s.canvas.CreateOval(x-5, y-5, x+5, y+5, tk.CanvasItemAttrFill("orange"), tk.CanvasItemAttrTags([]string{"portal"}))
 		item.Raise()
 		guid := portal.Guid // local copy to make closure captures work correctly
-		s.portals[guid] = mapPortal{coords: mapCoords, shape: item}
+		s.portals[guid] = mapPortal{coords: mapCoords, name: portal.Name, shape: item}
 		item.BindEvent("<Button-1>", func(e *tk.Event) {
 			if s.onPortalLeftClick != nil {
 				s.onPortalLeftClick(guid)
@@ -355,6 +371,12 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 			if s.onPortalRightClick != nil {
 				s.onPortalRightClick(guid, e.GlobalPosX, e.GlobalPosY)
 			}
+		})
+		item.BindEvent("<Enter>", func(e *tk.Event) {
+			s.onPortalEntered(guid)
+		})
+		item.BindEvent("<Leave>", func(e *tk.Event) {
+			s.onPortalLeft(guid)
 		})
 	}
 }
@@ -372,5 +394,35 @@ func (s *SolutionMap) SetSolution(lines [][]lib.Portal) {
 	s.showSolution()
 	if len(s.lines) > 0 {
 		s.canvas.RaiseItemsAbove("portal", "link")
+	}
+}
+
+func (s *SolutionMap) onPortalEntered(guid string) {
+	if s.nameLabel != nil {
+		s.canvas.DeleteText(s.nameLabel)	
+		s.nameLabel = nil
+	}
+	if s.nameLabelBackgound != nil {
+		s.canvas.DeleteRectangle(s.nameLabelBackgound)
+		s.nameLabelBackgound = nil
+	}
+	portal, ok := s.portals[guid]
+	if !ok {
+		return
+	}
+	x, y := s.GeoToScreenCoordinates(portal.coords.X, portal.coords.Y)
+	backgroundWidth := float64(s.font.MeasureTextWidth(portal.name) + 6)
+	backgroundHeight := float64(s.textAscent + s.textDescent + 8)
+	s.nameLabelBackgound = s.canvas.CreateRectangle(x - backgroundWidth / 2, y - 9, x + backgroundWidth / 2, y - 7 - backgroundHeight, tk.CanvasItemAttrFill("white"))
+	s.nameLabel = s.canvas.CreateText(x, y-12, tk.CanvasItemAttrText(portal.name), tk.CanvasItemAttrFont(s.fontDescription), tk.CanvasItemAttrAnchor(tk.AnchorSouth))
+}
+func (s *SolutionMap) onPortalLeft(guid string) {
+	if s.nameLabel != nil {
+		s.canvas.DeleteText(s.nameLabel)
+		s.nameLabel = nil
+	}
+	if s.nameLabelBackgound != nil {
+		s.canvas.DeleteRectangle(s.nameLabelBackgound)
+		s.nameLabelBackgound = nil
 	}
 }
