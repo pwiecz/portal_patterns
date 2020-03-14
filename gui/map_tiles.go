@@ -43,10 +43,11 @@ func (c *SyncCache) Remove(key lru.Key) {
 }
 
 type MapTiles struct {
-	cacheDir       string
-	memCache       *SyncCache
-	fetchSemaphore chan empty
-	onTileRead     func(tileCoord, *tk.Image)
+	cacheDir         string
+	memCache         *SyncCache
+	fetchSemaphore   chan empty
+	requestsInFlight map[tileCoord]bool
+	onTileRead       func(tileCoord, *tk.Image)
 }
 
 func NewMapTiles() *MapTiles {
@@ -64,8 +65,12 @@ func NewMapTiles() *MapTiles {
 	for i := 0; i < 50; i++ {
 		semaphore <- e
 	}
-
-	return &MapTiles{cacheDir: cacheDir, memCache: memCache, fetchSemaphore: semaphore}
+	requestsInFlight := make(map[tileCoord]bool)
+	return &MapTiles{
+		cacheDir:         cacheDir,
+		memCache:         memCache,
+		fetchSemaphore:   semaphore,
+		requestsInFlight: requestsInFlight}
 }
 
 func (m *MapTiles) GetTile(coord tileCoord) (*tk.Image, bool) {
@@ -93,25 +98,30 @@ func (m *MapTiles) GetTile(coord tileCoord) (*tk.Image, bool) {
 		}
 		m.memCache.Remove(wrappedCoord)
 	}
-	go func(coord tileCoord) {
-		img, err := m.getTileSlow(wrappedCoord)
-		if err != nil {
-			log.Println("Error loading tile ", coord, err)
-			return
-		}
-		tk.Async(func() {
-			tkImg := tk.NewImage()
-			tkImg.SetImage(img)
-			m.memCache.Add(wrappedCoord, tkImg)
-			m.onTileRead(coord, tkImg)
-		})
-	}(coord)
+	if _, ok := m.requestsInFlight[wrappedCoord]; !ok {
+		m.requestsInFlight[wrappedCoord] = true
+		go func(coord tileCoord) {
+			img, err := m.getTileSlow(wrappedCoord)
+			tk.Async(func() {
+				delete(m.requestsInFlight, wrappedCoord)
+				if err != nil {
+					log.Println("Error loading tile ", coord, err)
+					return
+				}
+
+				tkImg := tk.NewImage()
+				tkImg.SetImage(img)
+				m.memCache.Add(wrappedCoord, tkImg)
+				m.onTileRead(coord, tkImg)
+			})
+		}(coord)
+	}
 	if wrappedCoord.zoom > 0 {
-		zoomedOutCoord := tileCoord{x:wrappedCoord.x/2, y:wrappedCoord.y/2, zoom:wrappedCoord.zoom-1}
+		zoomedOutCoord := tileCoord{x: wrappedCoord.x / 2, y: wrappedCoord.y / 2, zoom: wrappedCoord.zoom - 1}
 		if tile, ok := m.memCache.Get(zoomedOutCoord); ok {
 			if tileImage, ok := tile.(*tk.Image); ok {
-				sourceX := (wrappedCoord.x%2)*128
-				sourceY := (wrappedCoord.y%2)*128
+				sourceX := (wrappedCoord.x % 2) * 128
+				sourceY := (wrappedCoord.y % 2) * 128
 				tkImg := tk.NewImage()
 				tkImg.Copy(tileImage, tk.ImageCopyAttrFrom(sourceX, sourceY, sourceX+128, sourceY+128), tk.ImageCopyAttrZoom(2.0, 2.0))
 				return tkImg, false
