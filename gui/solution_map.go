@@ -228,7 +228,7 @@ func (s *SolutionMap) showTiles() {
 		tileImage, ok := s.tileCache.GetTile(coord)
 		if tileImage != nil {
 			s.showTile(coord, tileImage)
-		} 
+		}
 		if !ok {
 			s.missingTiles[coord] = true
 		}
@@ -294,36 +294,6 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 		fmt.Println("empty portals")
 		return
 	}
-	if len(portals) == 1 {
-		s.zoom = 19
-		s.zoomPow = math.Pow(2., 19.)
-		mapCoords := projection.FromLatLng(portals[0].LatLng)
-		s.x0 = mapCoords.X*s.zoomPow*256. - float64(s.canvas.Width())*0.5
-		s.y0 = mapCoords.Y*s.zoomPow*256. - float64(s.canvas.Height())*0.5
-		s.showTiles()
-		x, y := s.GeoToScreenCoordinates(mapCoords.X, mapCoords.Y)
-		item := s.canvas.CreateOval(x-5, y-5, x+5, y+5, tk.CanvasItemAttrFill("orange"), tk.CanvasItemAttrTags([]string{"portal"}))
-		item.Raise()
-		guid := portals[0].Guid // local copy to make closure captures work correctly
-		s.portals[guid] = mapPortal{coords: mapCoords, name: portals[0].Name, shape: item}
-		item.BindEvent("<Button-1>", func(e *tk.Event) {
-			if s.onPortalLeftClick != nil {
-				s.onPortalLeftClick(guid)
-			}
-		})
-		item.BindEvent("<Button-3>", func(e *tk.Event) {
-			if s.onPortalRightClick != nil {
-				s.onPortalRightClick(guid, e.GlobalPosX, e.GlobalPosY)
-			}
-		})
-		item.BindEvent("<Enter>", func(e *tk.Event) {
-			s.onPortalEntered(guid)
-		})
-		item.BindEvent("<Leave>", func(e *tk.Event) {
-			s.onPortalLeft(guid)
-		})
-		return
-	}
 	chQuery := s2.NewConvexHullQuery()
 	for _, portal := range portals {
 		chQuery.AddPoint(s2.PointFromLatLng(portal.LatLng))
@@ -355,11 +325,9 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 	if s.zoom > 19 {
 		s.zoom = 19
 	}
-	width, height := math.Min(1., (maxX-minX)*1.2), math.Min(1., (maxY-minY)*1.2)
 	s.zoomPow = math.Pow(2., float64(s.zoom))
-	dim := math.Max(width, height) * s.zoomPow
-	s.x0 = (minX*s.zoomPow - 0.1*dim) * 256.0
-	s.y0 = (minY*s.zoomPow - 0.1*dim) * 256.0
+	s.x0 = (maxX+minX)*s.zoomPow*0.5*256.0 - float64(s.canvas.Width())*0.5
+	s.y0 = (maxY+minY)*s.zoomPow*0.5*256.0 - float64(s.canvas.Height())*0.5
 	s.showTiles()
 	for _, portal := range portals {
 		mapCoords := projection.FromLatLng(portal.LatLng)
