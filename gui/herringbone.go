@@ -3,21 +3,17 @@ package main
 import "fmt"
 import "os"
 import "path"
+import "runtime"
 import "sort"
-import "strconv"
 
 import "github.com/pwiecz/portal_patterns/lib"
 import "github.com/pwiecz/atk/tk"
 import "github.com/golang/geo/s2"
 
-type HomogeneousTab struct {
+type HerringboneTab struct {
 	*tk.PackLayout
 	add             *tk.Button
 	reset           *tk.Button
-	maxDepth        *tk.Entry
-	pretty          *tk.CheckButton
-	perfect         *tk.CheckButton
-	strategy        *tk.ComboBox
 	find            *tk.Button
 	save            *tk.Button
 	solutionLabel   *tk.Label
@@ -27,15 +23,16 @@ type HomogeneousTab struct {
 	solutionMap     *SolutionMap
 	portalCanvas    *tk.Canvas
 	portals         map[string]lib.Portal
+	b0, b1          lib.Portal
 	solution        []lib.Portal
-	depth           uint16
+	length          uint16
 	selectedPortals map[string]bool
-	anchorPortals   map[string]bool
+	basePortals     map[string]bool
 	disabledPortals map[string]bool
 }
 
-func NewHomogeneousTab(parent *Window, conf *Configuration) *HomogeneousTab {
-	h := &HomogeneousTab{}
+func NewHerringboneTab(parent *Window, conf *Configuration) *HerringboneTab {
+	h := &HerringboneTab{}
 	h.PackLayout = tk.NewVPackLayout(parent)
 	addResetBox := tk.NewHPackLayout(parent)
 	h.add = tk.NewButton(parent, "Add Portals")
@@ -66,26 +63,6 @@ func NewHomogeneousTab(parent *Window, conf *Configuration) *HomogeneousTab {
 	})
 	addResetBox.AddWidget(h.reset)
 	h.AddWidget(addResetBox)
-	maxDepthBox := tk.NewHPackLayout(parent)
-	maxDepthLabel := tk.NewLabel(parent, "Max depth: ")
-	maxDepthBox.AddWidget(maxDepthLabel)
-	h.maxDepth = tk.NewEntry(parent)
-	h.maxDepth.SetText("6")
-	maxDepthBox.AddWidget(h.maxDepth)
-	h.AddWidget(maxDepthBox)
-	h.pretty = tk.NewCheckButton(parent, "Pretty")
-	h.AddWidgetEx(h.pretty, tk.FillNone, true, tk.AnchorWest)
-	h.perfect = tk.NewCheckButton(parent, "Perfect")
-	h.AddWidgetEx(h.perfect, tk.FillNone, true, tk.AnchorWest)
-	strategyBox := tk.NewHPackLayout(parent)
-	strategyLabel := tk.NewLabel(parent, "Top triangle: ")
-	strategyBox.AddWidget(strategyLabel)
-	h.strategy = tk.NewComboBox(parent, tk.ComboBoxAttrState(tk.StateReadOnly))
-	h.strategy.SetValues([]string{"Arbitrary", "Largest Area", "Smallest Area"})
-	h.strategy.SetCurrentIndex(0)
-	h.strategy.OnSelected(func() { h.strategy.Entry().ClearSelection() })
-	strategyBox.AddWidget(h.strategy)
-	h.AddWidget(strategyBox)
 	solutionBox := tk.NewHPackLayout(parent)
 	h.find = tk.NewButton(parent, "Search")
 	h.find.OnCommand(func() {
@@ -104,7 +81,7 @@ func NewHomogeneousTab(parent *Window, conf *Configuration) *HomogeneousTab {
 			panic(err)
 		}
 		defer file.Close()
-		file.WriteString(lib.HomogeneousDrawToolsString(h.depth, h.solution))
+		file.WriteString(lib.HerringboneDrawToolsString(h.b0, h.b1, h.solution))
 	})
 	h.save.SetState(tk.StateDisable)
 	solutionBox.AddWidget(h.save)
@@ -126,21 +103,21 @@ func NewHomogeneousTab(parent *Window, conf *Configuration) *HomogeneousTab {
 
 	h.portals = make(map[string]lib.Portal)
 	h.selectedPortals = make(map[string]bool)
-	h.anchorPortals = make(map[string]bool)
+	h.basePortals = make(map[string]bool)
 	h.disabledPortals = make(map[string]bool)
 	return h
 }
 
-func (h *HomogeneousTab) onProgress(val int, max int) {
+func (h *HerringboneTab) onProgress(val int, max int) {
 	value := float64(val) * 1000. / float64(max)
 	h.progress.SetValue(value)
 	tk.Update()
 }
 
-func (h *HomogeneousTab) resetPortals() {
+func (h *HerringboneTab) resetPortals() {
 	h.portals = make(map[string]lib.Portal)
 	h.selectedPortals = make(map[string]bool)
-	h.anchorPortals = make(map[string]bool)
+	h.basePortals = make(map[string]bool)
 	h.disabledPortals = make(map[string]bool)
 	h.find.SetState(tk.StateDisable)
 	if h.solutionMap != nil {
@@ -151,7 +128,8 @@ func (h *HomogeneousTab) resetPortals() {
 	}
 	h.solutionLabel.SetText("")
 }
-func (h *HomogeneousTab) addPortals(portals []lib.Portal) {
+
+func (h *HerringboneTab) addPortals(portals []lib.Portal) {
 	newPortals := make(map[string]lib.Portal)
 	for guid, portal := range h.portals {
 		newPortals[guid] = portal
@@ -195,7 +173,7 @@ func (h *HomogeneousTab) addPortals(portals []lib.Portal) {
 		h.find.SetState(tk.StateNormal)
 	}
 	if h.solutionMap == nil {
-		h.solutionMap = NewSolutionMap(h, "Homogeneous")
+		h.solutionMap = NewSolutionMap(h, "Herringbone")
 		h.solutionMap.OnClose(func() bool {
 			h.solutionMap = nil
 			return true
@@ -216,24 +194,24 @@ func (h *HomogeneousTab) addPortals(portals []lib.Portal) {
 	}
 }
 
-func stateToName(disabled, isAnchor, selected bool) string {
+func herringboneStateToName(disabled, isBase, selected bool) string {
 	if disabled {
 		return "Disabled"
 	}
-	if isAnchor {
-		return "Anchor"
+	if isBase {
+		return "Base"
 	}
 	return "Normal"
 }
 
-func stateToColor(disabled, isAnchor, selected bool) string {
+func herringboneStateToColor(disabled, isBase, selected bool) string {
 	if disabled {
 		if !selected {
 			return "gray"
 		}
 		return "dark gray"
 	}
-	if isAnchor {
+	if isBase {
 		if !selected {
 			return "green"
 		}
@@ -245,20 +223,7 @@ func stateToColor(disabled, isAnchor, selected bool) string {
 	return "red"
 }
 
-func stringMapsAreTheSame(map1 map[string]bool, map2 map[string]bool) bool {
-	for s, _ := range map1 {
-		if !map2[s] {
-			return false
-		}
-	}
-	for s, _ := range map2 {
-		if !map1[s] {
-			return false
-		}
-	}
-	return true
-}
-func (h *HomogeneousTab) OnSelectionChanged(selection []string) {
+func (h *HerringboneTab) OnSelectionChanged(selection []string) {
 	selectionMap := make(map[string]bool)
 	for _, guid := range selection {
 		selectionMap[guid] = true
@@ -268,10 +233,10 @@ func (h *HomogeneousTab) OnSelectionChanged(selection []string) {
 	}
 	if h.solutionMap != nil {
 		for portal, _ := range h.selectedPortals {
-			h.solutionMap.SetPortalColor(portal, stateToColor(h.disabledPortals[portal], h.anchorPortals[portal], selectionMap[portal]))
+			h.solutionMap.SetPortalColor(portal, herringboneStateToColor(h.disabledPortals[portal], h.basePortals[portal], selectionMap[portal]))
 		}
 		for _, portal := range selection {
-			h.solutionMap.SetPortalColor(portal, stateToColor(h.disabledPortals[portal], h.anchorPortals[portal], true))
+			h.solutionMap.SetPortalColor(portal, herringboneStateToColor(h.disabledPortals[portal], h.basePortals[portal], true))
 			h.solutionMap.RaisePortal(portal)
 		}
 	}
@@ -288,7 +253,7 @@ func (h *HomogeneousTab) OnSelectionChanged(selection []string) {
 		}
 	}
 }
-func (h *HomogeneousTab) OnPortalSelected(guid string) {
+func (h *HerringboneTab) OnPortalSelected(guid string) {
 	h.OnSelectionChanged([]string{guid})
 	if h.portalList != nil {
 		h.portalList.ScrollToPortal(guid)
@@ -297,102 +262,76 @@ func (h *HomogeneousTab) OnPortalSelected(guid string) {
 		h.solutionMap.ScrollToPortal(guid)
 	}
 }
-func (h *HomogeneousTab) OnPortalContextMenu(guid string, x, y int) {
-	menu := NewPortalContextMenu(tk.RootWindow(), guid, h)
+func (h *HerringboneTab) OnPortalContextMenu(guid string, x, y int) {
+	menu := NewHerringbonePortalContextMenu(tk.RootWindow(), guid, h)
 	tk.PopupMenu(menu.Menu, x, y)
 }
 
-func (h *HomogeneousTab) search() {
+func (h *HerringboneTab) search() {
 	if len(h.portals) < 3 {
 		return
 	}
-	options := []lib.HomogeneousOption{}
-	maxDepth, err := strconv.Atoi(h.maxDepth.Text())
-	if err != nil || maxDepth < 1 {
-		return
-	}
-	options = append(options, lib.HomogeneousMaxDepth(maxDepth))
-	options = append(options, lib.HomogeneousPerfect(h.perfect.IsChecked()))
-	if h.strategy.CurrentIndex() == 1 {
-		options = append(options, lib.HomogeneousLargestArea{})
-	} else if h.strategy.CurrentIndex() == 2 {
-		options = append(options, lib.HomogeneousSmallestArea{})
-	}
-	options = append(options, lib.HomogeneousProgressFunc(
-		func(val int, max int) { h.onProgress(val, max) }))
+
 	h.add.SetState(tk.StateDisable)
 	h.reset.SetState(tk.StateDisable)
-	h.maxDepth.SetState(tk.StateDisable)
-	h.pretty.SetState(tk.StateDisable)
-	h.perfect.SetState(tk.StateDisable)
-	h.strategy.SetState(tk.StateDisable)
 	h.find.SetState(tk.StateDisable)
 	h.save.SetState(tk.StateDisable)
 	tk.Update()
 	portals := []lib.Portal{}
-	anchors := []int{}
+	base := []int{}
 	for _, portal := range h.portals {
 		if !h.disabledPortals[portal.Guid] {
 			portals = append(portals, portal)
-			if h.anchorPortals[portal.Guid] {
-				anchors = append(anchors, len(portals)-1)
+			if h.basePortals[portal.Guid] {
+				base = append(base, len(portals)-1)
 			}
 		}
 	}
-	options = append(options, lib.HomogeneousFixedCornerIndices(anchors))
-	if h.pretty.IsChecked() {
-		h.solution, h.depth = lib.DeepestHomogeneous2(portals, options...)
-	} else {
-		h.solution, h.depth = lib.DeepestHomogeneous(portals, options...)
-	}
+	h.b0, h.b1, h.solution = lib.LargestHerringbone(portals, base, runtime.GOMAXPROCS(0), func(val int, max int) { h.onProgress(val, max) })
 	if h.solutionMap != nil {
-		h.solutionMap.SetSolution(lib.HomogeneousPolylines(h.depth, h.solution))
+		h.solutionMap.SetSolution([][]lib.Portal{lib.HerringbonePolyline(h.b0, h.b1, h.solution)})
 	}
-	solutionText := fmt.Sprintf("Solution depth: %d", h.depth)
+	solutionText := fmt.Sprintf("Solution length: %d", len(h.solution))
 	h.solutionLabel.SetText(solutionText)
 	h.add.SetState(tk.StateNormal)
 	h.reset.SetState(tk.StateNormal)
-	h.maxDepth.SetState(tk.StateNormal)
-	h.pretty.SetState(tk.StateNormal)
-	h.perfect.SetState(tk.StateNormal)
-	h.strategy.SetState(tk.StateReadOnly)
 	h.find.SetState(tk.StateNormal)
 	h.save.SetState(tk.StateNormal)
 	tk.Update()
 }
 
-func (s *HomogeneousTab) portalStateChanged(guid string) {
+func (s *HerringboneTab) portalStateChanged(guid string) {
 	if s.portalList != nil {
-		s.portalList.SetPortalState(guid, stateToName(s.disabledPortals[guid], s.anchorPortals[guid], s.selectedPortals[guid]))
+		s.portalList.SetPortalState(guid, herringboneStateToName(s.disabledPortals[guid], s.basePortals[guid], s.selectedPortals[guid]))
 	}
 	if s.solutionMap != nil {
-		s.solutionMap.SetPortalColor(guid, stateToColor(s.disabledPortals[guid], s.anchorPortals[guid], s.selectedPortals[guid]))
+		s.solutionMap.SetPortalColor(guid, herringboneStateToColor(s.disabledPortals[guid], s.basePortals[guid], s.selectedPortals[guid]))
 	}
 }
-func (s *HomogeneousTab) EnablePortal(guid string) {
+func (s *HerringboneTab) EnablePortal(guid string) {
 	delete(s.disabledPortals, guid)
 	s.portalStateChanged(guid)
 }
-func (s *HomogeneousTab) DisablePortal(guid string) {
+func (s *HerringboneTab) DisablePortal(guid string) {
 	s.disabledPortals[guid] = true
-	delete(s.anchorPortals, guid)
+	delete(s.basePortals, guid)
 	s.portalStateChanged(guid)
 }
-func (s *HomogeneousTab) MakeAnchor(guid string) {
-	s.anchorPortals[guid] = true
+func (s *HerringboneTab) MakeBase(guid string) {
+	s.basePortals[guid] = true
 	s.portalStateChanged(guid)
 }
-func (s *HomogeneousTab) UnmakeAnchor(guid string) {
-	delete(s.anchorPortals, guid)
+func (s *HerringboneTab) UnmakeBase(guid string) {
+	delete(s.basePortals, guid)
 	s.portalStateChanged(guid)
 }
 
-type PortalContextMenu struct {
+type HerringbonePortalContextMenu struct {
 	*tk.Menu
 }
 
-func NewPortalContextMenu(parent *tk.Window, guid string, h *HomogeneousTab) *PortalContextMenu {
-	l := &PortalContextMenu{}
+func NewHerringbonePortalContextMenu(parent *tk.Window, guid string, h *HerringboneTab) *HerringbonePortalContextMenu {
+	l := &HerringbonePortalContextMenu{}
 	l.Menu = tk.NewMenu(parent)
 	if h.disabledPortals[guid] {
 		enableAction := tk.NewAction("Enable")
@@ -403,14 +342,14 @@ func NewPortalContextMenu(parent *tk.Window, guid string, h *HomogeneousTab) *Po
 		disableAction.OnCommand(func() { h.DisablePortal(guid) })
 		l.AddAction(disableAction)
 	}
-	if h.anchorPortals[guid] {
-		unanchorAction := tk.NewAction("Unmake anchor")
-		unanchorAction.OnCommand(func() { h.UnmakeAnchor(guid) })
-		l.AddAction(unanchorAction)
-	} else if !h.disabledPortals[guid] && len(h.anchorPortals) < 3 {
-		anchorAction := tk.NewAction("Make anchor")
-		anchorAction.OnCommand(func() { h.MakeAnchor(guid) })
-		l.AddAction(anchorAction)
+	if h.basePortals[guid] {
+		unbaseAction := tk.NewAction("Unmake base portal")
+		unbaseAction.OnCommand(func() { h.UnmakeBase(guid) })
+		l.AddAction(unbaseAction)
+	} else if !h.disabledPortals[guid] && len(h.basePortals) < 2 {
+		baseAction := tk.NewAction("Make base portal")
+		baseAction.OnCommand(func() { h.MakeBase(guid) })
+		l.AddAction(baseAction)
 	}
 	return l
 }

@@ -102,6 +102,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
+		fmt.Printf("Read %d portals\n", len(portals))
 		if len(cobwebCornerPortalsValue.Portals) > 3 {
 			log.Fatalf("cobweb command accepts at most three corner portals - %d specified", len(cobwebCornerPortalsValue.Portals))
 		}
@@ -127,6 +128,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
+		fmt.Printf("Read %d portals\n", len(portals))
 		if len(herringboneBasePortalsValue.Portals) > 2 {
 			log.Fatalf("herringbone command accepts at most two base portals - %d specified", len(herringboneBasePortalsValue.Portals))
 		}
@@ -140,13 +142,7 @@ func main() {
 		for i, portal := range result {
 			fmt.Fprintf(outputWriter, "%d: %s\n", i, portal.Name)
 		}
-		portalList := []lib.Portal{b0, b1}
-		atIndex := 1
-		for _, portal := range result {
-			portalList = append(portalList, portal, portalList[atIndex])
-			atIndex = 1 - atIndex
-		}
-		fmt.Fprintf(outputWriter, "\n[%s]\n", lib.PolylineFromPortalList(portalList))
+		fmt.Fprintf(outputWriter, "\n%s\n", lib.HerringboneDrawToolsString(b0, b1, result))
 	case "double_herringbone":
 		doubleHerringboneCmd.Parse(flag.Args()[1:])
 		fileArgs := doubleHerringboneCmd.Args()
@@ -157,6 +153,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
+		fmt.Printf("Read %d portals\n", len(portals))
 		if len(doubleHerringboneBasePortalsValue.Portals) > 2 {
 			log.Fatalf("double_herringbone command accepts at most two base portals - %d specified", len(doubleHerringboneBasePortalsValue.Portals))
 		}
@@ -199,14 +196,17 @@ func main() {
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
+		fmt.Printf("Read %d portals(1)\n", len(portals1))
 		portals2, err := lib.ParseFile(fileArgs[1])
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[1], err)
 		}
+		fmt.Printf("Read %d portals(2)\n", len(portals2))
 		portals3, err := lib.ParseFile(fileArgs[2])
 		if err != nil {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[3], err)
 		}
+		fmt.Printf("Read %d portals(3)\n", len(portals3))
 		if len(portals1)+len(portals2)+len(portals3) >= math.MaxUint16-1 {
 			log.Fatalln("Too many portals")
 		}

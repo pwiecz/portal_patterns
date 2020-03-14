@@ -53,6 +53,7 @@ func (h *homogeneousCmd) Run(args []string, output io.Writer, progressFunc func(
 	if err != nil {
 		log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 	}
+	fmt.Printf("Read %d portals\n", len(portals))
 	if len(h.cornerPortals.Portals) > 3 {
 		log.Fatalf("homogeneous command accepts at most three corner portals - %d specified", len(h.cornerPortals.Portals))
 	}

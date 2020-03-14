@@ -25,6 +25,7 @@ func NewWindow(conf *Configuration) *Window {
 	mw.tab = tk.NewNotebook(mw)
 
 	mw.tab.AddTab(NewHomogeneousTab(mw, conf), "Homogeneous")
+	mw.tab.AddTab(NewHerringboneTab(mw, conf), "Herringbone")
 
 	vbox := tk.NewVPackLayout(mw)
 	vbox.AddWidgetEx(mw.tab, tk.FillBoth, true, 0)

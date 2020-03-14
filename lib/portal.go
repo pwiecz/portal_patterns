@@ -161,7 +161,6 @@ func parseJSONFileAsPortalInfo(filename string) ([]PortalInfo, error) {
 	if err := json.Unmarshal(bytes, &portals); err != nil {
 		return portals, err
 	}
-	fmt.Printf("Read %d portals\n", len(portals))
 	return portals, nil
 }
 
