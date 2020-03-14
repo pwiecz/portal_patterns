@@ -147,8 +147,8 @@ func (h *HomogeneousTab) resetPortals() {
 }
 func (h *HomogeneousTab) addPortals(portals []lib.Portal) {
 	newPortals := make(map[string]lib.Portal)
-	for _, portal := range portals {
-		newPortals[portal.Guid] = portal
+	for guid, portal := range h.portals {
+		newPortals[guid] = portal
 	}
 	for _, portal := range portals {
 		if existing, ok := h.portals[portal.Guid]; ok {
