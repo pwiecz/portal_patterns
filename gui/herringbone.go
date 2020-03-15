@@ -73,7 +73,8 @@ func NewHerringboneTab(parent *Window, conf *Configuration) *HerringboneTab {
 	solutionBox.AddWidget(h.find)
 	h.save = tk.NewButton(parent, "Save Solution")
 	h.save.OnCommand(func() {
-		filename, err := tk.GetSaveFile(parent, "Select file for solution", true, ".json", []tk.FileType{}, conf.PortalsDirectory, "")
+		filename, err := tk.GetSaveFile(parent, "Select file for solution", true, ".json", 
+			[]tk.FileType{tk.FileType{Info: "JSON file", Ext: ".json"}}, conf.PortalsDirectory, "")
 		if err != nil || filename == "" {
 			return
 		}

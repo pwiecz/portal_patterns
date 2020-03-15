@@ -25,7 +25,7 @@ type CobwebTab struct {
 	solution        []lib.Portal
 	length          uint16
 	selectedPortals map[string]bool
-	cornerPortals     map[string]bool
+	cornerPortals   map[string]bool
 	disabledPortals map[string]bool
 }
 
@@ -71,7 +71,8 @@ func NewCobwebTab(parent *Window, conf *Configuration) *CobwebTab {
 	solutionBox.AddWidget(h.find)
 	h.save = tk.NewButton(parent, "Save Solution")
 	h.save.OnCommand(func() {
-		filename, err := tk.GetSaveFile(parent, "Select file for solution", true, ".json", []tk.FileType{}, conf.PortalsDirectory, "")
+		filename, err := tk.GetSaveFile(parent, "Select file for solution", true, ".json",
+			[]tk.FileType{tk.FileType{Info: "JSON file", Ext: ".json"}}, conf.PortalsDirectory, "")
 		if err != nil || filename == "" {
 			return
 		}
