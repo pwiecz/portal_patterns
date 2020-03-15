@@ -141,7 +141,7 @@ func (s *SolutionMap) OnZoomIn(cx, cy int) {
 	if s.zoom >= 19 {
 		return
 	}
-	s.zoom += 1
+	s.zoom++
 	s.zoomPow *= 2.0
 	s.x0 = (s.x0+float64(cx))*2.0 - float64(cx)
 	s.y0 = (s.y0+float64(cy))*2.0 - float64(cy)
@@ -164,7 +164,7 @@ func (s *SolutionMap) OnZoomOut(cx, cy int) {
 	if s.zoom <= 0 {
 		return
 	}
-	s.zoom -= 1
+	s.zoom--
 	s.zoomPow *= 0.5
 	s.x0 = (s.x0+float64(cx))*0.5 - float64(cx)
 	s.y0 = (s.y0+float64(cy))*0.5 - float64(cy)
@@ -223,7 +223,7 @@ func (s *SolutionMap) showTiles() {
 		}
 	}
 	s.missingTiles = make(map[tileCoord]bool)
-	for coord, _ := range tileCoords {
+	for coord := range tileCoords {
 		tileImage, ok := s.tileCache.GetTile(coord)
 		if tileImage != nil {
 			s.showTile(coord, tileImage)

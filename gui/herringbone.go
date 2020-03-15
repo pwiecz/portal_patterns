@@ -232,7 +232,7 @@ func (h *HerringboneTab) OnSelectionChanged(selection []string) {
 		return
 	}
 	if h.solutionMap != nil {
-		for portal, _ := range h.selectedPortals {
+		for portal := range h.selectedPortals {
 			h.solutionMap.SetPortalColor(portal, herringboneStateToColor(h.disabledPortals[portal], h.basePortals[portal], selectionMap[portal]))
 		}
 		for _, portal := range selection {
@@ -300,30 +300,30 @@ func (h *HerringboneTab) search() {
 	tk.Update()
 }
 
-func (s *HerringboneTab) portalStateChanged(guid string) {
-	if s.portalList != nil {
-		s.portalList.SetPortalState(guid, herringboneStateToName(s.disabledPortals[guid], s.basePortals[guid], s.selectedPortals[guid]))
+func (h *HerringboneTab) portalStateChanged(guid string) {
+	if h.portalList != nil {
+		h.portalList.SetPortalState(guid, herringboneStateToName(h.disabledPortals[guid], h.basePortals[guid], h.selectedPortals[guid]))
 	}
-	if s.solutionMap != nil {
-		s.solutionMap.SetPortalColor(guid, herringboneStateToColor(s.disabledPortals[guid], s.basePortals[guid], s.selectedPortals[guid]))
+	if h.solutionMap != nil {
+		h.solutionMap.SetPortalColor(guid, herringboneStateToColor(h.disabledPortals[guid], h.basePortals[guid], h.selectedPortals[guid]))
 	}
 }
-func (s *HerringboneTab) EnablePortal(guid string) {
-	delete(s.disabledPortals, guid)
-	s.portalStateChanged(guid)
+func (h *HerringboneTab) EnablePortal(guid string) {
+	delete(h.disabledPortals, guid)
+	h.portalStateChanged(guid)
 }
-func (s *HerringboneTab) DisablePortal(guid string) {
-	s.disabledPortals[guid] = true
-	delete(s.basePortals, guid)
-	s.portalStateChanged(guid)
+func (h *HerringboneTab) DisablePortal(guid string) {
+	h.disabledPortals[guid] = true
+	delete(h.basePortals, guid)
+	h.portalStateChanged(guid)
 }
-func (s *HerringboneTab) MakeBase(guid string) {
-	s.basePortals[guid] = true
-	s.portalStateChanged(guid)
+func (h *HerringboneTab) MakeBase(guid string) {
+	h.basePortals[guid] = true
+	h.portalStateChanged(guid)
 }
-func (s *HerringboneTab) UnmakeBase(guid string) {
-	delete(s.basePortals, guid)
-	s.portalStateChanged(guid)
+func (h *HerringboneTab) UnmakeBase(guid string) {
+	delete(h.basePortals, guid)
+	h.portalStateChanged(guid)
 }
 
 type HerringbonePortalContextMenu struct {

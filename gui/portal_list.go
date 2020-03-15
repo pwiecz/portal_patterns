@@ -54,7 +54,7 @@ func (l *PortalList) SelectedPortals() []string {
 }
 func (l *PortalList) SetSelectedPortals(guids map[string]bool) {
 	var selectedItems []*tk.TreeItem
-	for guid, _ := range guids {
+	for guid := range guids {
 		if item, ok := l.items[guid]; ok {
 			selectedItems = append(selectedItems, item)
 		}

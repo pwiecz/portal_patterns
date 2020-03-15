@@ -246,12 +246,12 @@ func stateToColor(disabled, isAnchor, selected bool) string {
 }
 
 func stringMapsAreTheSame(map1 map[string]bool, map2 map[string]bool) bool {
-	for s, _ := range map1 {
+	for s := range map1 {
 		if !map2[s] {
 			return false
 		}
 	}
-	for s, _ := range map2 {
+	for s := range map2 {
 		if !map1[s] {
 			return false
 		}
@@ -361,30 +361,30 @@ func (h *HomogeneousTab) search() {
 	tk.Update()
 }
 
-func (s *HomogeneousTab) portalStateChanged(guid string) {
-	if s.portalList != nil {
-		s.portalList.SetPortalState(guid, stateToName(s.disabledPortals[guid], s.anchorPortals[guid], s.selectedPortals[guid]))
+func (h *HomogeneousTab) portalStateChanged(guid string) {
+	if h.portalList != nil {
+		h.portalList.SetPortalState(guid, stateToName(h.disabledPortals[guid], h.anchorPortals[guid], h.selectedPortals[guid]))
 	}
-	if s.solutionMap != nil {
-		s.solutionMap.SetPortalColor(guid, stateToColor(s.disabledPortals[guid], s.anchorPortals[guid], s.selectedPortals[guid]))
+	if h.solutionMap != nil {
+		h.solutionMap.SetPortalColor(guid, stateToColor(h.disabledPortals[guid], h.anchorPortals[guid], h.selectedPortals[guid]))
 	}
 }
-func (s *HomogeneousTab) EnablePortal(guid string) {
-	delete(s.disabledPortals, guid)
-	s.portalStateChanged(guid)
+func (h *HomogeneousTab) EnablePortal(guid string) {
+	delete(h.disabledPortals, guid)
+	h.portalStateChanged(guid)
 }
-func (s *HomogeneousTab) DisablePortal(guid string) {
-	s.disabledPortals[guid] = true
-	delete(s.anchorPortals, guid)
-	s.portalStateChanged(guid)
+func (h *HomogeneousTab) DisablePortal(guid string) {
+	h.disabledPortals[guid] = true
+	delete(h.anchorPortals, guid)
+	h.portalStateChanged(guid)
 }
-func (s *HomogeneousTab) MakeAnchor(guid string) {
-	s.anchorPortals[guid] = true
-	s.portalStateChanged(guid)
+func (h *HomogeneousTab) MakeAnchor(guid string) {
+	h.anchorPortals[guid] = true
+	h.portalStateChanged(guid)
 }
-func (s *HomogeneousTab) UnmakeAnchor(guid string) {
-	delete(s.anchorPortals, guid)
-	s.portalStateChanged(guid)
+func (h *HomogeneousTab) UnmakeAnchor(guid string) {
+	delete(h.anchorPortals, guid)
+	h.portalStateChanged(guid)
 }
 
 type PortalContextMenu struct {
