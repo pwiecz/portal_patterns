@@ -1,6 +1,5 @@
 package main
 
-import "fmt"
 import "log"
 import "math"
 import "image"
@@ -253,7 +252,7 @@ func (s *SolutionMap) showSolution() {
 func (s *SolutionMap) setItemCoords() {
 	for _, portal := range s.portals {
 		x, y := s.GeoToScreenCoordinates(portal.coords.X, portal.coords.Y)
-		portal.shape.MoveTo(x-5, y-5)
+		portal.shape.MoveTo(x-4, y-4)
 	}
 }
 func (s *SolutionMap) GeoToScreenCoordinates(x, y float64) (float64, float64) {
@@ -268,7 +267,7 @@ func (s *SolutionMap) ScrollToPortal(guid string) {
 	}
 	x, y := s.GeoToScreenCoordinates(portal.coords.X, portal.coords.Y)
 	if x >= 0 && x < float64(s.canvas.Width()) &&
-		y >= 0 && x < float64(s.canvas.Height()) {
+		y >= 0 && y < float64(s.canvas.Height()) {
 		return
 	}
 	s.shiftMap(x-float64(s.canvas.Width())/2, y-float64(s.canvas.Height())/2)
@@ -291,7 +290,6 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 	}
 	s.portals = make(map[string]mapPortal)
 	if len(portals) == 0 {
-		fmt.Println("empty portals")
 		return
 	}
 	chQuery := s2.NewConvexHullQuery()
@@ -310,20 +308,16 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 	}
 	numTilesX := math.Ceil(float64(s.canvas.Width()) / 256.)
 	numTilesY := math.Ceil(float64(s.canvas.Height()) / 256.)
-	for s.zoom = 0; s.zoom <= 19; s.zoom++ {
+	for s.zoom = 19; s.zoom >= 0; s.zoom-- {
 		zoomPow := math.Pow(2., float64(s.zoom))
 		minXTile, minYTile := math.Floor(minX*zoomPow), math.Floor(minY*zoomPow)
 		maxXTile, maxYTile := math.Floor(maxX*zoomPow), math.Floor(maxY*zoomPow)
-		if maxXTile-minXTile+1 > numTilesX || maxYTile-minYTile+1 > numTilesY {
-			s.zoom--
+		if maxXTile-minXTile+1 <= numTilesX && maxYTile-minYTile+1 <= numTilesY {
 			break
 		}
 	}
 	if s.zoom < 0 {
 		s.zoom = 0
-	}
-	if s.zoom > 19 {
-		s.zoom = 19
 	}
 	s.zoomPow = math.Pow(2., float64(s.zoom))
 	s.x0 = (maxX+minX)*s.zoomPow*0.5*256.0 - float64(s.canvas.Width())*0.5
@@ -332,7 +326,7 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 	for _, portal := range portals {
 		mapCoords := projection.FromLatLng(portal.LatLng)
 		x, y := s.GeoToScreenCoordinates(mapCoords.X, mapCoords.Y)
-		item := s.canvas.CreateOval(x-5, y-5, x+5, y+5, tk.CanvasItemAttrFill("orange"), tk.CanvasItemAttrTags([]string{"portal"}))
+		item := s.canvas.CreateOval(x-4, y-4, x+5, y+5, tk.CanvasItemAttrFill("orange"), tk.CanvasItemAttrTags([]string{"portal"}))
 		item.Raise()
 		guid := portal.Guid // local copy to make closure captures work correctly
 		s.portals[guid] = mapPortal{coords: mapCoords, name: portal.Name, shape: item}
