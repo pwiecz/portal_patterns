@@ -27,6 +27,7 @@ func NewWindow(conf *Configuration) *Window {
 	mw.tab.AddTab(NewHomogeneousTab(mw, conf), "Homogeneous")
 	mw.tab.AddTab(NewHerringboneTab(mw, conf), "Herringbone")
 	mw.tab.AddTab(NewDoubleHerringboneTab(mw, conf), "Double herringbone")
+	mw.tab.AddTab(NewCobwebTab(mw, conf), "Cobweb")
 
 	vbox := tk.NewVPackLayout(mw)
 	vbox.AddWidgetEx(mw.tab, tk.FillBoth, true, 0)

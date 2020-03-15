@@ -149,3 +149,14 @@ func LargestCobweb(portals []Portal, fixedCornerIndices []int, progressFunc func
 	}
 	return result
 }
+
+func CobwebPolyline(result []Portal) []Portal {
+	portalList := []Portal{result[1], result[0]}
+	for _, portal := range result[2:] {
+		portalList = append(portalList, portal, portalList[len(portalList)-2])
+	}
+	return portalList
+}
+func CobwebDrawToolsString(result []Portal) string {
+	return "[\n" + PolylineFromPortalList(CobwebPolyline(result)) + "\n]"
+}

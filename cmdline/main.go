@@ -113,11 +113,7 @@ func main() {
 		for i, portal := range result {
 			fmt.Fprintf(outputWriter, "%d: %s\n", i, portal.Name)
 		}
-		portalList := []lib.Portal{result[1], result[0]}
-		for _, portal := range result[2:] {
-			portalList = append(portalList, portal, portalList[len(portalList)-2])
-		}
-		fmt.Fprintf(outputWriter, "\n[%s]\n", lib.PolylineFromPortalList(portalList))
+		fmt.Fprintf(outputWriter, "\n%s\n", lib.CobwebDrawToolsString(result))
 	case "herringbone":
 		herringboneCmd.Parse(flag.Args()[1:])
 		fileArgs := herringboneCmd.Args()
