@@ -62,6 +62,7 @@ func NewHerringboneTab(parent *Window, conf *Configuration) *HerringboneTab {
 		h.resetPortals()
 	})
 	addResetBox.AddWidget(h.reset)
+	h.reset.SetState(tk.StateDisable)
 	h.AddWidget(addResetBox)
 	solutionBox := tk.NewHPackLayout(parent)
 	h.find = tk.NewButton(parent, "Search")
@@ -119,7 +120,9 @@ func (h *HerringboneTab) resetPortals() {
 	h.selectedPortals = make(map[string]bool)
 	h.basePortals = make(map[string]bool)
 	h.disabledPortals = make(map[string]bool)
+	h.reset.SetState(tk.StateDisable)
 	h.find.SetState(tk.StateDisable)
+	h.save.SetState(tk.StateDisable)
 	if h.solutionMap != nil {
 		h.solutionMap.Clear()
 	}
@@ -169,6 +172,9 @@ func (h *HerringboneTab) addPortals(portals []lib.Portal) {
 		return newPortalList[i].Name < newPortalList[j].Name
 	})
 	h.portals = newPortals
+	if len(h.portals) > 0 {
+		h.reset.SetState(tk.StateNormal)
+	}
 	if len(h.portals) >= 3 {
 		h.find.SetState(tk.StateNormal)
 	}

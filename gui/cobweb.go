@@ -59,6 +59,7 @@ func NewCobwebTab(parent *Window, conf *Configuration) *CobwebTab {
 	h.reset.OnCommand(func() {
 		h.resetPortals()
 	})
+	h.reset.SetState(tk.StateDisable)
 	addResetBox.AddWidget(h.reset)
 	h.AddWidget(addResetBox)
 	solutionBox := tk.NewHPackLayout(parent)
@@ -117,7 +118,9 @@ func (h *CobwebTab) resetPortals() {
 	h.selectedPortals = make(map[string]bool)
 	h.cornerPortals = make(map[string]bool)
 	h.disabledPortals = make(map[string]bool)
+	h.reset.SetState(tk.StateDisable)
 	h.find.SetState(tk.StateDisable)
+	h.save.SetState(tk.StateDisable)
 	if h.solutionMap != nil {
 		h.solutionMap.Clear()
 	}
@@ -167,6 +170,9 @@ func (h *CobwebTab) addPortals(portals []lib.Portal) {
 		return newPortalList[i].Name < newPortalList[j].Name
 	})
 	h.portals = newPortals
+	if len(h.portals) > 0 {
+		h.reset.SetState(tk.StateNormal)
+	}
 	if len(h.portals) >= 3 {
 		h.find.SetState(tk.StateNormal)
 	}
