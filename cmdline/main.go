@@ -173,17 +173,7 @@ func main() {
 			fmt.Fprintf(outputWriter, "%d: %s\n", i, portal.Name)
 
 		}
-		portalList := []lib.Portal{b0, b1}
-		atIndex := 1
-		for _, portal := range result0 {
-			portalList = append(portalList, portal, portalList[atIndex])
-			atIndex = 1 - atIndex
-		}
-		for _, portal := range result1 {
-			portalList = append(portalList, portal, portalList[atIndex])
-			atIndex = 1 - atIndex
-		}
-		fmt.Fprintf(outputWriter, "\n[%s]\n", lib.PolylineFromPortalList(portalList))
+		fmt.Fprintf(outputWriter, "\n%s\n", lib.DoubleHerringboneDrawToolsString(b0, b1, result0, result1))
 	case "flip_field":
 		flipFieldCmd.Run(flag.Args()[1:], *numWorkers, outputWriter, progressFunc)
 	case "three_corners":

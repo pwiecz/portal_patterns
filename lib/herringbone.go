@@ -186,7 +186,7 @@ func LargestHerringboneST(portals []Portal, fixedBaseIndices []int, progressFunc
 
 func HerringbonePolyline(b0, b1 Portal, result []Portal) []Portal {
 	portalList := []Portal{b0, b1}
-	atIndex := 1
+	atIndex := 0
 	for _, portal := range result {
 		portalList = append(portalList, portal, portalList[atIndex])
 		atIndex = 1 - atIndex
