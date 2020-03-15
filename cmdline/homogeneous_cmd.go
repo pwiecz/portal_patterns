@@ -2,8 +2,8 @@ package main
 
 import "flag"
 import "fmt"
+import "io"
 import "log"
-import "strings"
 
 import "github.com/pwiecz/portal_patterns/lib"
 
@@ -37,7 +37,7 @@ func (h *homogeneousCmd) Usage(fileBase string) {
 	h.flags.PrintDefaults()
 }
 
-func (h *homogeneousCmd) Run(args []string, progressFunc func(int, int)) {
+func (h *homogeneousCmd) Run(args []string, output io.Writer, progressFunc func(int, int)) {
 	h.flags.Parse(args)
 	if *h.maxDepth < 1 {
 		log.Fatalln("-max_depth must by at least 1")
@@ -53,6 +53,7 @@ func (h *homogeneousCmd) Run(args []string, progressFunc func(int, int)) {
 	if err != nil {
 		log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 	}
+	fmt.Printf("Read %d portals\n", len(portals))
 	if len(h.cornerPortals.Portals) > 3 {
 		log.Fatalf("homogeneous command accepts at most three corner portals - %d specified", len(h.cornerPortals.Portals))
 	}
@@ -63,9 +64,9 @@ func (h *homogeneousCmd) Run(args []string, progressFunc func(int, int)) {
 		}
 	}
 	options := []lib.HomogeneousOption{
-		lib.HomogeneousProgressFunc{ProgressFunc: progressFunc},
-		lib.HomogeneousMaxDepth{MaxDepth: *h.maxDepth},
-		lib.HomogeneousFixedCornerIndices{Indices: cornerPortalIndices},
+		lib.HomogeneousProgressFunc(progressFunc),
+		lib.HomogeneousMaxDepth(*h.maxDepth),
+		lib.HomogeneousFixedCornerIndices(cornerPortalIndices),
 	}
 	if *h.largestArea {
 		options = append(options, lib.HomogeneousLargestArea{})
@@ -74,7 +75,7 @@ func (h *homogeneousCmd) Run(args []string, progressFunc func(int, int)) {
 	} else if *h.pretty {
 		options = append(options, lib.HomogeneousLargestArea{})		
 	}
-	options = append(options, lib.HomogeneousPerfect{Perfect: *h.perfect})
+	options = append(options, lib.HomogeneousPerfect(*h.perfect))
 
 	var result []lib.Portal
 	var depth uint16
@@ -83,11 +84,10 @@ func (h *homogeneousCmd) Run(args []string, progressFunc func(int, int)) {
 	} else {
 		result, depth = lib.DeepestHomogeneous(portals, options...)
 	}
-	fmt.Printf("\nDepth: %d\n", depth)
+	fmt.Fprintf(output, "\nDepth: %d\n", depth)
 	for i, portal := range result {
-		fmt.Printf("%d: %s\n", i, portal.Name)
+		fmt.Fprintf(output, "%d: %s\n", i, portal.Name)
 	}
-	polylines := []string{lib.PolylineFromPortalList([]lib.Portal{result[0], result[1], result[2], result[0]})}
-	polylines, _ = lib.AppendHomogeneousPolylines(result[0], result[1], result[2], uint16(depth), polylines, result[3:])
-	fmt.Printf("\n[%s]\n", strings.Join(polylines, ","))
+	drawTools := lib.HomogeneousDrawToolsString(depth, result)
+	fmt.Fprintf(output, "\n%s\n", drawTools)
 }

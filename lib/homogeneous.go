@@ -1,6 +1,7 @@
 package lib
 
 import "math"
+import "strings"
 
 type bestHomogeneousQuery struct {
 	// all the portals
@@ -205,17 +206,31 @@ func (q *bestHomogeneousQuery) appendHomogeneousResult(p0, p1, p2 portalIndex, m
 	return result
 }
 
-func AppendHomogeneousPolylines(p0, p1, p2 Portal, maxDepth uint16, result []string, portals []Portal) ([]string, []Portal) {
+func AppendHomogeneousPolylines(p0, p1, p2 Portal, maxDepth uint16, result [][]Portal, portals []Portal) ([][]Portal, []Portal) {
 	if maxDepth == 1 {
 		return result, portals
 	}
 	portal := portals[0]
 	result = append(result,
-		PolylineFromPortalList([]Portal{p0, portal}),
-		PolylineFromPortalList([]Portal{p1, portal}),
-		PolylineFromPortalList([]Portal{p2, portal}))
+		[]Portal{p0, portal},
+		[]Portal{p1, portal},
+		[]Portal{p2, portal})
 	result, portals = AppendHomogeneousPolylines(portal, p1, p2, maxDepth-1, result, portals[1:])
 	result, portals = AppendHomogeneousPolylines(p0, portal, p2, maxDepth-1, result, portals)
 	result, portals = AppendHomogeneousPolylines(p0, p1, portal, maxDepth-1, result, portals)
 	return result, portals
+}
+
+func HomogeneousPolylines(depth uint16, result []Portal) [][]Portal {
+	polylines := [][]Portal{[]Portal{result[0], result[1], result[2], result[0]}}
+	polylines, _ = AppendHomogeneousPolylines(result[0], result[1], result[2], uint16(depth), polylines, result[3:])
+	return polylines
+}
+func HomogeneousDrawToolsString(depth uint16, result []Portal) string {
+	polylines := HomogeneousPolylines(depth, result)
+	polylineStrings := make([]string, 0, len(polylines))
+	for _, polyline := range polylines {
+		polylineStrings = append(polylineStrings, PolylineFromPortalList(polyline))
+	}
+	return "[" + strings.Join(polylineStrings, ",") + "]"
 }

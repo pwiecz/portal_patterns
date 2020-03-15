@@ -1,9 +1,7 @@
 package lib
 
-import "sort"
 import "sync"
 import "github.com/golang/geo/r3"
-import "github.com/golang/geo/s2"
 
 type bestHerringboneMtQuery struct {
 	portals []portalData
@@ -33,80 +31,14 @@ type herringboneRequest struct {
 	result []portalIndex
 }
 
-func (q *bestHerringboneMtQuery) normalizedVector(b0, b1 portalData) r3.Vector {
-	return q.norms[uint(b0.Index)*uint(len(q.portals))+uint(b1.Index)]
-}
 func (q *bestHerringboneMtQuery) findBestHerringbone(b0, b1 portalData, nodes []node, weights []float32, result []portalIndex) []portalIndex {
-	nodes = nodes[:0]
-	b01, b10 := q.normalizedVector(b0, b1), q.normalizedVector(b1, b0)
-	distQuery := newDistanceQuery(b0.LatLng, b1.LatLng)
-	for _, portal := range q.portals {
-		if portal == b0 || portal == b1 {
-			continue
-		}
-		if !s2.Sign(portal.LatLng, b0.LatLng, b1.LatLng) {
-			continue
-		}
-		a0 := b01.Dot(q.normalizedVector(b1, portal)) // acos of angle b0,b1,portal
-		a1 := b10.Dot(q.normalizedVector(b0, portal)) // acos of angle b1,b0,portal
-		dist := distQuery.ChordAngle(portal.LatLng)
-		nodes = append(nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
+	hq := bestHerringboneQuery{
+		portals: q.portals,
+		nodes: nodes,
+		weights: weights,
+		norms: q.norms,
 	}
-	sort.Sort(byDistance(nodes))
-	for i := 0; i < len(weights); i++ {
-		weights[i] = 0
-	}
-	for i, node := range nodes {
-		var bestLength uint16
-		bestNext := invalidPortalIndex
-		var bestWeight float32
-		for j := 0; j < i; j++ {
-			if nodes[j].start < node.start && nodes[j].end < node.end {
-				if nodes[j].length >= bestLength {
-					bestLength = nodes[j].length + 1
-					bestNext = portalIndex(j)
-					scaledDistance := float32(distance(q.portals[node.index], q.portals[nodes[j].index]) * radiansToMeters)
-					bestWeight = weights[nodes[j].index] + scaledDistance
-				} else if nodes[j].length+1 == bestLength {
-					scaledDistance := float32(distance(q.portals[node.index], q.portals[nodes[j].index]) * radiansToMeters)
-					if weights[node.index]+scaledDistance < bestWeight {
-						bestLength = nodes[j].length + 1
-						bestNext = portalIndex(j)
-						bestWeight = weights[nodes[j].index] + scaledDistance
-					}
-				}
-			}
-		}
-		nodes[i].length = bestLength
-		nodes[i].next = bestNext
-		if bestLength > 0 {
-			weights[node.index] = bestWeight
-		} else {
-			weights[node.index] = float32(float64Min(
-				distance(q.portals[node.index], b0),
-				distance(q.portals[node.index], b1)) * radiansToMeters)
-		}
-	}
-
-	start := invalidPortalIndex
-	var length uint16
-	var weight float32
-	for i, node := range nodes {
-		if node.length > length || (node.length == length && weights[node.index] < weight) {
-			length = node.length
-			start = portalIndex(i)
-			weight = weights[node.index]
-		}
-	}
-	result = result[:0]
-	if start == invalidPortalIndex {
-		return result
-	}
-	for start != invalidPortalIndex {
-		result = append(result, nodes[start].index)
-		start = nodes[start].next
-	}
-	return result
+	return hq.findBestHerringbone(b0, b1, result)
 }
 
 func bestHerringboneWorker(

@@ -11,10 +11,12 @@ type homogeneousTriangleScorer interface {
 
 type homogeneousScorer interface {
 	newTriangleScorer(maxDepth int, perfect bool) homogeneousTriangleScorer
+	scoreTriangle(a, b, c portalData) float32
 }
 
 type homogeneousTopLevelScorer interface {
 	scoreTriangle(a, b, c portalData) float32
+	scoreTriangle2(a, b, c portalData, scorer homogeneousScorer) float32
 }
 
 type bestHomogeneous2Query struct {
@@ -176,7 +178,7 @@ func DeepestHomogeneous2(portals []Portal, options ...HomogeneousOption) ([]Port
 							continue
 						}
 					}
-					score := params.topLevelScorer.scoreTriangle(s0, s1, s2)
+					score := params.topLevelScorer.scoreTriangle2(s0, s1, s2, params.scorer)
 					if depth > bestDepth || (depth == bestDepth && score > bestScore) {
 						bestP0, bestP1, bestP2 = s0, s1, s2
 						bestDepth = depth

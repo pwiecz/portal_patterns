@@ -58,3 +58,20 @@ func LargestDoubleHerringboneST(portals []Portal, fixedBaseIndices []int, progre
 
 	return portals[bestB0], portals[bestB1], resultCCW, resultCW
 }
+
+func DoubleHerringbonePolyline(b0, b1 Portal, result0, result1 []Portal) []Portal {
+	portalList := []Portal{b0, b1}
+	atIndex := 0
+	for _, portal := range result0 {
+		portalList = append(portalList, portal, portalList[atIndex])
+		atIndex = 1 - atIndex
+	}
+	for _, portal := range result1 {
+		portalList = append(portalList, portal, portalList[atIndex])
+		atIndex = 1 - atIndex
+	}
+	return portalList
+}
+func DoubleHerringboneDrawToolsString(b0, b1 Portal, result0, result1 []Portal) string {
+	return "[\n" + PolylineFromPortalList(DoubleHerringbonePolyline(b0, b1, result0, result1)) + "\n]"
+}

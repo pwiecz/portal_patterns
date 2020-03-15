@@ -78,7 +78,7 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 		q.weights[i] = 0
 	}
 	for i, node := range q.nodes {
-		var bestLength uint16
+		var bestLength uint16 = 1
 		bestNext := invalidPortalIndex
 		var bestWeight float32
 		for j := 0; j < i; j++ {
@@ -182,4 +182,17 @@ func LargestHerringboneST(portals []Portal, fixedBaseIndices []int, progressFunc
 		result = append(result, portals[portalIx])
 	}
 	return portals[bestB0.Index], portals[bestB1.Index], result
+}
+
+func HerringbonePolyline(b0, b1 Portal, result []Portal) []Portal {
+	portalList := []Portal{b0, b1}
+	atIndex := 0
+	for _, portal := range result {
+		portalList = append(portalList, portal, portalList[atIndex])
+		atIndex = 1 - atIndex
+	}
+	return portalList
+}
+func HerringboneDrawToolsString(b0, b1 Portal, result []Portal) string {
+	return "[\n" + PolylineFromPortalList(HerringbonePolyline(b0, b1, result)) + "\n]"
 }
