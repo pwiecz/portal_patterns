@@ -78,7 +78,7 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 		q.weights[i] = 0
 	}
 	for i, node := range q.nodes {
-		var bestLength uint16
+		var bestLength uint16 = 1
 		bestNext := invalidPortalIndex
 		var bestWeight float32
 		for j := 0; j < i; j++ {
