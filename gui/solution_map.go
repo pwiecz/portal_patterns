@@ -305,7 +305,7 @@ func (s *SolutionMap) OnPortalLeftClick(onPortalLeftClick func(string)) {
 func (s *SolutionMap) OnPortalRightClick(onPortalRightClick func(string, int, int)) {
 	s.onPortalRightClick = onPortalRightClick
 }
-func (s *SolutionMap) SetPortals(portals []lib.Portal) {
+func (s *SolutionMap) SetPortals(portals map[string]lib.Portal) {
 	for _, portal := range s.portals {
 		s.canvas.DeleteOval(portal.shape)
 	}

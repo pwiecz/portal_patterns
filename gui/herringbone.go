@@ -1,361 +1,154 @@
 package main
 
 import "fmt"
-import "os"
-import "path"
 import "runtime"
-import "sort"
 
 import "github.com/pwiecz/portal_patterns/lib"
 import "github.com/pwiecz/atk/tk"
-import "github.com/golang/geo/s2"
 
-type HerringboneTab struct {
-	*tk.PackLayout
-	add             *tk.Button
-	reset           *tk.Button
-	find            *tk.Button
-	save            *tk.Button
-	solutionLabel   *tk.Label
-	progress        *tk.ProgressBar
-	portalList      *PortalList
-	portalScrollBar *tk.ScrollBar
-	solutionMap     *SolutionMap
-	portalCanvas    *tk.Canvas
-	portals         map[string]lib.Portal
+type herringboneTab struct {
+	*baseTab
 	b0, b1          lib.Portal
 	solution        []lib.Portal
-	length          uint16
-	selectedPortals map[string]bool
 	basePortals     map[string]bool
-	disabledPortals map[string]bool
 }
 
-func NewHerringboneTab(parent *Window, conf *Configuration) *HerringboneTab {
-	h := &HerringboneTab{}
-	h.PackLayout = tk.NewVPackLayout(parent)
+func NewHerringboneTab(parent tk.Widget, conf *Configuration) *herringboneTab {
+	t := &herringboneTab{}
+	t.baseTab = NewBaseTab(parent, conf)
+	t.pattern = t
 	addResetBox := tk.NewHPackLayout(parent)
-	h.add = tk.NewButton(parent, "Add Portals")
-	h.add.OnCommand(func() {
-		filename, err := tk.GetOpenFile(parent, "Choose portals file",
-			[]tk.FileType{
-				tk.FileType{Info: "JSON file", Ext: ".json"},
-				tk.FileType{Info: "CSV file", Ext: ".csv"},
-			}, conf.PortalsDirectory, "")
-		if err != nil || filename == "" {
-			return
-		}
-		portalsDir, _ := path.Split(filename)
-		conf.PortalsDirectory = portalsDir
-		SaveConfiguration(conf)
-		portals, err := lib.ParseFile(filename)
-		if err != nil {
-			tk.MessageBox(h, "Could not read file", fmt.Sprintf("Error reading file:\n%v", err),
-				"", "", tk.MessageBoxIconError, tk.MessageBoxTypeOk)
-			return
-		}
-		h.addPortals(portals)
-	})
-	addResetBox.AddWidget(h.add)
-	h.reset = tk.NewButton(parent, "Reset Portals")
-	h.reset.OnCommand(func() {
-		h.resetPortals()
-	})
-	addResetBox.AddWidget(h.reset)
-	h.reset.SetState(tk.StateDisable)
-	h.AddWidget(addResetBox)
+	addResetBox.AddWidget(t.add)
+	addResetBox.AddWidget(t.reset)
+	t.AddWidget(addResetBox)
 	solutionBox := tk.NewHPackLayout(parent)
-	h.find = tk.NewButton(parent, "Search")
-	h.find.OnCommand(func() {
-		h.search()
-	})
-	h.find.SetState(tk.StateDisable)
-	solutionBox.AddWidget(h.find)
-	h.save = tk.NewButton(parent, "Save Solution")
-	h.save.OnCommand(func() {
-		filename, err := tk.GetSaveFile(parent, "Select file for solution", true, ".json", 
-			[]tk.FileType{tk.FileType{Info: "JSON file", Ext: ".json"}}, conf.PortalsDirectory, "")
-		if err != nil || filename == "" {
-			return
-		}
-		file, err := os.Create(filename)
-		if err != nil {
-			panic(err)
-		}
-		defer file.Close()
-		file.WriteString(lib.HerringboneDrawToolsString(h.b0, h.b1, h.solution))
-	})
-	h.save.SetState(tk.StateDisable)
-	solutionBox.AddWidget(h.save)
-	h.solutionLabel = tk.NewLabel(parent, "")
-	solutionBox.AddWidget(h.solutionLabel)
-	h.AddWidget(solutionBox)
-	h.progress = tk.NewProgressBar(parent, tk.Horizontal, tk.ProgressBarAttrMaximum(1000))
-	h.progress.SetDeterminateMode(true)
-	h.AddWidgetEx(h.progress, tk.FillBoth, true, tk.AnchorWest)
-	h.portalList = NewPortalList(parent)
-	h.AddWidgetEx(h.portalList, tk.FillBoth, true, tk.AnchorWest)
-	h.portalList.OnPortalRightClick(func(guid string, x, y int) {
-		h.OnPortalContextMenu(guid, x, y)
-	})
-	h.portalList.OnSelectionChanged(func() {
-		selectedPortals := h.portalList.SelectedPortals()
-		h.OnSelectionChanged(selectedPortals)
-	})
+	solutionBox.AddWidget(t.find)
+	solutionBox.AddWidget(t.save)
+	solutionBox.AddWidget(t.copy)
+	solutionBox.AddWidget(t.solutionLabel)
+	t.AddWidget(solutionBox)
+	t.AddWidgetEx(t.progress, tk.FillBoth, true, tk.AnchorWest)
+	t.AddWidgetEx(t.portalList, tk.FillBoth, true, tk.AnchorWest)
 
-	h.portals = make(map[string]lib.Portal)
-	h.selectedPortals = make(map[string]bool)
-	h.basePortals = make(map[string]bool)
-	h.disabledPortals = make(map[string]bool)
-	return h
+	t.basePortals = make(map[string]bool)
+	return t
 }
 
-func (h *HerringboneTab) onProgress(val int, max int) {
-	value := float64(val) * 1000. / float64(max)
-	h.progress.SetValue(value)
-	tk.Update()
+func (t *herringboneTab) onReset() {
+	t.basePortals = make(map[string]bool)
 }
 
-func (h *HerringboneTab) resetPortals() {
-	h.portals = make(map[string]lib.Portal)
-	h.selectedPortals = make(map[string]bool)
-	h.basePortals = make(map[string]bool)
-	h.disabledPortals = make(map[string]bool)
-	h.reset.SetState(tk.StateDisable)
-	h.find.SetState(tk.StateDisable)
-	h.save.SetState(tk.StateDisable)
-	if h.solutionMap != nil {
-		h.solutionMap.Clear()
-	}
-	if h.portalList != nil {
-		h.portalList.Clear()
-	}
-	h.solutionLabel.SetText("")
-}
-
-func (h *HerringboneTab) addPortals(portals []lib.Portal) {
-	newPortals := make(map[string]lib.Portal)
-	for guid, portal := range h.portals {
-		newPortals[guid] = portal
-	}
-	for _, portal := range portals {
-		if existing, ok := h.portals[portal.Guid]; ok {
-			if existing.LatLng.Lat != portal.LatLng.Lat ||
-				existing.LatLng.Lng != portal.LatLng.Lng {
-				if existing.Name == portal.Name {
-					tk.MessageBox(h, "Conflicting portals", "Portal with guid \""+portal.Guid+"\" already loaded with different location",
-						portal.Name+"\n"+portal.LatLng.String()+" vs "+existing.LatLng.String(), "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
-					return
-				}
-				tk.MessageBox(h, "Conflicting portals", "Portal with guid \""+portal.Guid+"\" already loaded with different name and location",
-					portal.Name+" vs "+existing.Name+"\n"+portal.LatLng.String()+" vs "+existing.LatLng.String(), "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
-				return
-			}
-		}
-		newPortals[portal.Guid] = portal
-	}
-
-	newPortalList := []lib.Portal{}
-	for _, portal := range newPortals {
-		newPortalList = append(newPortalList, portal)
-	}
-	for i, p0 := range newPortalList {
-		for _, p1 := range newPortalList[i+1:] {
-			if s2.PointFromLatLng(p0.LatLng).Distance(s2.PointFromLatLng(p1.LatLng)) >= 1. {
-				tk.MessageBox(h, "Too distant portals", "Distances between portals are too large", "E.g. "+p0.Name+" and "+p1.Name, "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
-
-				return
-			}
-		}
-
-	}
-	sort.Slice(newPortalList, func(i, j int) bool {
-		return newPortalList[i].Name < newPortalList[j].Name
-	})
-	h.portals = newPortals
-	if len(h.portals) > 0 {
-		h.reset.SetState(tk.StateNormal)
-	}
-	if len(h.portals) >= 3 {
-		h.find.SetState(tk.StateNormal)
-	}
-	if h.solutionMap == nil {
-		h.solutionMap = NewSolutionMap(h, "Herringbone")
-		h.solutionMap.OnClose(func() bool {
-			h.solutionMap = nil
-			return true
-		})
-		h.solutionMap.OnPortalLeftClick(func(guid string) {
-			h.OnPortalSelected(guid)
-		})
-		h.solutionMap.OnPortalRightClick(func(guid string, x, y int) {
-			h.OnPortalContextMenu(guid, x, y)
-		})
-		h.solutionMap.ShowNormal()
-		tk.Update()
-	}
-	h.solutionMap.SetPortals(newPortalList)
-	h.portalList.SetPortals(newPortalList)
-	for _, portal := range newPortalList {
-		h.portalStateChanged(portal.Guid)
-	}
-}
-
-func herringboneStateToName(disabled, isBase, selected bool) string {
-	if disabled {
+func (t *herringboneTab) portalLabel(guid string) string {
+	if t.disabledPortals[guid] {
 		return "Disabled"
 	}
-	if isBase {
+	if t.basePortals[guid] {
 		return "Base"
 	}
 	return "Normal"
 }
 
-func herringboneStateToColor(disabled, isBase, selected bool) string {
-	if disabled {
-		if !selected {
+func (t *herringboneTab) portalColor(guid string) string {
+	if t.disabledPortals[guid] {
+		if !t.selectedPortals[guid] {
 			return "gray"
 		}
 		return "dark gray"
 	}
-	if isBase {
-		if !selected {
+	if t.basePortals[guid] {
+		if !t.selectedPortals[guid] {
 			return "green"
 		}
 		return "dark green"
 	}
-	if !selected {
+	if !t.selectedPortals[guid] {
 		return "orange"
 	}
 	return "red"
 }
 
-func (h *HerringboneTab) OnSelectionChanged(selection []string) {
-	selectionMap := make(map[string]bool)
-	for _, guid := range selection {
-		selectionMap[guid] = true
-	}
-	if stringMapsAreTheSame(selectionMap, h.selectedPortals) {
-		return
-	}
-	if h.solutionMap != nil {
-		for portal := range h.selectedPortals {
-			h.solutionMap.SetPortalColor(portal, herringboneStateToColor(h.disabledPortals[portal], h.basePortals[portal], selectionMap[portal]))
-		}
-		for _, portal := range selection {
-			h.solutionMap.SetPortalColor(portal, herringboneStateToColor(h.disabledPortals[portal], h.basePortals[portal], true))
-			h.solutionMap.RaisePortal(portal)
-		}
-	}
-	h.selectedPortals = selectionMap
-	if h.portalList != nil {
-		h.portalList.SetSelectedPortals(h.selectedPortals)
-	}
-	if len(selection) == 1 {
-		if h.portalList != nil {
-			h.portalList.ScrollToPortal(selection[0])
-		}
-		if h.solutionMap != nil {
-			h.solutionMap.ScrollToPortal(selection[0])
-		}
-	}
-}
-func (h *HerringboneTab) OnPortalSelected(guid string) {
-	h.OnSelectionChanged([]string{guid})
-	if h.portalList != nil {
-		h.portalList.ScrollToPortal(guid)
-	}
-	if h.solutionMap != nil {
-		h.solutionMap.ScrollToPortal(guid)
-	}
-}
-func (h *HerringboneTab) OnPortalContextMenu(guid string, x, y int) {
-	menu := NewHerringbonePortalContextMenu(tk.RootWindow(), guid, h)
+func (t *herringboneTab) onPortalContextMenu(guid string, x, y int) {
+	menu := NewHerringbonePortalContextMenu(tk.RootWindow(), guid, t)
 	tk.PopupMenu(menu.Menu, x, y)
 }
 
-func (h *HerringboneTab) search() {
-	if len(h.portals) < 3 {
+func (t *herringboneTab) search() {
+	if len(t.portals) < 3 {
 		return
 	}
 
-	h.add.SetState(tk.StateDisable)
-	h.reset.SetState(tk.StateDisable)
-	h.find.SetState(tk.StateDisable)
-	h.save.SetState(tk.StateDisable)
+	t.add.SetState(tk.StateDisable)
+	t.reset.SetState(tk.StateDisable)
+	t.find.SetState(tk.StateDisable)
+	t.save.SetState(tk.StateDisable)
 	tk.Update()
 	portals := []lib.Portal{}
 	base := []int{}
-	for _, portal := range h.portals {
-		if !h.disabledPortals[portal.Guid] {
+	for _, portal := range t.portals {
+		if !t.disabledPortals[portal.Guid] {
 			portals = append(portals, portal)
-			if h.basePortals[portal.Guid] {
+			if t.basePortals[portal.Guid] {
 				base = append(base, len(portals)-1)
 			}
 		}
 	}
-	h.b0, h.b1, h.solution = lib.LargestHerringbone(portals, base, runtime.GOMAXPROCS(0), func(val int, max int) { h.onProgress(val, max) })
-	if h.solutionMap != nil {
-		h.solutionMap.SetSolution([][]lib.Portal{lib.HerringbonePolyline(h.b0, h.b1, h.solution)})
+	t.b0, t.b1, t.solution = lib.LargestHerringbone(portals, base, runtime.GOMAXPROCS(0), func(val int, max int) { t.onProgress(val, max) })
+	if t.solutionMap != nil {
+		t.solutionMap.SetSolution([][]lib.Portal{lib.HerringbonePolyline(t.b0, t.b1, t.solution)})
 	}
-	solutionText := fmt.Sprintf("Solution length: %d", len(h.solution))
-	h.solutionLabel.SetText(solutionText)
-	h.add.SetState(tk.StateNormal)
-	h.reset.SetState(tk.StateNormal)
-	h.find.SetState(tk.StateNormal)
-	h.save.SetState(tk.StateNormal)
+	solutionText := fmt.Sprintf("Solution length: %d", len(t.solution))
+	t.solutionLabel.SetText(solutionText)
+	t.add.SetState(tk.StateNormal)
+	t.reset.SetState(tk.StateNormal)
+	t.find.SetState(tk.StateNormal)
+	t.save.SetState(tk.StateNormal)
 	tk.Update()
 }
 
-func (h *HerringboneTab) portalStateChanged(guid string) {
-	if h.portalList != nil {
-		h.portalList.SetPortalState(guid, herringboneStateToName(h.disabledPortals[guid], h.basePortals[guid], h.selectedPortals[guid]))
-	}
-	if h.solutionMap != nil {
-		h.solutionMap.SetPortalColor(guid, herringboneStateToColor(h.disabledPortals[guid], h.basePortals[guid], h.selectedPortals[guid]))
-	}
+func (t *herringboneTab) solutionString() string {
+	return lib.HerringboneDrawToolsString(t.b0, t.b1, t.solution)
 }
-func (h *HerringboneTab) EnablePortal(guid string) {
-	delete(h.disabledPortals, guid)
-	h.portalStateChanged(guid)
+func (t *herringboneTab) EnablePortal(guid string) {
+	delete(t.disabledPortals, guid)
+	t.portalStateChanged(guid)
 }
-func (h *HerringboneTab) DisablePortal(guid string) {
-	h.disabledPortals[guid] = true
-	delete(h.basePortals, guid)
-	h.portalStateChanged(guid)
+func (t *herringboneTab) DisablePortal(guid string) {
+	t.disabledPortals[guid] = true
+	delete(t.basePortals, guid)
+	t.portalStateChanged(guid)
 }
-func (h *HerringboneTab) MakeBase(guid string) {
-	h.basePortals[guid] = true
-	h.portalStateChanged(guid)
+func (t *herringboneTab) MakeBase(guid string) {
+	t.basePortals[guid] = true
+	t.portalStateChanged(guid)
 }
-func (h *HerringboneTab) UnmakeBase(guid string) {
-	delete(h.basePortals, guid)
-	h.portalStateChanged(guid)
+func (t *herringboneTab) UnmakeBase(guid string) {
+	delete(t.basePortals, guid)
+	t.portalStateChanged(guid)
 }
 
-type HerringbonePortalContextMenu struct {
+type herringbonePortalContextMenu struct {
 	*tk.Menu
 }
 
-func NewHerringbonePortalContextMenu(parent *tk.Window, guid string, h *HerringboneTab) *HerringbonePortalContextMenu {
-	l := &HerringbonePortalContextMenu{}
+func NewHerringbonePortalContextMenu(parent tk.Widget, guid string, t *herringboneTab) *herringbonePortalContextMenu {
+	l := &herringbonePortalContextMenu{}
 	l.Menu = tk.NewMenu(parent)
-	if h.disabledPortals[guid] {
+	if t.disabledPortals[guid] {
 		enableAction := tk.NewAction("Enable")
-		enableAction.OnCommand(func() { h.EnablePortal(guid) })
+		enableAction.OnCommand(func() { t.EnablePortal(guid) })
 		l.AddAction(enableAction)
 	} else {
 		disableAction := tk.NewAction("Disable")
-		disableAction.OnCommand(func() { h.DisablePortal(guid) })
+		disableAction.OnCommand(func() { t.DisablePortal(guid) })
 		l.AddAction(disableAction)
 	}
-	if h.basePortals[guid] {
+	if t.basePortals[guid] {
 		unbaseAction := tk.NewAction("Unmake base portal")
-		unbaseAction.OnCommand(func() { h.UnmakeBase(guid) })
+		unbaseAction.OnCommand(func() { t.UnmakeBase(guid) })
 		l.AddAction(unbaseAction)
-	} else if !h.disabledPortals[guid] && len(h.basePortals) < 2 {
+	} else if !t.disabledPortals[guid] && len(t.basePortals) < 2 {
 		baseAction := tk.NewAction("Make base portal")
-		baseAction.OnCommand(func() { h.MakeBase(guid) })
+		baseAction.OnCommand(func() { t.MakeBase(guid) })
 		l.AddAction(baseAction)
 	}
 	return l
