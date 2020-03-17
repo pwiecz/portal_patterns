@@ -11,9 +11,13 @@ import "os"
 import "path"
 import "strconv"
 import "sync"
+//import "time"
 import "github.com/golang/groupcache/lru"
 import "github.com/pwiecz/atk/tk"
 
+const (
+	MAX_DOWNLOAD_THREADS = 2
+)
 type tileCoord struct {
 	x, y, zoom int
 }
@@ -62,7 +66,7 @@ func NewMapTiles() *MapTiles {
 	memCache := NewSyncCache(1000)
 	semaphore := make(chan empty, 50)
 	e := empty{}
-	for i := 0; i < 50; i++ {
+	for i := 0; i < MAX_DOWNLOAD_THREADS; i++ {
 		semaphore <- e
 	}
 	requestsInFlight := make(map[tileCoord]bool)
@@ -105,7 +109,7 @@ func (m *MapTiles) GetTile(coord tileCoord) (*tk.Image, bool) {
 			tk.Async(func() {
 				delete(m.requestsInFlight, wrappedCoord)
 				if err != nil {
-					log.Println("Error loading tile ", coord, err)
+					m.onTileRead(coord, nil)
 					return
 				}
 
@@ -189,7 +193,8 @@ func (m *MapTiles) getTileSlow(coord tileCoord) (image.Image, error) {
 func (m *MapTiles) fetchTile(coord tileCoord) (image.Image, error) {
 	select {
 	case <-m.fetchSemaphore:
-		defer func() { m.fetchSemaphore <- empty{} }()
+		defer func() { 
+			m.fetchSemaphore <- empty{} }()
 		url := fmt.Sprintf("http://a.tile.openstreetmap.org/%d/%d/%d.png", coord.zoom, coord.x, coord.y)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
@@ -197,6 +202,7 @@ func (m *MapTiles) fetchTile(coord tileCoord) (image.Image, error) {
 		}
 		req.Header.Set("User-Agent", "portal_patterns 4.0")
 		var client http.Client
+//		client.Timeout = 10 * time.Second
 		resp, err := client.Do(req)
 		if err != nil {
 			return nil, err
