@@ -3,6 +3,7 @@ package main
 import "log"
 import "math"
 import "image"
+import "time"
 
 import "github.com/golang/geo/r2"
 import "github.com/golang/geo/s2"
@@ -15,7 +16,6 @@ type tile struct {
 	x, y, zoom int
 	image      image.Image
 }
-type empty struct{}
 
 type mapPortal struct {
 	coords r2.Point
@@ -50,7 +50,7 @@ type SolutionMap struct {
 func NewSolutionMap(parent tk.Widget, title string) *SolutionMap {
 	s := &SolutionMap{}
 	s.Window = tk.NewWindow()
-	s.Window.SetTitle(title)
+	s.Window.SetTitle(title + " - © OpenStreetMap")
 	s.layout = tk.NewVPackLayout(s.Window)
 	s.canvas = tk.NewCanvas(s.Window, tk.CanvasAttrBackground("#C8C8C8"))
 	s.layout.AddWidgetEx(s.canvas, tk.FillBoth, true, tk.AnchorNorth)
@@ -196,7 +196,21 @@ func (s *SolutionMap) showTile(coord tileCoord, tileImage *tk.Image) {
 }
 
 func (s *SolutionMap) onTileRead(coord tileCoord, tileImage *tk.Image) {
-	if _, ok := s.missingTiles[coord]; ok {
+	if s.missingTiles[coord] {
+		if tileImage == nil {
+			// try fetching again after 1 second
+			timer := time.NewTimer(time.Second)
+			go func() {
+				<-timer.C
+				tk.Async(func() {
+					// check if we still need the tile before refetching
+					if s.missingTiles[coord] {
+						s.tryShowTile(coord)
+					}
+				})
+			}()
+			return
+		}
 		s.showTile(coord, tileImage)
 		delete(s.missingTiles, coord)
 	}
@@ -224,13 +238,16 @@ func (s *SolutionMap) showTiles() {
 	}
 	s.missingTiles = make(map[tileCoord]bool)
 	for coord := range tileCoords {
-		tileImage, ok := s.tileCache.GetTile(coord)
-		if tileImage != nil {
-			s.showTile(coord, tileImage)
-		}
-		if !ok {
-			s.missingTiles[coord] = true
-		}
+		s.tryShowTile(coord)
+	}
+}
+func (s *SolutionMap) tryShowTile(coord tileCoord) {
+	tileImage, ok := s.tileCache.GetTile(coord)
+	if tileImage != nil {
+		s.showTile(coord, tileImage)
+	}
+	if !ok {
+		s.missingTiles[coord] = true
 	}
 }
 func (s *SolutionMap) showSolution() {
@@ -252,7 +269,10 @@ func (s *SolutionMap) showSolution() {
 func (s *SolutionMap) setItemCoords() {
 	for _, portal := range s.portals {
 		x, y := s.GeoToScreenCoordinates(portal.coords.X, portal.coords.Y)
-		portal.shape.MoveTo(x-4, y-4)
+		err := portal.shape.MoveTo(x-4, y-4)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }
 func (s *SolutionMap) GeoToScreenCoordinates(x, y float64) (float64, float64) {
@@ -284,7 +304,7 @@ func (s *SolutionMap) OnPortalLeftClick(onPortalLeftClick func(string)) {
 func (s *SolutionMap) OnPortalRightClick(onPortalRightClick func(string, int, int)) {
 	s.onPortalRightClick = onPortalRightClick
 }
-func (s *SolutionMap) SetPortals(portals []lib.Portal) {
+func (s *SolutionMap) SetPortals(portals map[string]lib.Portal) {
 	for _, portal := range s.portals {
 		s.canvas.DeleteOval(portal.shape)
 	}

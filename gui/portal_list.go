@@ -1,18 +1,20 @@
 package main
 
+import "sort"
+
 import "github.com/pwiecz/atk/tk"
 import "github.com/pwiecz/portal_patterns/lib"
 
 type PortalList struct {
 	*tk.TreeViewEx
 	// portal guid to item
-	items              map[string]*tk.TreeItem
+	items map[string]*tk.TreeItem
 	// item id to portal guid
 	guids              map[string]string
 	onPortalRightClick func(string, int, int)
 }
 
-func NewPortalList(parent *Window) *PortalList {
+func NewPortalList(parent tk.Widget) *PortalList {
 	l := &PortalList{}
 	l.TreeViewEx = tk.NewTreeViewEx(parent)
 	l.items = make(map[string]*tk.TreeItem)
@@ -66,9 +68,17 @@ func (l *PortalList) OnPortalRightClick(onPortalRightClick func(string, int, int
 	l.onPortalRightClick = onPortalRightClick
 }
 
-func (l *PortalList) SetPortals(portals []lib.Portal) {
+func (l *PortalList) SetPortals(portals map[string]lib.Portal) {
+	portalList := []lib.Portal{}
+	for _, portal := range portals {
+		portalList = append(portalList, portal)
+	}
+	sort.Slice(portalList, func(i, j int) bool {
+		return portalList[i].Name < portalList[j].Name
+	})
+
 	l.Clear()
-	for i, portal := range portals {
+	for i, portal := range portalList {
 		item := l.InsertItem(nil, i, portal.Name, []string{""})
 		l.items[portal.Guid] = item
 		l.guids[item.Id()] = portal.Guid

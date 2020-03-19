@@ -10,41 +10,22 @@ import "net/http"
 import "os"
 import "path"
 import "strconv"
-import "sync"
+
 import "github.com/golang/groupcache/lru"
 import "github.com/pwiecz/atk/tk"
+
+const (
+	MAX_DOWNLOAD_THREADS = 2
+)
 
 type tileCoord struct {
 	x, y, zoom int
 }
 
-type SyncCache struct {
-	cache *lru.Cache
-	lock  sync.Mutex
-}
-
-func NewSyncCache(numEntries int) *SyncCache {
-	return &SyncCache{cache: lru.New(numEntries)}
-}
-func (c *SyncCache) Add(key lru.Key, value interface{}) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.cache.Add(key, value)
-}
-func (c *SyncCache) Get(key lru.Key) (value interface{}, ok bool) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	return c.cache.Get(key)
-}
-func (c *SyncCache) Remove(key lru.Key) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.cache.Remove(key)
-}
-
+type empty struct{}
 type MapTiles struct {
 	cacheDir         string
-	memCache         *SyncCache
+	memCache         *lru.Cache
 	fetchSemaphore   chan empty
 	requestsInFlight map[tileCoord]bool
 	onTileRead       func(tileCoord, *tk.Image)
@@ -59,10 +40,10 @@ func NewMapTiles() *MapTiles {
 	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
 		os.MkdirAll(cacheDir, 0755)
 	}
-	memCache := NewSyncCache(1000)
+	memCache := lru.New(1000)
 	semaphore := make(chan empty, 50)
 	e := empty{}
-	for i := 0; i < 50; i++ {
+	for i := 0; i < MAX_DOWNLOAD_THREADS; i++ {
 		semaphore <- e
 	}
 	requestsInFlight := make(map[tileCoord]bool)
@@ -105,7 +86,7 @@ func (m *MapTiles) GetTile(coord tileCoord) (*tk.Image, bool) {
 			tk.Async(func() {
 				delete(m.requestsInFlight, wrappedCoord)
 				if err != nil {
-					log.Println("Error loading tile ", coord, err)
+					m.onTileRead(coord, nil)
 					return
 				}
 
@@ -189,7 +170,9 @@ func (m *MapTiles) getTileSlow(coord tileCoord) (image.Image, error) {
 func (m *MapTiles) fetchTile(coord tileCoord) (image.Image, error) {
 	select {
 	case <-m.fetchSemaphore:
-		defer func() { m.fetchSemaphore <- empty{} }()
+		defer func() {
+			m.fetchSemaphore <- empty{}
+		}()
 		url := fmt.Sprintf("http://a.tile.openstreetmap.org/%d/%d/%d.png", coord.zoom, coord.x, coord.y)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
