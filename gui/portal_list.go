@@ -8,7 +8,7 @@ import "github.com/pwiecz/portal_patterns/lib"
 type PortalList struct {
 	*tk.TreeViewEx
 	// portal guid to item
-	items              map[string]*tk.TreeItem
+	items map[string]*tk.TreeItem
 	// item id to portal guid
 	guids              map[string]string
 	onPortalRightClick func(string, int, int)

@@ -8,13 +8,13 @@ import "github.com/pwiecz/atk/tk"
 
 type homogeneousTab struct {
 	*baseTab
-	maxDepth        *tk.Entry
-	pretty          *tk.CheckButton
-	perfect         *tk.CheckButton
-	strategy        *tk.ComboBox
-	solution        []lib.Portal
-	depth           uint16
-	anchorPortals   map[string]bool
+	maxDepth      *tk.Entry
+	pretty        *tk.CheckButton
+	perfect       *tk.CheckButton
+	strategy      *tk.ComboBox
+	solution      []lib.Portal
+	depth         uint16
+	anchorPortals map[string]bool
 }
 
 func NewHomogeneousTab(parent tk.Widget, conf *Configuration) *homogeneousTab {

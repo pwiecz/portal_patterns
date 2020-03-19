@@ -8,9 +8,9 @@ import "github.com/pwiecz/atk/tk"
 
 type herringboneTab struct {
 	*baseTab
-	b0, b1          lib.Portal
-	solution        []lib.Portal
-	basePortals     map[string]bool
+	b0, b1      lib.Portal
+	solution    []lib.Portal
+	basePortals map[string]bool
 }
 
 func NewHerringboneTab(parent tk.Widget, conf *Configuration) *herringboneTab {

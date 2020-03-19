@@ -16,7 +16,6 @@ type tile struct {
 	x, y, zoom int
 	image      image.Image
 }
-type empty struct{}
 
 type mapPortal struct {
 	coords r2.Point
@@ -203,7 +202,7 @@ func (s *SolutionMap) onTileRead(coord tileCoord, tileImage *tk.Image) {
 			timer := time.NewTimer(time.Second)
 			go func() {
 				<-timer.C
-				tk.Async(func(){
+				tk.Async(func() {
 					// check if we still need the tile before refetching
 					if s.missingTiles[coord] {
 						s.tryShowTile(coord)

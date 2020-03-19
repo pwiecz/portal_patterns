@@ -7,8 +7,8 @@ import "github.com/pwiecz/atk/tk"
 
 type cobwebTab struct {
 	*baseTab
-	solution        []lib.Portal
-	cornerPortals   map[string]bool
+	solution      []lib.Portal
+	cornerPortals map[string]bool
 }
 
 func NewCobwebTab(parent *Window, conf *Configuration) *cobwebTab {
