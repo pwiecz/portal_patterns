@@ -222,7 +222,7 @@ func main() {
 	case "homogeneous":
 		fallthrough
 	case "homogenous":
-		homogeneousCmd.Run(flag.Args()[1:], outputWriter, progressFunc)
+		homogeneousCmd.Run(flag.Args()[1:], *numWorkers, outputWriter, progressFunc)
 	default:
 		log.Fatalf("Unknown command: \"%s\"\n", flag.Args()[0])
 	}
