@@ -32,7 +32,7 @@ func NewHomogeneousTab(parent tk.Widget, conf *Configuration) *homogeneousTab {
 	t.maxDepth.SetText("6")
 	maxDepthBox.AddWidget(t.maxDepth)
 	t.AddWidget(maxDepthBox)
-	t.pretty = tk.NewCheckButton(parent, "Pretty")
+	t.pretty = tk.NewCheckButton(parent, "Avoid tiny triangles")
 	t.AddWidgetEx(t.pretty, tk.FillNone, true, tk.AnchorWest)
 	t.perfect = tk.NewCheckButton(parent, "Perfect")
 	t.AddWidgetEx(t.perfect, tk.FillNone, true, tk.AnchorWest)
@@ -40,7 +40,7 @@ func NewHomogeneousTab(parent tk.Widget, conf *Configuration) *homogeneousTab {
 	strategyLabel := tk.NewLabel(parent, "Top triangle: ")
 	strategyBox.AddWidget(strategyLabel)
 	t.strategy = tk.NewComboBox(parent, tk.ComboBoxAttrState(tk.StateReadOnly))
-	t.strategy.SetValues([]string{"Arbitrary", "Largest Area", "Smallest Area"})
+	t.strategy.SetValues([]string{"Arbitrary", "Largest Area", "Smallest Area", "Most Equilateral"})
 	t.strategy.SetCurrentIndex(0)
 	t.strategy.OnSelected(func() { t.strategy.Entry().ClearSelection() })
 	strategyBox.AddWidget(t.strategy)
@@ -111,6 +111,8 @@ func (t *homogeneousTab) search() {
 		options = append(options, lib.HomogeneousLargestArea{})
 	} else if t.strategy.CurrentIndex() == 2 {
 		options = append(options, lib.HomogeneousSmallestArea{})
+	} else if t.strategy.CurrentIndex() == 3 {
+		options = append(options, lib.HomogeneousMostEquilateralTriangle{})
 	}
 	options = append(options, lib.HomogeneousProgressFunc(
 		func(val int, max int) { t.onProgress(val, max) }))

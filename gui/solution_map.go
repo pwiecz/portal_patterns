@@ -343,6 +343,7 @@ func (s *SolutionMap) SetPortals(portals map[string]lib.Portal) {
 	s.x0 = (maxX+minX)*s.zoomPow*0.5*256.0 - float64(s.canvas.Width())*0.5
 	s.y0 = (maxY+minY)*s.zoomPow*0.5*256.0 - float64(s.canvas.Height())*0.5
 	s.showTiles()
+	s.showSolution()
 	for _, portal := range portals {
 		mapCoords := projection.FromLatLng(portal.LatLng)
 		x, y := s.GeoToScreenCoordinates(mapCoords.X, mapCoords.Y)

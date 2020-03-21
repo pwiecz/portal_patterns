@@ -4,6 +4,14 @@ type HomogeneousOption interface {
 	apply(param *homogeneousParams)
 	apply2(param *homogeneous2Params)
 }
+
+type HomogeneousNumWorkers int
+
+func (h HomogeneousNumWorkers) apply(param *homogeneousParams) {}
+func (h HomogeneousNumWorkers) apply2(param *homogeneous2Params) {
+	param.numWorkers = int(h)
+}
+
 type HomogeneousMaxDepth int
 
 func (h HomogeneousMaxDepth) apply(param *homogeneousParams) {
@@ -29,6 +37,15 @@ func (h HomogeneousSmallestArea) apply(param *homogeneousParams) {
 }
 func (h HomogeneousSmallestArea) apply2(param *homogeneous2Params) {
 	param.topLevelScorer = smallestTriangleScorer{}
+}
+
+type HomogeneousMostEquilateralTriangle struct{}
+
+func (h HomogeneousMostEquilateralTriangle) apply(param *homogeneousParams) {
+	param.topLevelScorer = mostEquilateralTriangleScorer{}
+}
+func (h HomogeneousMostEquilateralTriangle) apply2(param *homogeneous2Params) {
+	param.topLevelScorer = mostEquilateralTriangleScorer{}
 }
 
 type HomogeneousProgressFunc func(int, int)
@@ -76,6 +93,7 @@ func defaultHomogeneousParams() homogeneousParams {
 }
 
 type homogeneous2Params struct {
+	numWorkers         int
 	maxDepth           int
 	perfect            bool
 	scorer             homogeneousScorer
@@ -86,6 +104,7 @@ type homogeneous2Params struct {
 
 func defaultHomogeneous2Params(numPortals int) homogeneous2Params {
 	return homogeneous2Params{
+		numWorkers:     1,
 		maxDepth:       6,
 		perfect:        false,
 		scorer:         newThickTrianglesScorer(numPortals),
