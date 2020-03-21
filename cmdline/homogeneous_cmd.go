@@ -82,8 +82,6 @@ func (h *homogeneousCmd) Run(args []string, numWorkers int, output io.Writer, pr
 		options = append(options, lib.HomogeneousSmallestArea{})
 	} else if *h.mostEquilateral {
 		options = append(options, lib.HomogeneousMostEquilateralTriangle{})
-	} else if *h.pretty {
-		options = append(options, lib.HomogeneousLargestArea{})		
 	}
 	options = append(options, lib.HomogeneousPerfect(*h.perfect))
 
