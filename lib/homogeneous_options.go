@@ -103,12 +103,14 @@ type homogeneous2Params struct {
 }
 
 func defaultHomogeneous2Params(numPortals int) homogeneous2Params {
+	defaultScorer := newThickTrianglesScorer(numPortals)
 	return homogeneous2Params{
-		numWorkers:     1,
-		maxDepth:       6,
-		perfect:        false,
-		scorer:         newThickTrianglesScorer(numPortals),
-		topLevelScorer: arbitraryScorer{},
+		numWorkers: 1,
+		maxDepth:   6,
+		perfect:    false,
+		scorer:     defaultScorer,
+		// by default pick top level triangle with the highest score
+		topLevelScorer: defaultScorer,
 		progressFunc:   func(int, int) {},
 	}
 }

@@ -8,15 +8,21 @@ type homogeneousTriangleScorer interface {
 	scoreCandidate(p portalData)
 	bestMidpoints() [6]portalIndex
 }
+type homogeneousDepthTriangleScorer interface {
+	// resets scorer to compute scores for this triangle
+	reset(a, b, c portalData)
+	scoreCandidate(p portalData)
+	bestMidpoint() portalIndex
+}
 
 type homogeneousScorer interface {
 	newTriangleScorer(maxDepth int, perfect bool) homogeneousTriangleScorer
+	newTriangleScorerForDepth(depth uint16) homogeneousDepthTriangleScorer
 	scoreTriangle(a, b, c portalData) float32
 }
 
 type homogeneousTopLevelScorer interface {
 	scoreTriangle(a, b, c portalData) float32
-	scoreTriangle2(a, b, c portalData, scorer homogeneousScorer) float32
 }
 
 type bestHomogeneous2Query struct {
@@ -114,14 +120,21 @@ func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, ca
 	q.depth--
 }
 
-// DeepestHomogeneous2 - Find deepest homogeneous field that can be made out of portals
 func DeepestHomogeneous2(portals []Portal, options ...HomogeneousOption) ([]Portal, uint16) {
-	if len(portals) < 3 {
-		panic("Too short portal list")
-	}
 	params := defaultHomogeneous2Params(len(portals))
 	for _, option := range options {
 		option.apply2(&params)
+	}
+	if params.numWorkers == 1 {
+		return DeepestHomogeneous2ST(portals, params)
+	}
+	return DeepestHomogeneous2MT(portals, params)
+}
+
+// DeepestHomogeneous2ST - Find deepest homogeneous field that can be made out of portals - single-threaded
+func DeepestHomogeneous2ST(portals []Portal, params homogeneous2Params) ([]Portal, uint16) {
+	if len(portals) < 3 {
+		panic("Too short portal list")
 	}
 
 	portalsData := portalsToPortalData(portals)
@@ -178,7 +191,7 @@ func DeepestHomogeneous2(portals []Portal, options ...HomogeneousOption) ([]Port
 							continue
 						}
 					}
-					score := params.topLevelScorer.scoreTriangle2(s0, s1, s2, params.scorer)
+					score := params.topLevelScorer.scoreTriangle(s0, s1, s2)
 					if depth > bestDepth || (depth == bestDepth && score > bestScore) {
 						bestP0, bestP1, bestP2 = s0, s1, s2
 						bestDepth = depth
