@@ -21,6 +21,19 @@ func (h HomogeneousMaxDepth) apply2(param *homogeneous2Params) {
 	param.maxDepth = int(h)
 }
 
+type HomogeneousSpreadAround int
+func (h HomogeneousSpreadAround) apply(param *homogeneousParams) {}
+func (h HomogeneousSpreadAround) apply2(param *homogeneous2Params) {
+	param.scorer = newThickTrianglesScorer(int(h))
+	param.topLevelScorer = param.scorer
+}
+type HomogeneousClampTogether int
+func (h HomogeneousClampTogether) apply(param *homogeneousParams) {}
+func (h HomogeneousClampTogether) apply2(param *homogeneous2Params) {
+	param.scorer = newClampPortalsScorer(int(h))
+	param.topLevelScorer = param.scorer
+}
+
 type HomogeneousLargestArea struct{}
 
 func (h HomogeneousLargestArea) apply(param *homogeneousParams) {
