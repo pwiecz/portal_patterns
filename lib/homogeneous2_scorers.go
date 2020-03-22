@@ -241,9 +241,6 @@ func (s *thickTrianglesTriangleScorerPerfect) scoreCandidate(p portalData) {
 			float32Min(
 				s.getHeight(t0, t1, t2),
 				s.getHeight(u0, u1, u2)))
-		if minHeight == 0 {
-			continue
-		}
 		if minHeight > *s.scorePtrs[level-2] {
 			*s.scorePtrs[level-2] = minHeight
 			s.candidates[level-2] = p.Index

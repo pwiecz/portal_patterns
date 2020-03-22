@@ -1,5 +1,9 @@
 package lib
 
+type homogeneousTopLevelScorer interface {
+	scoreTriangle(a, b, c portalData) float32
+}
+
 type arbitraryScorer struct{}
 type largestTriangleScorer struct{}
 type smallestTriangleScorer struct{}
