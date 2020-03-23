@@ -129,7 +129,7 @@ func (t *homogeneousTab) search() {
 	if t.innerPortals.CurrentIndex() == 1 {
 		options = append(options, lib.HomogeneousSpreadAround(len(portals)))
 //	} else if t.innerPortals.CurrentIndex() == 2 {
-//		options = append(options, lib.HomogeneousClampTogether(len(portals)))
+//		options = append(options, lib.HomogeneousClumpTogether(len(portals)))
 	}
 	if t.strategy.CurrentIndex() == 1 {
 		options = append(options, lib.HomogeneousLargestArea{})
