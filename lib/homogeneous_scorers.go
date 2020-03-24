@@ -1,16 +1,24 @@
 package lib
 
+import "math/rand"
+
 type homogeneousTopLevelScorer interface {
 	scoreTriangle(a, b, c portalData) float32
 }
 
 type arbitraryScorer struct{}
+type randomScorer struct {
+	rand *rand.Rand
+}
 type largestTriangleScorer struct{}
 type smallestTriangleScorer struct{}
 type mostEquilateralTriangleScorer struct{}
 
 func (s arbitraryScorer) scoreTriangle(a, b, c portalData) float32 {
 	return 0
+}
+func (s randomScorer) scoreTriangle(a, b, c portalData) float32 {
+	return s.rand.Float32()
 }
 
 func (s largestTriangleScorer) scoreTriangle(a, b, c portalData) float32 {
