@@ -173,7 +173,7 @@ func DeepestHomogeneous2ST(portals []Portal, params homogeneous2Params) ([]Porta
 
 	bestDepth := 1
 	var bestP0, bestP1, bestP2 portalData
-	bestScore := float32(-math.MaxFloat32)
+	var bestScore float32 = -math.MaxFloat32
 	for i, p0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
 			p1 := portalsData[j]

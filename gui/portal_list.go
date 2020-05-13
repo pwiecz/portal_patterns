@@ -68,11 +68,9 @@ func (l *PortalList) OnPortalRightClick(onPortalRightClick func(string, int, int
 	l.onPortalRightClick = onPortalRightClick
 }
 
-func (l *PortalList) SetPortals(portals map[string]lib.Portal) {
-	portalList := []lib.Portal{}
-	for _, portal := range portals {
-		portalList = append(portalList, portal)
-	}
+func (l *PortalList) SetPortals(portals []lib.Portal) {
+	// local copy not to modify caller's the slice
+	portalList := append(([]lib.Portal)(nil), portals...)
 	sort.Slice(portalList, func(i, j int) bool {
 		return portalList[i].Name < portalList[j].Name
 	})

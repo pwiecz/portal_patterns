@@ -1,5 +1,7 @@
 package lib
 
+import "math/rand"
+
 type HomogeneousOption interface {
 	apply(param *homogeneousParams)
 	apply2(param *homogeneous2Params)
@@ -19,6 +21,33 @@ func (h HomogeneousMaxDepth) apply(param *homogeneousParams) {
 }
 func (h HomogeneousMaxDepth) apply2(param *homogeneous2Params) {
 	param.maxDepth = int(h)
+}
+
+type HomogeneousSpreadAround int
+
+func (h HomogeneousSpreadAround) apply(param *homogeneousParams) {}
+func (h HomogeneousSpreadAround) apply2(param *homogeneous2Params) {
+	param.scorer = newThickTrianglesScorer(int(h))
+	param.topLevelScorer = param.scorer
+}
+
+type HomogeneousClumpTogether int
+
+func (h HomogeneousClumpTogether) apply(param *homogeneousParams) {}
+func (h HomogeneousClumpTogether) apply2(param *homogeneous2Params) {
+	param.scorer = newClumpPortalsScorer(int(h))
+	param.topLevelScorer = param.scorer
+}
+
+type HomogeneousRandom struct {
+	Rand *rand.Rand
+}
+
+func (h HomogeneousRandom) apply(param *homogeneousParams) {
+	param.topLevelScorer = randomScorer{h.Rand}
+}
+func (h HomogeneousRandom) apply2(param *homogeneous2Params) {
+	param.topLevelScorer = randomScorer{h.Rand}
 }
 
 type HomogeneousLargestArea struct{}

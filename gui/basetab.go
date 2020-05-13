@@ -30,7 +30,7 @@ type baseTab struct {
 	portalList      *PortalList
 	portalScrollBar *tk.ScrollBar
 	solutionMap     *SolutionMap
-	portals         map[string]lib.Portal
+	portals         []lib.Portal
 	selectedPortals map[string]bool
 	disabledPortals map[string]bool
 	pattern         pattern
@@ -87,7 +87,7 @@ func NewBaseTab(parent tk.Widget, conf *Configuration) *baseTab {
 		t.OnSelectionChanged(selectedPortals)
 	})
 
-	t.portals = make(map[string]lib.Portal)
+	t.portals = ([]lib.Portal)(nil)
 	t.selectedPortals = make(map[string]bool)
 	t.disabledPortals = make(map[string]bool)
 	return t
@@ -115,7 +115,7 @@ func (t *baseTab) onAdd() {
 }
 
 func (t *baseTab) onReset() {
-	t.portals = make(map[string]lib.Portal)
+	t.portals = ([]lib.Portal)(nil)
 	t.selectedPortals = make(map[string]bool)
 	t.disabledPortals = make(map[string]bool)
 	t.reset.SetState(tk.StateDisable)
@@ -137,12 +137,13 @@ func (t *baseTab) onProgress(val int, max int) {
 }
 
 func (t *baseTab) addPortals(portals []lib.Portal) {
-	newPortals := make(map[string]lib.Portal)
-	for guid, portal := range t.portals {
-		newPortals[guid] = portal
+	portalMap := make(map[string]lib.Portal)
+	for _, portal := range t.portals {
+		portalMap[portal.Guid] = portal
 	}
+	newPortals := ([]lib.Portal)(nil)
 	for _, portal := range portals {
-		if existing, ok := t.portals[portal.Guid]; ok {
+		if existing, ok := portalMap[portal.Guid]; ok {
 			if existing.LatLng.Lat != portal.LatLng.Lat ||
 				existing.LatLng.Lng != portal.LatLng.Lng {
 				if existing.Name == portal.Name {
@@ -154,12 +155,14 @@ func (t *baseTab) addPortals(portals []lib.Portal) {
 					portal.Name+" vs "+existing.Name+"\n"+portal.LatLng.String()+" vs "+existing.LatLng.String(), "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
 				return
 			}
+		} else {
+			portalMap[portal.Guid] = portal
+			newPortals = append(newPortals, portal)
 		}
-		newPortals[portal.Guid] = portal
 	}
 
-	for guid0, p0 := range newPortals {
-		for guid1, p1 := range newPortals {
+	for guid0, p0 := range portalMap {
+		for guid1, p1 := range portalMap {
 			if guid0 == guid1 {
 				continue
 			}
@@ -171,7 +174,7 @@ func (t *baseTab) addPortals(portals []lib.Portal) {
 		}
 
 	}
-	t.portals = newPortals
+	t.portals = append(t.portals, newPortals...)
 	if len(t.portals) > 0 {
 		t.reset.SetState(tk.StateNormal)
 	}
@@ -193,10 +196,10 @@ func (t *baseTab) addPortals(portals []lib.Portal) {
 		t.solutionMap.ShowNormal()
 		tk.Update()
 	}
-	t.solutionMap.SetPortals(newPortals)
-	t.portalList.SetPortals(newPortals)
-	for guid := range newPortals {
-		t.portalStateChanged(guid)
+	t.solutionMap.SetPortals(t.portals)
+	t.portalList.SetPortals(t.portals)
+	for _, portal := range t.portals {
+		t.portalStateChanged(portal.Guid)
 	}
 }
 
