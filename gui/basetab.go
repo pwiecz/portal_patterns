@@ -34,10 +34,12 @@ type baseTab struct {
 	selectedPortals map[string]bool
 	disabledPortals map[string]bool
 	pattern         pattern
+	name            string
 }
 
-func NewBaseTab(parent tk.Widget, conf *Configuration) *baseTab {
+func NewBaseTab(parent tk.Widget, name string, conf *Configuration) *baseTab {
 	t := &baseTab{}
+	t.name = name
 	t.configuration = conf
 	t.PackLayout = tk.NewVPackLayout(parent)
 	t.add = tk.NewButton(parent, "Add Portals")
@@ -57,7 +59,7 @@ func NewBaseTab(parent tk.Widget, conf *Configuration) *baseTab {
 	t.save = tk.NewButton(parent, "Save Solution")
 	t.save.OnCommand(func() {
 		filename, err := tk.GetSaveFile(parent, "Select file for solution", true, ".json",
-			[]tk.FileType{tk.FileType{Info: "JSON file", Ext: ".json"}}, conf.PortalsDirectory, "")
+			[]tk.FileType{{Info: "JSON file", Ext: ".json"}}, conf.PortalsDirectory, "")
 		if err != nil || filename == "" {
 			return
 		}
@@ -94,24 +96,26 @@ func NewBaseTab(parent tk.Widget, conf *Configuration) *baseTab {
 }
 
 func (t *baseTab) onAdd() {
-	filename, err := tk.GetOpenFile(t, "Choose portals file",
+	filenames, err := tk.GetOpenMultipleFile(t, "Choose portals file",
 		[]tk.FileType{
-			tk.FileType{Info: "JSON file", Ext: ".json"},
-			tk.FileType{Info: "CSV file", Ext: ".csv"},
+			{Info: "JSON file", Ext: ".json"},
+			{Info: "CSV file", Ext: ".csv"},
 		}, t.configuration.PortalsDirectory, "")
-	if err != nil || filename == "" {
+	if err != nil || len(filenames) == 0 {
 		return
 	}
-	portalsDir, _ := path.Split(filename)
+	portalsDir, _ := path.Split(filenames[0])
 	t.configuration.PortalsDirectory = portalsDir
 	SaveConfiguration(t.configuration)
-	portals, err := lib.ParseFile(filename)
-	if err != nil {
-		tk.MessageBox(t, "Could not read file", fmt.Sprintf("Error reading file:\n%v", err),
-			"", "", tk.MessageBoxIconError, tk.MessageBoxTypeOk)
-		return
+	for _, filename := range filenames {
+		portals, err := lib.ParseFile(filename)
+		if err != nil {
+			tk.MessageBox(t, "Could not read file", fmt.Sprintf("Error reading file:\n%v", err),
+				"", "", tk.MessageBoxIconError, tk.MessageBoxTypeOk)
+			return
+		}
+		t.addPortals(portals)
 	}
-	t.addPortals(portals)
 }
 
 func (t *baseTab) onReset() {
@@ -161,18 +165,13 @@ func (t *baseTab) addPortals(portals []lib.Portal) {
 		}
 	}
 
-	for guid0, p0 := range portalMap {
-		for guid1, p1 := range portalMap {
-			if guid0 == guid1 {
-				continue
-			}
-			if s2.PointFromLatLng(p0.LatLng).Distance(s2.PointFromLatLng(p1.LatLng)) >= 1. {
-				tk.MessageBox(t, "Too distant portals", "Distances between portals are too large", "E.g. "+p0.Name+" and "+p1.Name, "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
-
-				return
-			}
-		}
-
+	hull := s2.NewConvexHullQuery()
+	for _, p := range portalMap {
+		hull.AddPoint(s2.PointFromLatLng(p.LatLng))
+	}
+	if hull.CapBound().Radius() >= 1. {
+		tk.MessageBox(t, "Too distant portals", "Distances between portals are too large", "", "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
+		return
 	}
 	t.portals = append(t.portals, newPortals...)
 	if len(t.portals) > 0 {
@@ -182,7 +181,7 @@ func (t *baseTab) addPortals(portals []lib.Portal) {
 		t.find.SetState(tk.StateNormal)
 	}
 	if t.solutionMap == nil {
-		t.solutionMap = NewSolutionMap(t, "Herringbone")
+		t.solutionMap = NewSolutionMap(t.name)
 		t.solutionMap.OnClose(func() bool {
 			t.solutionMap = nil
 			return true

@@ -21,7 +21,7 @@ type homogeneousTab struct {
 
 func NewHomogeneousTab(parent tk.Widget, conf *Configuration) *homogeneousTab {
 	t := &homogeneousTab{}
-	t.baseTab = NewBaseTab(parent, conf)
+	t.baseTab = NewBaseTab(parent, "Homogeneous", conf)
 	t.pattern = t
 	addResetBox := tk.NewHPackLayout(parent)
 	addResetBox.AddWidget(t.add)
@@ -39,7 +39,7 @@ func NewHomogeneousTab(parent tk.Widget, conf *Configuration) *homogeneousTab {
 	innerPortalsBox.AddWidget(innerPortalsLabel)
 	t.innerPortals = tk.NewComboBox(parent, tk.ComboBoxAttrState(tk.StateReadOnly))
 	// The keep together options doesn't seem to work that well, so disable it for now.
-	t.innerPortals.SetValues([]string{"Arbitrary", "Spread around (slow)"/*, "Try keep together (slow)"*/})
+	t.innerPortals.SetValues([]string{"Arbitrary", "Spread around (slow)" /*, "Try keep together (slow)"*/})
 	t.innerPortals.SetCurrentIndex(0)
 	t.innerPortals.OnSelected(func() { t.innerPortals.Entry().ClearSelection() })
 	innerPortalsBox.AddWidget(t.innerPortals)
@@ -130,8 +130,8 @@ func (t *homogeneousTab) search() {
 	options = append(options, lib.HomogeneousPerfect(t.perfect.IsChecked()))
 	if t.innerPortals.CurrentIndex() == 1 {
 		options = append(options, lib.HomogeneousSpreadAround(len(portals)))
-//	} else if t.innerPortals.CurrentIndex() == 2 {
-//		options = append(options, lib.HomogeneousClumpTogether(len(portals)))
+		//	} else if t.innerPortals.CurrentIndex() == 2 {
+		//		options = append(options, lib.HomogeneousClumpTogether(len(portals)))
 	}
 	if t.strategy.CurrentIndex() == 1 {
 		options = append(options, lib.HomogeneousLargestArea{})
