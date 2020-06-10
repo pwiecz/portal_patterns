@@ -6,7 +6,7 @@ import "github.com/golang/geo/r3"
 import "github.com/golang/geo/s1"
 import "github.com/golang/geo/s2"
 
-const radiansToMeters = 2e+7 / math.Pi
+const radiansToMeters = 6371010.0 // 2e+7 / math.Pi
 const unitAreaToSquareMeters = 5.1e+14
 
 // ccwQuery helps answer question whether three points a, b, p are counterclockwise
