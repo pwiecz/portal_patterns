@@ -67,6 +67,7 @@ func main() {
 		doubleHerringboneCmd.Usage()
 		flipFieldCmd.Usage(fileBase)
 		homogeneousCmd.Usage(fileBase)
+		droneFlightCmd.Usage()
 	}
 	flag.Parse()
 	if len(flag.Args()) <= 1 {
