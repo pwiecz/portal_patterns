@@ -8,12 +8,12 @@ import "strings"
 import "github.com/golang/geo/s2"
 import "github.com/pwiecz/portal_patterns/lib"
 
-type portalsValue struct {
-	LatLngStrings []string
-	Portals       []s2.LatLng
+type portalValue struct {
+	LatLngString string
+	LatLng       s2.LatLng
 }
 
-func (p *portalsValue) Set(latLngStr string) error {
+func (p *portalValue) Set(latLngStr string) error {
 	parts := strings.Split(latLngStr, ",")
 	if len(parts) != 2 {
 		return fmt.Errorf("Cannot parse \"%s\" as lat,lng", latLngStr)
@@ -26,31 +26,58 @@ func (p *portalsValue) Set(latLngStr string) error {
 	if err != nil {
 		return err
 	}
-	p.Portals = append(p.Portals, s2.LatLngFromDegrees(lat, lng))
-	p.LatLngStrings = append(p.LatLngStrings, latLngStr)
+	p.LatLng = s2.LatLngFromDegrees(lat, lng)
+	p.LatLngString = latLngStr
+	return nil
+}
+func (p portalValue) String() string {
+	return p.LatLngString
+}
+
+func portalToIndex(arg portalValue, portals []lib.Portal) int {
+	if arg.LatLngString == "" {
+		return -1
+	}
+	result := -1
+	found := false
+	for j, portal := range portals {
+		if s2.PointFromLatLng(arg.LatLng).ApproxEqual(s2.PointFromLatLng(portal.LatLng)) {
+			if found {
+				log.Fatalf("found more than one portal matching the specified corner portal: %s", arg.LatLngString)
+			}
+			result = j
+			found = true
+		}
+	}
+	if !found {
+		log.Fatalf("cound not find portal %s on the provided list of portals", arg.LatLngString)
+	}
+	return result
+}
+
+type portalsValue []portalValue
+
+func (p *portalsValue) Set(latLngStr string) error {
+	var portal portalValue
+	if err := portal.Set(latLngStr); err != nil {
+		return err
+	}
+	*p = append(*p, portal)
 	return nil
 }
 
 func (p portalsValue) String() string {
-	return strings.Join(p.LatLngStrings, ";")
+	var portalStrings []string
+	for _, portal := range p {
+		portalStrings = append(portalStrings, portal.String())
+	}
+	return strings.Join(portalStrings, ";")
 }
 
 func portalsToIndices(arg portalsValue, portals []lib.Portal) []int {
 	var indices []int
-	for i, latLng := range arg.Portals {
-		found := false
-		for j, portal := range portals {
-			if s2.PointFromLatLng(latLng).ApproxEqual(s2.PointFromLatLng(portal.LatLng)) {
-				if found {
-					log.Fatalf("found more than one portal matching the specified corner portal: %s", arg.LatLngStrings[i])
-				}
-				indices = append(indices, j)
-				found = true
-			}
-		}
-		if !found {
-			log.Fatalf("cound not find portal %s on the provided list of portals", arg.LatLngStrings[i])
-		}
+	for _, portal := range arg {
+		indices = append(indices, portalToIndex(portal, portals))
 	}
 	return indices
 

@@ -47,10 +47,10 @@ type SolutionMap struct {
 	onPortalRightClick func(string, int, int)
 }
 
-func NewSolutionMap(parent tk.Widget, title string) *SolutionMap {
+func NewSolutionMap(name string) *SolutionMap {
 	s := &SolutionMap{}
 	s.Window = tk.NewWindow()
-	s.Window.SetTitle(title + " - © OpenStreetMap")
+	s.Window.SetTitle(name + " - © OpenStreetMap")
 	s.layout = tk.NewVPackLayout(s.Window)
 	s.canvas = tk.NewCanvas(s.Window, tk.CanvasAttrBackground("#C8C8C8"))
 	s.layout.AddWidgetEx(s.canvas, tk.FillBoth, true, tk.AnchorNorth)

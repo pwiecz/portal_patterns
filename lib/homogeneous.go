@@ -5,22 +5,22 @@ import "strings"
 
 type bestHomogeneousQuery struct {
 	// all the portals
-	portals            []portalData
+	portals []portalData
 	// index of triple of portals to a solution
 	// solution for every triple is store six times - for each of the permutations of portals
-	index              []bestSolution
+	index []bestSolution
 	// count of portals (used to compute a solution index from indices of three portals)
-	numPortals         uint
+	numPortals uint
 	// callback to be called whenever solution for new triple of portals is found
 	onFilledIndexEntry func()
 	// preallocated storage for lists of portals within triangles at consecutive recursion depths
-	portalsInTriangle  [][]portalData
+	portalsInTriangle [][]portalData
 	// current recursion depth
-	depth              uint16
+	depth uint16
 	// maxDepth of solution to be found
-	maxDepth           uint16
+	maxDepth uint16
 	// accept only candidates that use all the portals within the top level triangle
-	perfect            bool
+	perfect bool
 }
 
 func newBestHomogeneousQuery(portals []portalData, maxDepth int, perfect bool, onFilledIndexEntry func()) *bestHomogeneousQuery {
@@ -222,7 +222,7 @@ func AppendHomogeneousPolylines(p0, p1, p2 Portal, maxDepth uint16, result [][]P
 }
 
 func HomogeneousPolylines(depth uint16, result []Portal) [][]Portal {
-	polylines := [][]Portal{[]Portal{result[0], result[1], result[2], result[0]}}
+	polylines := [][]Portal{{result[0], result[1], result[2], result[0]}}
 	polylines, _ = AppendHomogeneousPolylines(result[0], result[1], result[2], uint16(depth), polylines, result[3:])
 	return polylines
 }

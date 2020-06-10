@@ -151,7 +151,7 @@ func DeepestHomogeneous2MT(portals []Portal, params homogeneous2Params) ([]Porta
 			go bestHomogeneous2Worker(q, params.scorer, requestChannel, responseChannel, &wg)
 		}
 		go func() {
-			for i, _ := range portalsData {
+			for i := range portalsData {
 				requestChannel <- i
 			}
 			close(requestChannel)
@@ -160,7 +160,7 @@ func DeepestHomogeneous2MT(portals []Portal, params homogeneous2Params) ([]Porta
 			wg.Wait()
 			close(responseChannel)
 		}()
-		for _ = range responseChannel {
+		for range responseChannel {
 			indexEntriesFilled++
 			indexEntriesFilledModN++
 			if indexEntriesFilledModN == everyNth {

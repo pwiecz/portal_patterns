@@ -48,6 +48,15 @@ func main() {
 	}
 	flipFieldCmd := NewFlipFieldCmd()
 	homogeneousCmd := NewHomogeneousCmd()
+	droneFlightCmd := flag.NewFlagSet("drone_flight", flag.ExitOnError)
+	droneFlightStartPortalValue := portalValue{}
+	droneFlightEndPortalValue := portalValue{}
+	droneFlightCmd.Var(&droneFlightStartPortalValue, "start_portal", "fix the start portal of the drone flight path")
+	droneFlightCmd.Var(&droneFlightEndPortalValue, "end_portal", "fix the end portal of the drone flight path")
+	droneFlightCmd.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "%s drone_flight <portals_file>\n", fileBase)
+		droneFlightCmd.PrintDefaults()
+	}
 
 	defaultUsage := flag.Usage
 	flag.Usage = func() {
@@ -58,6 +67,7 @@ func main() {
 		doubleHerringboneCmd.Usage()
 		flipFieldCmd.Usage(fileBase)
 		homogeneousCmd.Usage(fileBase)
+		droneFlightCmd.Usage()
 	}
 	flag.Parse()
 	if len(flag.Args()) <= 1 {
@@ -103,8 +113,8 @@ func main() {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
 		fmt.Printf("Read %d portals\n", len(portals))
-		if len(cobwebCornerPortalsValue.Portals) > 3 {
-			log.Fatalf("cobweb command accepts at most three corner portals - %d specified", len(cobwebCornerPortalsValue.Portals))
+		if len(cobwebCornerPortalsValue) > 3 {
+			log.Fatalf("cobweb command accepts at most three corner portals - %d specified", len(cobwebCornerPortalsValue))
 		}
 		cobwebCornerPortalIndices := portalsToIndices(cobwebCornerPortalsValue, portals)
 
@@ -125,8 +135,8 @@ func main() {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
 		fmt.Printf("Read %d portals\n", len(portals))
-		if len(herringboneBasePortalsValue.Portals) > 2 {
-			log.Fatalf("herringbone command accepts at most two base portals - %d specified", len(herringboneBasePortalsValue.Portals))
+		if len(herringboneBasePortalsValue) > 2 {
+			log.Fatalf("herringbone command accepts at most two base portals - %d specified", len(herringboneBasePortalsValue))
 		}
 		herringboneBasePortalIndices := portalsToIndices(herringboneBasePortalsValue, portals)
 		numHerringboneWorkers := runtime.GOMAXPROCS(0)
@@ -150,8 +160,8 @@ func main() {
 			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 		}
 		fmt.Printf("Read %d portals\n", len(portals))
-		if len(doubleHerringboneBasePortalsValue.Portals) > 2 {
-			log.Fatalf("double_herringbone command accepts at most two base portals - %d specified", len(doubleHerringboneBasePortalsValue.Portals))
+		if len(doubleHerringboneBasePortalsValue) > 2 {
+			log.Fatalf("double_herringbone command accepts at most two base portals - %d specified", len(doubleHerringboneBasePortalsValue))
 		}
 		doubleHerringboneBasePortalIndices := portalsToIndices(doubleHerringboneBasePortalsValue, portals)
 		numHerringboneWorkers := runtime.GOMAXPROCS(0)
@@ -223,6 +233,26 @@ func main() {
 		fallthrough
 	case "homogenous":
 		homogeneousCmd.Run(flag.Args()[1:], *numWorkers, outputWriter, progressFunc)
+	case "drone_flight":
+		droneFlightCmd.Parse(flag.Args()[1:])
+		fileArgs := droneFlightCmd.Args()
+		if len(fileArgs) != 1 {
+			log.Fatalln("drone_flight command requires exactly one file argument")
+		}
+		portals, err := lib.ParseFile(fileArgs[0])
+		if err != nil {
+			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
+		}
+		fmt.Printf("Read %d portals\n", len(portals))
+		startPortalIndex := portalToIndex(droneFlightStartPortalValue, portals)
+		endPortalIndex := portalToIndex(droneFlightEndPortalValue, portals)
+		result, distance := lib.LongestDroneFlight(portals, startPortalIndex, endPortalIndex, progressFunc)
+		fmt.Fprintln(outputWriter, "")
+		fmt.Fprintf(outputWriter, "Max flight distance: %fm\n", distance)
+		for i, portal := range result {
+			fmt.Fprintf(outputWriter, "%d: %s\n", i, portal.Name)
+		}
+		fmt.Fprintf(outputWriter, "\n[%s]\n", lib.PolylineFromPortalList(result))
 	default:
 		log.Fatalf("Unknown command: \"%s\"\n", flag.Args()[0])
 	}

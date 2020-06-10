@@ -34,9 +34,9 @@ type herringboneRequest struct {
 func (q *bestHerringboneMtQuery) findBestHerringbone(b0, b1 portalData, nodes []node, weights []float32, result []portalIndex) []portalIndex {
 	hq := bestHerringboneQuery{
 		portals: q.portals,
-		nodes: nodes,
+		nodes:   nodes,
 		weights: weights,
-		norms: q.norms,
+		norms:   q.norms,
 	}
 	return hq.findBestHerringbone(b0, b1, result)
 }

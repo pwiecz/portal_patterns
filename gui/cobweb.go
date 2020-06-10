@@ -13,7 +13,7 @@ type cobwebTab struct {
 
 func NewCobwebTab(parent *Window, conf *Configuration) *cobwebTab {
 	t := &cobwebTab{}
-	t.baseTab = NewBaseTab(parent, conf)
+	t.baseTab = NewBaseTab(parent, "Cobweb", conf)
 	t.pattern = t
 	addResetBox := tk.NewHPackLayout(parent)
 	addResetBox.AddWidget(t.add)
@@ -79,6 +79,7 @@ func (t *cobwebTab) search() {
 	t.reset.SetState(tk.StateDisable)
 	t.find.SetState(tk.StateDisable)
 	t.save.SetState(tk.StateDisable)
+	t.copy.SetState(tk.StateDisable)
 	tk.Update()
 	portals := []lib.Portal{}
 	corner := []int{}
@@ -100,6 +101,7 @@ func (t *cobwebTab) search() {
 	t.reset.SetState(tk.StateNormal)
 	t.find.SetState(tk.StateNormal)
 	t.save.SetState(tk.StateNormal)
+	t.copy.SetState(tk.StateNormal)
 	tk.Update()
 }
 

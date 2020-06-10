@@ -21,7 +21,6 @@ type homogeneousScorer interface {
 	scoreTriangle(a, b, c portalData) float32
 }
 
-
 type bestHomogeneous2Query struct {
 	// all the portals
 	portals []portalData
@@ -125,7 +124,7 @@ func DeepestHomogeneous2(portals []Portal, options ...HomogeneousOption) ([]Port
 	// Disable multi-threaded version for now. It's only slightly faster in the default
 	// settings and slower when some anchors are selected.
 	//if params.numWorkers == 1 {
-		return DeepestHomogeneous2ST(portals, params)
+	return DeepestHomogeneous2ST(portals, params)
 	//}
 	//return DeepestHomogeneous2MT(portals, params)
 }

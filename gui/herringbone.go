@@ -15,7 +15,7 @@ type herringboneTab struct {
 
 func NewHerringboneTab(parent tk.Widget, conf *Configuration) *herringboneTab {
 	t := &herringboneTab{}
-	t.baseTab = NewBaseTab(parent, conf)
+	t.baseTab = NewBaseTab(parent, "Herringbone", conf)
 	t.pattern = t
 	addResetBox := tk.NewHPackLayout(parent)
 	addResetBox.AddWidget(t.add)
