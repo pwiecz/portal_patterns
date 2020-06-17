@@ -86,10 +86,10 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 				if q.nodes[j].length >= bestLength {
 					bestLength = q.nodes[j].length + 1
 					bestNext = portalIndex(j)
-					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * radiansToMeters)
+					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * RadiansToMeters)
 					bestWeight = q.weights[q.nodes[j].index] + scaledDistance
 				} else if q.nodes[j].length+1 == bestLength {
-					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * radiansToMeters)
+					scaledDistance := float32(distance(q.portals[node.index], q.portals[q.nodes[j].index]) * RadiansToMeters)
 					if q.weights[node.index]+scaledDistance < bestWeight {
 						bestLength = q.nodes[j].length + 1
 						bestNext = portalIndex(j)
@@ -105,7 +105,7 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 		} else {
 			q.weights[node.index] = float32(float64Min(
 				distance(q.portals[node.index], b0),
-				distance(q.portals[node.index], b1)) * radiansToMeters)
+				distance(q.portals[node.index], b1)) * RadiansToMeters)
 		}
 	}
 

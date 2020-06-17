@@ -97,7 +97,7 @@ func (q *longestDroneFlightQuery) longestFlightFrom(start, end portalIndex) ([]p
 	return bestPath, bestDistance
 }
 
-func LongestDroneFlight(portals []Portal, startIndex, endIndex int, progressFunc func(int, int)) ([]Portal, float64) {
+func LongestDroneFlight(portals []Portal, startIndex, endIndex int, progressFunc func(int, int)) []Portal {
 	if len(portals) < 2 {
 		panic("Too short portal list")
 	}
@@ -115,7 +115,7 @@ func LongestDroneFlight(portals []Portal, startIndex, endIndex int, progressFunc
 	}
 	neighbours := make([][]portalIndex, len(portals))
 	for _, p := range portalsData {
-		circle500m := s2.CapFromCenterAngle(p.LatLng, s1.Angle(500/radiansToMeters))
+		circle500m := s2.CapFromCenterAngle(p.LatLng, s1.Angle(500/RadiansToMeters))
 		cellsInCircle := s2.FloodFillRegionCovering(circle500m, portalCells[p.Index])
 		hasTheCell := false
 		for _, cellId := range cellsInCircle {
@@ -178,5 +178,5 @@ func LongestDroneFlight(portals []Portal, startIndex, endIndex int, progressFunc
 	for i := len(bestPath) - 1; i >= 0; i-- {
 		bestPortalPath = append(bestPortalPath, portals[bestPath[i]])
 	}
-	return bestPortalPath, float64(bestDistance) * radiansToMeters
+	return bestPortalPath
 }

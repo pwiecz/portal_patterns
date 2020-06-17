@@ -104,11 +104,11 @@ func (t *droneFlightTab) search() {
 			}
 		}
 	}
-	var distance float64
-	t.solution, distance = lib.LongestDroneFlight(portals, startPortal, endPortal, func(val int, max int) { t.onProgress(val, max) })
+	t.solution = lib.LongestDroneFlight(portals, startPortal, endPortal, func(val int, max int) { t.onProgress(val, max) })
 	if t.solutionMap != nil {
 		t.solutionMap.SetSolution([][]lib.Portal{t.solution})
 	}
+	distance := t.solution[0].LatLng.Distance(t.solution[len(t.solution)-1].LatLng) * lib.RadiansToMeters
 	solutionText := fmt.Sprintf("Flight distance: %f", distance)
 	t.solutionLabel.SetText(solutionText)
 	t.add.SetState(tk.StateNormal)
