@@ -246,7 +246,8 @@ func main() {
 		fmt.Printf("Read %d portals\n", len(portals))
 		startPortalIndex := portalToIndex(droneFlightStartPortalValue, portals)
 		endPortalIndex := portalToIndex(droneFlightEndPortalValue, portals)
-		result, distance := lib.LongestDroneFlight(portals, startPortalIndex, endPortalIndex, progressFunc)
+		result := lib.LongestDroneFlight(portals, startPortalIndex, endPortalIndex, progressFunc)
+		distance := result[0].LatLng.Distance(result[len(result)-1].LatLng) * lib.RadiansToMeters
 		fmt.Fprintln(outputWriter, "")
 		fmt.Fprintf(outputWriter, "Max flight distance: %fm\n", distance)
 		for i, portal := range result {

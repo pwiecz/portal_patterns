@@ -169,7 +169,7 @@ func (t *baseTab) addPortals(portals []lib.Portal) {
 	for _, p := range portalMap {
 		hull.AddPoint(s2.PointFromLatLng(p.LatLng))
 	}
-	if hull.CapBound().Radius() >= 1. {
+	if hull.CapBound().Radius().Radians() >= 1. {
 		tk.MessageBox(t, "Too distant portals", "Distances between portals are too large", "", "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
 		return
 	}

@@ -262,7 +262,7 @@ func merge(p, a, b portalIndex) (portalIndex, portalIndex, portalIndex) {
 
 func (s *thickTrianglesDepthTriangleScorer) scoreCandidate(p portalData) {
 	if s.depth == 2 {
-		// We multiply by radiansToMeters not to obtain any meaningful distance measure
+		// We multiply by RadiansToMeters not to obtain any meaningful distance measure
 		// (as ChordAngle returns a squared distance anyway), but just to scale the number up
 		// to make it fit in float32 precision range.
 		lvl2Height := float32(
@@ -270,7 +270,7 @@ func (s *thickTrianglesDepthTriangleScorer) scoreCandidate(p portalData) {
 				float64(s.abDistance.ChordAngle(p.LatLng)),
 				float64Min(
 					float64(s.acDistance.ChordAngle(p.LatLng)),
-					float64(s.bcDistance.ChordAngle(p.LatLng)))) * radiansToMeters)
+					float64(s.bcDistance.ChordAngle(p.LatLng)))) * RadiansToMeters)
 		if lvl2Height > *s.scorePtr {
 			*s.scorePtr = lvl2Height
 			s.candidate = p.Index
@@ -295,7 +295,7 @@ func (s *thickTrianglesDepthTriangleScorer) scoreCandidate(p portalData) {
 }
 
 func (s *clumpPortalsDepthTriangleScorer) scoreCandidate(p portalData) {
-	// We multiply by radiansToMeters not to obtain any meaningful distance measure
+	// We multiply by RadiansToMeters not to obtain any meaningful distance measure
 	// (as ChordAngle returns a squared distance anyway), but just to scale the number up
 	// to make it fit in float32 precision range.
 	minDistance := -float32(
@@ -303,7 +303,7 @@ func (s *clumpPortalsDepthTriangleScorer) scoreCandidate(p portalData) {
 			distance(s.a, p),
 			float64Min(
 				distance(s.b, p),
-				distance(s.c, p))) * radiansToMeters)
+				distance(s.c, p))) * RadiansToMeters)
 	if s.depth == 2 {
 		if minDistance > *s.scorePtr {
 			*s.scorePtr = minDistance
@@ -337,7 +337,7 @@ func (s *clumpPortalsDepthTriangleScorer) scoreCandidate(p portalData) {
 }
 
 func (s *thickTrianglesTriangleScorer) scoreCandidate(p portalData) {
-	// We multiply by radiansToMeters not to obtain any meaningful distance measure
+	// We multiply by RadiansToMeters not to obtain any meaningful distance measure
 	// (as ChordAngle returns a squared distance anyway), but just to scale the number up
 	// to make it fit in float32 precision range.
 	lvl2Height := float32(
@@ -345,7 +345,7 @@ func (s *thickTrianglesTriangleScorer) scoreCandidate(p portalData) {
 			float64(s.abDistance.ChordAngle(p.LatLng)),
 			float64Min(
 				float64(s.acDistance.ChordAngle(p.LatLng)),
-				float64(s.bcDistance.ChordAngle(p.LatLng)))) * radiansToMeters)
+				float64(s.bcDistance.ChordAngle(p.LatLng)))) * RadiansToMeters)
 	if lvl2Height > *s.scorePtrs[0] {
 		*s.scorePtrs[0] = lvl2Height
 		s.candidates[0] = p.Index
@@ -372,7 +372,7 @@ func (s *thickTrianglesTriangleScorer) scoreCandidate(p portalData) {
 	}
 }
 func (s *clumpPortalsTriangleScorer) scoreCandidate(p portalData) {
-	// We multiply by radiansToMeters not to obtain any meaningful distance measure
+	// We multiply by RadiansToMeters not to obtain any meaningful distance measure
 	// (as ChordAngle returns a squared distance anyway), but just to scale the number up
 	// to make it fit in float32 precision range.
 	minDistance := -float32(
@@ -380,7 +380,7 @@ func (s *clumpPortalsTriangleScorer) scoreCandidate(p portalData) {
 			distance(s.a, p),
 			float64Min(
 				distance(s.b, p),
-				distance(s.c, p))) * radiansToMeters)
+				distance(s.c, p))) * RadiansToMeters)
 	if minDistance > *s.scorePtrs[0] {
 		*s.scorePtrs[0] = minDistance
 		s.candidates[0] = p.Index
@@ -413,7 +413,7 @@ func (s *clumpPortalsTriangleScorer) scoreCandidate(p portalData) {
 }
 func (s *thickTrianglesTriangleScorerPerfect) scoreCandidate(p portalData) {
 	if s.validLevel2Candidate {
-		// We multiply by radiansToMeters not to obtain any meaningful distance measure
+		// We multiply by RadiansToMeters not to obtain any meaningful distance measure
 		// (as ChordAngle returns a squared distance anyway), but just to scale the number up
 		// to make it fit in float32 precision range.
 		lvl2Height := float32(
@@ -421,7 +421,7 @@ func (s *thickTrianglesTriangleScorerPerfect) scoreCandidate(p portalData) {
 				float64(s.abDistance.ChordAngle(p.LatLng)),
 				float64Min(
 					float64(s.acDistance.ChordAngle(p.LatLng)),
-					float64(s.bcDistance.ChordAngle(p.LatLng)))) * radiansToMeters)
+					float64(s.bcDistance.ChordAngle(p.LatLng)))) * RadiansToMeters)
 		if lvl2Height > *s.scorePtrs[0] {
 			*s.scorePtrs[0] = lvl2Height
 			s.candidates[0] = p.Index
@@ -446,7 +446,7 @@ func (s *thickTrianglesTriangleScorerPerfect) scoreCandidate(p portalData) {
 	}
 }
 func (s *clumpPortalsTriangleScorerPerfect) scoreCandidate(p portalData) {
-	// We multiply by radiansToMeters not to obtain any meaningful distance measure
+	// We multiply by RadiansToMeters not to obtain any meaningful distance measure
 	// (as ChordAngle returns a squared distance anyway), but just to scale the number up
 	// to make it fit in float32 precision range.
 	minDistance := -float32(
@@ -454,7 +454,7 @@ func (s *clumpPortalsTriangleScorerPerfect) scoreCandidate(p portalData) {
 			distance(s.a, p),
 			float64Min(
 				distance(s.b, p),
-				distance(s.c, p))) * radiansToMeters)
+				distance(s.c, p))) * RadiansToMeters)
 	if s.validLevel2Candidate {
 		if minDistance > *s.scorePtrs[0] {
 			*s.scorePtrs[0] = minDistance
