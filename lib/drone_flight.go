@@ -93,7 +93,7 @@ func LongestDroneFlight(portals []Portal, startIndex, endIndex int, progressFunc
 		reverseRoute = true
 		startIndex, endIndex = endIndex, startIndex
 	}
-	
+
 	neighbours := make([][]portalIndex, len(portals))
 	for _, p := range portalsData {
 		circle500m := s2.CapFromCenterAngle(p.LatLng, s1.Angle(500/RadiansToMeters))
@@ -108,7 +108,8 @@ func LongestDroneFlight(portals []Portal, startIndex, endIndex int, progressFunc
 					if !reverseRoute {
 						neighbours[p.Index] = append(neighbours[p.Index], np.Index)
 					} else {
-						neighbours[np.Index] = append(neighbours[np.Index], p.Index)				}
+						neighbours[np.Index] = append(neighbours[np.Index], p.Index)
+					}
 				}
 			}
 		}

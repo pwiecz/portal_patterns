@@ -15,7 +15,7 @@ func TestReverse(t *testing.T) {
 	if len(s) != 0 {
 		t.Errorf("Reversing empty slice should keep it empty")
 	}
-	
+
 	s = []portalIndex{1}
 	reverse(s)
 	if !reflect.DeepEqual(s, []portalIndex{1}) {
