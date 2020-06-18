@@ -4,35 +4,6 @@ import "fmt"
 import "github.com/golang/geo/s1"
 import "github.com/golang/geo/s2"
 
-type fifo struct {
-	first, second []portalIndex
-}
-
-func (f *fifo) Reset() {
-	f.first = f.first[:0]
-	f.second = f.second[:0]
-}
-func (f *fifo) Empty() bool {
-	return len(f.first)+len(f.second) == 0
-}
-func (f *fifo) Enqueue(p portalIndex) {
-	f.second = append(f.second, p)
-}
-func (f *fifo) Dequeue() portalIndex {
-	if f.Empty() {
-		panic("Empty queue")
-	}
-	if len(f.first) == 0 {
-		for i := len(f.second) - 1; i >= 0; i-- {
-			f.first = append(f.first, f.second[i])
-		}
-		f.second = f.second[:0]
-	}
-	r := f.first[len(f.first)-1]
-	f.first = f.first[:len(f.first)-1]
-	return r
-}
-
 type longestDroneFlightQuery struct {
 	neighbours     [][]portalIndex
 	portalDistance func(portalIndex, portalIndex) s1.Angle
@@ -113,6 +84,16 @@ func LongestDroneFlight(portals []Portal, startIndex, endIndex int, progressFunc
 		cellPortals[cellId] = append(cellPortals[cellId], p)
 		portalCells[p.Index] = cellId
 	}
+
+	// If we have specified endIndex and not startIndex it's much faster to find best
+	// route from the endIndex using reversed neighbours list, and later reverse the
+	// result route.
+	reverseRoute := false
+	if startIndex < 0 && endIndex >= 0 {
+		reverseRoute = true
+		startIndex, endIndex = endIndex, startIndex
+	}
+	
 	neighbours := make([][]portalIndex, len(portals))
 	for _, p := range portalsData {
 		circle500m := s2.CapFromCenterAngle(p.LatLng, s1.Angle(500/RadiansToMeters))
@@ -124,7 +105,10 @@ func LongestDroneFlight(portals []Portal, startIndex, endIndex int, progressFunc
 			}
 			for _, np := range cellPortals[cellId] {
 				if np.Index != p.Index {
-					neighbours[p.Index] = append(neighbours[p.Index], np.Index)
+					if !reverseRoute {
+						neighbours[p.Index] = append(neighbours[p.Index], np.Index)
+					} else {
+						neighbours[np.Index] = append(neighbours[np.Index], p.Index)				}
 				}
 			}
 		}
@@ -173,7 +157,9 @@ func LongestDroneFlight(portals []Portal, startIndex, endIndex int, progressFunc
 		}
 		onFilledIndexEntry()
 	}
-
+	if reverseRoute {
+		reverse(bestPath)
+	}
 	bestPortalPath := []Portal{}
 	for i := len(bestPath) - 1; i >= 0; i-- {
 		bestPortalPath = append(bestPortalPath, portals[bestPath[i]])
