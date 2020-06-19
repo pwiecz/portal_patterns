@@ -1,7 +1,5 @@
 package lib
 
-import "math"
-
 type homogeneousTriangleScorer interface {
 	// resets scorer to compute scores for this triangle
 	reset(a, b, c portalData, numCandidates int)
@@ -71,6 +69,12 @@ func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, ma
 func (q *bestHomogeneous2Query) getIndex(i, j, k portalIndex) portalIndex {
 	return q.index[(uint(i)*q.numPortals+uint(j))*q.numPortals+uint(k)]
 }
+func (q *bestHomogeneous2Query) bestMidpointAtDepth(i, j, k portalIndex, depth int) portalIndex {
+	s0, s1, s2 := sortedIndices(i, j, k)
+	s0, s1, s2 = indexOrdering(s0, s1, s2, depth)
+	return q.getIndex(s0, s1, s2)
+}
+
 func (q *bestHomogeneous2Query) setIndex(i, j, k portalIndex, index portalIndex) {
 	q.index[(uint(i)*q.numPortals+uint(j))*q.numPortals+uint(k)] = index
 }
@@ -113,103 +117,4 @@ func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, ca
 	q.setIndex(s2, s0, s1, bestMidpoints[4])
 	q.setIndex(s2, s1, s0, bestMidpoints[5])
 	q.depth--
-}
-
-// DeepestHomogeneous2 - Find deepest homogeneous field that can be made out of portals - single-threaded
-func DeepestHomogeneous2(portals []Portal, options ...HomogeneousOption) ([]Portal, uint16) {
-	if len(portals) < 3 {
-		panic("Too short portal list")
-	}
-	params := defaultHomogeneous2Params(len(portals))
-	for _, option := range options {
-		option.apply2(&params)
-	}
-	portalsData := portalsToPortalData(portals)
-
-	numIndexEntries := len(portals) * (len(portals) - 1) * (len(portals) - 2) / 6
-	everyNth := numIndexEntries / 1000
-	if everyNth < 50 {
-		everyNth = 2
-	}
-	indexEntriesFilled := 0
-	indexEntriesFilledModN := 0
-	onFilledIndexEntry := func() {
-		indexEntriesFilled++
-		indexEntriesFilledModN++
-		if indexEntriesFilledModN == everyNth {
-			indexEntriesFilledModN = 0
-			params.progressFunc(indexEntriesFilled, numIndexEntries)
-		}
-	}
-
-	params.progressFunc(0, numIndexEntries)
-	q := newBestHomogeneous2Query(portalsData, params.scorer, params.maxDepth, params.perfect, onFilledIndexEntry)
-	for i, p0 := range portalsData {
-		for j := i + 1; j < len(portalsData); j++ {
-			p1 := portalsData[j]
-			for k := j + 1; k < len(portalsData); k++ {
-				p2 := portalsData[k]
-				if !hasAllIndicesInTheTriple(params.fixedCornerIndices, i, j, k) {
-					continue
-				}
-				q.findBestHomogeneous(p0, p1, p2)
-			}
-		}
-	}
-	q.portalsInTriangle = nil
-	params.progressFunc(numIndexEntries, numIndexEntries)
-
-	bestDepth := 1
-	var bestP0, bestP1, bestP2 portalData
-	var bestScore float32 = -math.MaxFloat32
-	for i, p0 := range portalsData {
-		for j := i + 1; j < len(portalsData); j++ {
-			p1 := portalsData[j]
-			for k := j + 1; k < len(portalsData); k++ {
-				if !hasAllIndicesInTheTriple(params.fixedCornerIndices, i, j, k) {
-					continue
-				}
-				p2 := portalsData[k]
-				for depth := q.maxDepth; depth >= bestDepth; depth-- {
-					s0, s1, s2 := p0, p1, p2
-					if depth >= 2 {
-						s0, s1, s2 = ordering(p0, p1, p2, depth)
-						if q.getIndex(s0.Index, s1.Index, s2.Index) >= invalidPortalIndex-1 {
-							continue
-						}
-					}
-					score := params.topLevelScorer.scoreTriangle(s0, s1, s2)
-					if depth > bestDepth || (depth == bestDepth && score > bestScore) {
-						bestP0, bestP1, bestP2 = s0, s1, s2
-						bestDepth = depth
-						bestScore = score
-					}
-				}
-			}
-		}
-	}
-
-	resultIndices := []portalIndex{bestP0.Index, bestP1.Index, bestP2.Index}
-	resultIndices = q.appendHomogeneous2Result(bestP0.Index, bestP1.Index, bestP2.Index, bestDepth, resultIndices)
-
-	result := []Portal{}
-	for _, index := range resultIndices {
-		result = append(result, portals[index])
-	}
-
-	return result, (uint16)(bestDepth)
-}
-
-func (q *bestHomogeneous2Query) appendHomogeneous2Result(p0, p1, p2 portalIndex, maxDepth int, result []portalIndex) []portalIndex {
-	if maxDepth == 1 {
-		return result
-	}
-	s0, s1, s2 := sortedIndices(p0, p1, p2)
-	s0, s1, s2 = indexOrdering(s0, s1, s2, maxDepth)
-	bestP := q.getIndex(s0, s1, s2)
-	result = append(result, bestP)
-	result = q.appendHomogeneous2Result(bestP, p1, p2, maxDepth-1, result)
-	result = q.appendHomogeneous2Result(p0, bestP, p2, maxDepth-1, result)
-	result = q.appendHomogeneous2Result(p0, p1, bestP, maxDepth-1, result)
-	return result
 }
