@@ -16,8 +16,6 @@ type bestHomogeneousPerfectQuery struct {
 	depth uint16
 	// maxDepth of solution to be found
 	maxDepth uint16
-	// Possible number of portals in a homogeneous field at different depths up to maxDepth
-	legalNumPortals []int
 }
 
 func newBestHomogeneousPerfectQuery(portals []portalData, maxDepth int, onFilledIndexEntry func()) bestHomogeneousQuery {
@@ -27,11 +25,6 @@ func newBestHomogeneousPerfectQuery(portals []portalData, maxDepth int, onFilled
 		index[i].Index = invalidPortalIndex
 		index[i].Length = invalidLength
 	}
-	legalNumPortals := make([]int, maxDepth)
-	legalNumPortals[0] = 0
-	for i := 1; i < maxDepth; i++ {
-		legalNumPortals[i] = (legalNumPortals[i-1]+1)*3 - 2
-	}
 	return &bestHomogeneousPerfectQuery{
 		portals:            portals,
 		index:              index,
@@ -39,7 +32,6 @@ func newBestHomogeneousPerfectQuery(portals []portalData, maxDepth int, onFilled
 		onFilledIndexEntry: onFilledIndexEntry,
 		portalsInTriangle:  make([][]portalData, len(portals)),
 		maxDepth:           uint16(maxDepth),
-		legalNumPortals:    legalNumPortals,
 	}
 }
 
@@ -64,14 +56,6 @@ func (q *bestHomogeneousPerfectQuery) findBestHomogeneous(p0, p1, p2 portalData)
 	q.findBestHomogeneousAux(p0, p1, p2, q.portalsInTriangle[0])
 }
 
-func (q *bestHomogeneousPerfectQuery) isNumberOfPortalsOk(numPortals int) bool {
-	for _, num := range q.legalNumPortals {
-		if num == numPortals {
-			return true
-		}
-	}
-	return false
-}
 func (q *bestHomogeneousPerfectQuery) findBestHomogeneousAux(p0, p1, p2 portalData, candidates []portalData) bestSolution {
 	q.depth++
 	// make a copy of input slice to slice we'll be iterating over,
