@@ -12,7 +12,7 @@ type fifo struct {
 }
 
 func (f *fifo) Reset() {
-	f.front = f.back[:0]
+	f.front = f.front[:0]
 	f.back = f.back[:0]
 }
 func (f *fifo) Empty() bool {
