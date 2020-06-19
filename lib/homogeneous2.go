@@ -17,7 +17,6 @@ type homogeneousDepthTriangleScorer interface {
 
 type homogeneousScorer interface {
 	newTriangleScorer(maxDepth int, perfect bool) homogeneousTriangleScorer
-	newTriangleScorerForDepth(depth uint16) homogeneousDepthTriangleScorer
 	scoreTriangle(a, b, c portalData) float32
 }
 
@@ -116,25 +115,15 @@ func (q *bestHomogeneous2Query) findBestHomogeneousAux(p0, p1, p2 portalData, ca
 	q.depth--
 }
 
+// DeepestHomogeneous2 - Find deepest homogeneous field that can be made out of portals - single-threaded
 func DeepestHomogeneous2(portals []Portal, options ...HomogeneousOption) ([]Portal, uint16) {
+	if len(portals) < 3 {
+		panic("Too short portal list")
+	}
 	params := defaultHomogeneous2Params(len(portals))
 	for _, option := range options {
 		option.apply2(&params)
 	}
-	// Disable multi-threaded version for now. It's only slightly faster in the default
-	// settings and slower when some anchors are selected.
-	//if params.numWorkers == 1 {
-	return DeepestHomogeneous2ST(portals, params)
-	//}
-	//return DeepestHomogeneous2MT(portals, params)
-}
-
-// DeepestHomogeneous2ST - Find deepest homogeneous field that can be made out of portals - single-threaded
-func DeepestHomogeneous2ST(portals []Portal, params homogeneous2Params) ([]Portal, uint16) {
-	if len(portals) < 3 {
-		panic("Too short portal list")
-	}
-
 	portalsData := portalsToPortalData(portals)
 
 	numIndexEntries := len(portals) * (len(portals) - 1) * (len(portals) - 2) / 6

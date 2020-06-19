@@ -7,13 +7,6 @@ type HomogeneousOption interface {
 	apply2(param *homogeneous2Params)
 }
 
-type HomogeneousNumWorkers int
-
-func (h HomogeneousNumWorkers) apply(param *homogeneousParams) {}
-func (h HomogeneousNumWorkers) apply2(param *homogeneous2Params) {
-	param.numWorkers = int(h)
-}
-
 type HomogeneousMaxDepth int
 
 func (h HomogeneousMaxDepth) apply(param *homogeneousParams) {
@@ -122,7 +115,6 @@ func defaultHomogeneousParams() homogeneousParams {
 }
 
 type homogeneous2Params struct {
-	numWorkers         int
 	maxDepth           int
 	perfect            bool
 	scorer             homogeneousScorer
@@ -134,10 +126,9 @@ type homogeneous2Params struct {
 func defaultHomogeneous2Params(numPortals int) homogeneous2Params {
 	defaultScorer := newThickTrianglesScorer(numPortals)
 	return homogeneous2Params{
-		numWorkers: 1,
-		maxDepth:   6,
-		perfect:    false,
-		scorer:     defaultScorer,
+		maxDepth: 6,
+		perfect:  false,
+		scorer:   defaultScorer,
 		// by default pick top level triangle with the highest score
 		topLevelScorer: defaultScorer,
 		progressFunc:   func(int, int) {},
