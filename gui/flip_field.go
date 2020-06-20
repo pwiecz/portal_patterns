@@ -10,20 +10,38 @@ import "github.com/pwiecz/atk/tk"
 
 type flipFieldTab struct {
 	*baseTab
-	maxFlipPortals *tk.Entry
-	simpleBackbone *tk.CheckButton
-	backbone       []lib.Portal
-	rest           []lib.Portal
+	maxFlipPortals           *tk.Entry
+	numBackbonePortals       *tk.Entry
+	exactBackbonePortalLimit *tk.CheckButton
+	simpleBackbone           *tk.CheckButton
+	backbone                 []lib.Portal
+	rest                     []lib.Portal
 }
 
 func NewFlipFieldTab(parent *Window, conf *Configuration) *flipFieldTab {
 	t := &flipFieldTab{}
 	t.baseTab = NewBaseTab(parent, "Flip Field", conf)
+
+	t.AddWidget(tk.NewLabel(parent, "EXPERIMENTAL: SLOW AND INACCURATE"))
+
 	t.pattern = t
 	addResetBox := tk.NewHPackLayout(parent)
 	addResetBox.AddWidget(t.add)
 	addResetBox.AddWidget(t.reset)
 	t.AddWidget(addResetBox)
+
+	numBackbonePortalsBox := tk.NewHPackLayout(parent)
+	numBackbonePortalsLabel := tk.NewLabel(parent, "Num backbone portals: ")
+	numBackbonePortalsBox.AddWidget(numBackbonePortalsLabel)
+	t.numBackbonePortals = tk.NewEntry(parent)
+	t.numBackbonePortals.SetText("16")
+	numBackbonePortalsBox.AddWidget(t.numBackbonePortals)
+	t.exactBackbonePortalLimit = tk.NewCheckButton(parent, "Exactly")
+	numBackbonePortalsBox.AddWidget(t.exactBackbonePortalLimit)
+	t.AddWidget(numBackbonePortalsBox)
+
+	t.simpleBackbone = tk.NewCheckButton(parent, "Simple backbone")
+
 	maxFlipPortalsBox := tk.NewHPackLayout(parent)
 	maxFlipPortalsLabel := tk.NewLabel(parent, "Max flip portals: ")
 	maxFlipPortalsBox.AddWidget(maxFlipPortalsLabel)
@@ -31,7 +49,7 @@ func NewFlipFieldTab(parent *Window, conf *Configuration) *flipFieldTab {
 	t.maxFlipPortals.SetText("9999")
 	maxFlipPortalsBox.AddWidget(t.maxFlipPortals)
 	t.AddWidget(maxFlipPortalsBox)
-	t.simpleBackbone = tk.NewCheckButton(parent, "Simple backbone")
+
 	t.AddWidgetEx(t.simpleBackbone, tk.FillNone, true, tk.AnchorWest)
 	solutionBox := tk.NewHPackLayout(parent)
 	solutionBox.AddWidget(t.find)
@@ -96,11 +114,22 @@ func (t *flipFieldTab) search() {
 	if err != nil || maxFlipPortals < 1 {
 		return
 	}
+	numBackbonePortals, err := strconv.Atoi(t.numBackbonePortals.Text())
+	if err != nil || numBackbonePortals < 1 {
+		return
+	}
+	backbonePortalLimit := lib.FlipFieldBackbonePortalLimit{Value: numBackbonePortals}
+	if t.exactBackbonePortalLimit.IsChecked() {
+		backbonePortalLimit.LimitType = lib.EQUAL
+	} else {
+		backbonePortalLimit.LimitType = lib.LESS_EQUAL
+	}
 	options := []lib.FlipFieldOption{
 		lib.FlipFieldProgressFunc(
 			func(val int, max int) { t.onProgress(val, max) }),
-		lib.FlipFieldMaxFlipPortals(maxFlipPortals),
+		backbonePortalLimit,
 		lib.FlipFieldSimpleBackbone(t.simpleBackbone.IsChecked()),
+		lib.FlipFieldMaxFlipPortals(maxFlipPortals),
 		lib.FlipFieldNumWorkers(runtime.GOMAXPROCS(0)),
 	}
 	t.backbone, t.rest = lib.LargestFlipField(portals, options...)
@@ -116,7 +145,6 @@ func (t *flipFieldTab) search() {
 	if t.solutionMap != nil {
 		t.solutionMap.SetSolutionPoints([][]s2.Point{portalsToPoints(t.backbone), hullPoints})
 	}
-
 
 	solutionText := fmt.Sprintf("Num backbone portals: %d, num flip portals: %d", len(t.backbone), len(t.rest))
 	t.solutionLabel.SetText(solutionText)
