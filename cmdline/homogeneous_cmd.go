@@ -5,7 +5,6 @@ import "fmt"
 import "io"
 import "log"
 import "math/rand"
-import "runtime"
 import "time"
 
 import "github.com/pwiecz/portal_patterns/lib"
@@ -51,7 +50,7 @@ func btoi(b bool) int {
 	return 0
 }
 
-func (h *homogeneousCmd) Run(args []string, numWorkers int, output io.Writer, progressFunc func(int, int)) {
+func (h *homogeneousCmd) Run(args []string, output io.Writer, progressFunc func(int, int)) {
 	h.flags.Parse(args)
 	if *h.maxDepth < 1 {
 		log.Fatalln("-max_depth must by at least 1")
@@ -72,20 +71,17 @@ func (h *homogeneousCmd) Run(args []string, numWorkers int, output io.Writer, pr
 		log.Fatalf("homogeneous command accepts at most three corner portals - %d specified", len(*h.cornerPortals))
 	}
 	cornerPortalIndices := portalsToIndices(*h.cornerPortals, portals)
+	options := []lib.HomogeneousOption{
+		lib.HomogeneousProgressFunc(progressFunc),
+		lib.HomogeneousMaxDepth(*h.maxDepth),
+		lib.HomogeneousFixedCornerIndices(cornerPortalIndices),
+	}
+	// check for pretty before setting top level scorer, as pretty overwrites the top level scorer
 	if *h.pretty {
 		if *h.maxDepth > 7 {
 			log.Fatalln("if -pretty is specified -max_depth must be at most 7")
 		}
-	}
-	numHomogeneousWorkers := runtime.GOMAXPROCS(0)
-	if numWorkers > 0 {
-		numHomogeneousWorkers = numWorkers
-	}
-	options := []lib.HomogeneousOption{
-		lib.HomogeneousNumWorkers(numHomogeneousWorkers),
-		lib.HomogeneousProgressFunc(progressFunc),
-		lib.HomogeneousMaxDepth(*h.maxDepth),
-		lib.HomogeneousFixedCornerIndices(cornerPortalIndices),
+		options = append(options, lib.HomogeneousSpreadAround(len(portals)))
 	}
 	if *h.largestArea {
 		options = append(options, lib.HomogeneousLargestArea{})
@@ -99,13 +95,8 @@ func (h *homogeneousCmd) Run(args []string, numWorkers int, output io.Writer, pr
 	}
 	options = append(options, lib.HomogeneousPerfect(*h.perfect))
 
-	var result []lib.Portal
-	var depth uint16
-	if *h.pretty {
-		result, depth = lib.DeepestHomogeneous2(portals, options...)
-	} else {
-		result, depth = lib.DeepestHomogeneous(portals, options...)
-	}
+	result, depth := lib.DeepestHomogeneous(portals, options...)
+
 	fmt.Fprintf(output, "\nDepth: %d\n", depth)
 	for i, portal := range result {
 		fmt.Fprintf(output, "%d: %s\n", i, portal.Name)

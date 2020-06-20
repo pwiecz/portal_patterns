@@ -1,8 +1,8 @@
 package lib
 
 func reverse(s []portalIndex) {
-	for i := len(s) / 2 - 1; i >= 0; i-- {
-		opp := len(s)-1-i
+	for i := len(s)/2 - 1; i >= 0; i-- {
+		opp := len(s) - 1 - i
 		s[i], s[opp] = s[opp], s[i]
 	}
 }
@@ -12,7 +12,7 @@ type fifo struct {
 }
 
 func (f *fifo) Reset() {
-	f.front = f.back[:0]
+	f.front = f.front[:0]
 	f.back = f.back[:0]
 }
 func (f *fifo) Empty() bool {
@@ -35,4 +35,3 @@ func (f *fifo) Dequeue() portalIndex {
 	f.front = f.front[:lenFirst-1]
 	return r
 }
-

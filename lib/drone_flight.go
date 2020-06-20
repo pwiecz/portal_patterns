@@ -6,13 +6,13 @@ import "github.com/golang/geo/s2"
 
 type longestDroneFlightQuery struct {
 	neighbours     [][]portalIndex
-	portalDistance func(portalIndex, portalIndex) s1.Angle
+	portalDistance func(portalIndex, portalIndex) s1.ChordAngle
 	queue          fifo
 	prevs          []portalIndex
 	visited        []bool
 }
 
-func newLongestDroneFlightQuery(neighbours [][]portalIndex, portalDistance func(portalIndex, portalIndex) s1.Angle) *longestDroneFlightQuery {
+func newLongestDroneFlightQuery(neighbours [][]portalIndex, portalDistance func(portalIndex, portalIndex) s1.ChordAngle) *longestDroneFlightQuery {
 	return &longestDroneFlightQuery{
 		neighbours:     neighbours,
 		portalDistance: portalDistance,
@@ -22,8 +22,8 @@ func newLongestDroneFlightQuery(neighbours [][]portalIndex, portalDistance func(
 }
 
 // If end is != invalidPortalIndex return only from from start to end if it exists.
-func (q *longestDroneFlightQuery) longestFlightFrom(start, end portalIndex) ([]portalIndex, s1.Angle) {
-	bestDistance := s1.Angle(0.)
+func (q *longestDroneFlightQuery) longestFlightFrom(start, end portalIndex) ([]portalIndex, s1.ChordAngle) {
+	bestDistance := s1.ChordAngle(0.)
 	bestEndPortal := start
 	for i := 0; i < len(q.neighbours); i++ {
 		q.prevs[i] = invalidPortalIndex
@@ -93,7 +93,7 @@ func LongestDroneFlight(portals []Portal, startIndex, endIndex int, progressFunc
 		reverseRoute = true
 		startIndex, endIndex = endIndex, startIndex
 	}
-	
+
 	neighbours := make([][]portalIndex, len(portals))
 	for _, p := range portalsData {
 		circle500m := s2.CapFromCenterAngle(p.LatLng, s1.Angle(500/RadiansToMeters))
@@ -108,7 +108,8 @@ func LongestDroneFlight(portals []Portal, startIndex, endIndex int, progressFunc
 					if !reverseRoute {
 						neighbours[p.Index] = append(neighbours[p.Index], np.Index)
 					} else {
-						neighbours[np.Index] = append(neighbours[np.Index], p.Index)				}
+						neighbours[np.Index] = append(neighbours[np.Index], p.Index)
+					}
 				}
 			}
 		}
@@ -117,8 +118,8 @@ func LongestDroneFlight(portals []Portal, startIndex, endIndex int, progressFunc
 		}
 	}
 
-	portalDistanceInRadians := func(i, j portalIndex) s1.Angle {
-		return portalsData[i].LatLng.Distance(portalsData[j].LatLng)
+	portalDistanceInRadians := func(i, j portalIndex) s1.ChordAngle {
+		return s2.ChordAngleBetweenPoints(portalsData[i].LatLng, portalsData[j].LatLng)
 	}
 	numIndexEntries := len(portals)
 	everyNth := numIndexEntries / 1000
@@ -144,7 +145,7 @@ func LongestDroneFlight(portals []Portal, startIndex, endIndex int, progressFunc
 		targetPortal = portalIndex(endIndex)
 	}
 
-	bestDistance := s1.Angle(0.)
+	bestDistance := s1.ChordAngle(0.)
 	bestPath := []portalIndex{}
 	for _, p := range portalsData {
 		if startIndex >= 0 && p.Index != portalIndex(startIndex) {

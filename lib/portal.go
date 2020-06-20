@@ -44,24 +44,31 @@ type PortalInfo struct {
 //
 // It tries to guess the file format based on extensions of the file.
 func ParseFile(filename string) ([]Portal, error) {
-	portalInfo, err := ParseFileAsPortalInfo(filename)
+	portalInfo, err := parseFileAsPortalInfo(filename)
 	if err != nil {
-		return []Portal{}, err
+		return nil, err
+	}
+	allGuids := make(map[string]struct{})
+	for _, p := range portalInfo {
+		if _, ok := allGuids[p.Guid]; ok {
+			return nil, fmt.Errorf("Duplicate guid: \"%s\"", p.Guid)
+		}
+		allGuids[p.Guid] = struct{}{}
 	}
 	return portalInfoToPortal(portalInfo)
 }
 
-// ParseFileAsPortalInfo parses file to list of PortalInfo structs
+// parseFileAsPortalInfo parses file to list of PortalInfo structs
 //
 // It tries to guess the file format based on extensions of the file.
-func ParseFileAsPortalInfo(filename string) ([]PortalInfo, error) {
+func parseFileAsPortalInfo(filename string) ([]PortalInfo, error) {
 	switch path.Ext(filename) {
 	case ".csv":
 		return parseCSVFileAsPortalInfo(filename)
 	case ".json":
 		return parseJSONFileAsPortalInfo(filename)
 	default:
-		return []PortalInfo{}, fmt.Errorf("Unknown extension of file %s", filename)
+		return nil, fmt.Errorf("Unknown extension of file %s", filename)
 	}
 }
 
