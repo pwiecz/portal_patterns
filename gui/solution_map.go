@@ -371,12 +371,24 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 }
 
 func (s *SolutionMap) SetSolution(lines [][]lib.Portal) {
+	points := make([][]s2.Point, 0, len(lines))
+	for _, line := range lines {
+		linePoints := make([]s2.Point, 0, len(line))
+		for _, portal := range line {
+			linePoints = append(linePoints, s2.PointFromLatLng(portal.LatLng))
+		}
+		points = append(points, linePoints)
+	}
+	s.SetSolutionPoints(points)
+}
+
+func (s *SolutionMap) SetSolutionPoints(lines [][]s2.Point) {
 	tesselator := s2.NewEdgeTessellator(projection, 1e-3)
 	s.portalPaths = make([][]r2.Point, 0, len(lines))
 	for _, line := range lines {
 		path := []r2.Point{}
 		for i := 1; i < len(line); i++ {
-			path = tesselator.AppendProjected(s2.PointFromLatLng(line[i-1].LatLng), s2.PointFromLatLng(line[i].LatLng), path)
+			path = tesselator.AppendProjected(line[i-1], line[i], path)
 		}
 		s.portalPaths = append(s.portalPaths, path)
 	}
@@ -423,4 +435,12 @@ func (s *SolutionMap) onPortalLeft(guid string) {
 		s.canvas.DeleteRectangle(s.nameLabelBackgound)
 		s.nameLabelBackgound = nil
 	}
+}
+
+func portalsToPoints(portals []lib.Portal) []s2.Point {
+	points := make([]s2.Point, 0, len(portals))
+	for _, portal := range portals {
+		points = append(points, s2.PointFromLatLng(portal.LatLng))
+	}
+	return points
 }

@@ -73,5 +73,4 @@ func (f *flipFieldCmd) Run(args []string, numWorkers int, output io.Writer, prog
 		fmt.Fprintf(output, "%d: %s\n", i, portal.Name)
 	}
 	fmt.Fprintf(output, "\n[%s,%s]\n", lib.PolylineFromPortalList(backbone), lib.MarkersFromPortalList(rest))
-
 }

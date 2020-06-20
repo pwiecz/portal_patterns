@@ -128,6 +128,8 @@ func (t *homogeneousTab) search() {
 	}
 	options = append(options, lib.HomogeneousMaxDepth(maxDepth))
 	options = append(options, lib.HomogeneousPerfect(t.perfect.IsChecked()))
+	// set inner portals opion before setting top level scorer, as inner scorer
+	// overwrites the top level scorer
 	if t.innerPortals.CurrentIndex() == 1 {
 		options = append(options, lib.HomogeneousSpreadAround(len(portals)))
 		//	} else if t.innerPortals.CurrentIndex() == 2 {
@@ -156,11 +158,9 @@ func (t *homogeneousTab) search() {
 	t.copy.SetState(tk.StateDisable)
 	tk.Update()
 	options = append(options, lib.HomogeneousFixedCornerIndices(anchors))
-	if t.innerPortals.CurrentIndex() > 0 {
-		t.solution, t.depth = lib.DeepestHomogeneous2(portals, options...)
-	} else {
-		t.solution, t.depth = lib.DeepestHomogeneous(portals, options...)
-	}
+
+	t.solution, t.depth = lib.DeepestHomogeneous(portals, options...)
+
 	if t.solutionMap != nil {
 		t.solutionMap.SetSolution(lib.HomogeneousPolylines(t.depth, t.solution))
 	}

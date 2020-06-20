@@ -121,15 +121,15 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 	if len(portals) < 3 {
 		panic("Too short portal list")
 	}
-	params2 := defaultHomogeneous2Params(len(portals))
+	params := defaultHomogeneousParams()
 	requires2 := false
 	for _, option := range options {
-		option.apply2(&params2)
 		if option.requires2() {
 			requires2 = true
+		} else {
+			option.apply(&params)
 		}
 	}
-	params := params2.homogeneousParams
 	portalsData := portalsToPortalData(portals)
 
 	numIndexEntries := len(portals) * (len(portals) - 1) * (len(portals) - 2) / 6
@@ -151,6 +151,10 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 	params.progressFunc(0, numIndexEntries)
 	var q bestHomogeneousQuery
 	if requires2 {
+		params2 := defaultHomogeneous2Params(len(portals))
+		for _, option := range options {
+			option.apply2(&params2)
+		}
 		params = params2.homogeneousParams
 		q = newBestHomogeneous2Query(portalsData, params2.scorer, params2.maxDepth, params2.perfect, onFilledIndexEntry)
 	} else if params.perfect {
