@@ -90,7 +90,7 @@ func TestHomogeneousPerfect(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	result, depth := DeepestHomogeneous(portals, HomogeneousMaxDepth(6), HomogeneousLargestArea{}, HomogeneousPerfect(true))
+	result, depth := DeepestHomogeneous(portals, HomogeneousMaxDepth(6), HomogeneousLargestArea{}, HomogeneousPerfect(true), HomogeneousNumWorkers(6))
 	checkValidPerfectHomogeneousResult(4, result, depth, portals, t)
 }
 

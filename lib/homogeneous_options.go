@@ -82,6 +82,16 @@ func (h HomogeneousMostEquilateralTriangle) apply2(param *homogeneous2Params) {
 	param.topLevelScorer = mostEquilateralTriangleScorer{}
 }
 
+type HomogeneousNumWorkers int
+func (h HomogeneousNumWorkers) requires2() bool { return false }
+
+func (h HomogeneousNumWorkers) apply(param *homogeneousParams) {
+	param.numWorkers = (int)(h)
+}
+func (h HomogeneousNumWorkers) apply2(param *homogeneous2Params) {
+	param.numWorkers = (int)(h)
+}
+
 type HomogeneousProgressFunc func(int, int)
 
 func (h HomogeneousProgressFunc) requires2() bool { return false }
@@ -120,6 +130,7 @@ type homogeneousParams struct {
 	perfect            bool
 	topLevelScorer     homogeneousTopLevelScorer
 	fixedCornerIndices []int
+	numWorkers int
 	progressFunc       func(int, int)
 }
 

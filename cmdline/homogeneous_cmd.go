@@ -50,7 +50,7 @@ func btoi(b bool) int {
 	return 0
 }
 
-func (h *homogeneousCmd) Run(args []string, output io.Writer, progressFunc func(int, int)) {
+func (h *homogeneousCmd) Run(args []string, output io.Writer, numWorkers int, progressFunc func(int, int)) {
 	h.flags.Parse(args)
 	if *h.maxDepth < 1 {
 		log.Fatalln("-max_depth must by at least 1")
@@ -72,6 +72,7 @@ func (h *homogeneousCmd) Run(args []string, output io.Writer, progressFunc func(
 	}
 	cornerPortalIndices := portalsToIndices(*h.cornerPortals, portals)
 	options := []lib.HomogeneousOption{
+		lib.HomogeneousNumWorkers(numWorkers),
 		lib.HomogeneousProgressFunc(progressFunc),
 		lib.HomogeneousMaxDepth(*h.maxDepth),
 		lib.HomogeneousFixedCornerIndices(cornerPortalIndices),

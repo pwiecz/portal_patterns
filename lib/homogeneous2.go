@@ -6,12 +6,6 @@ type homogeneousTriangleScorer interface {
 	scoreCandidate(p portalData)
 	bestMidpoints() [6]portalIndex
 }
-type homogeneousDepthTriangleScorer interface {
-	// resets scorer to compute scores for this triangle
-	reset(a, b, c portalData)
-	scoreCandidate(p portalData)
-	bestMidpoint() portalIndex
-}
 
 type homogeneousScorer interface {
 	newTriangleScorer(maxDepth int, perfect bool) homogeneousTriangleScorer

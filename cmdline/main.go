@@ -232,7 +232,11 @@ func main() {
 	case "homogeneous":
 		fallthrough
 	case "homogenous":
-		homogeneousCmd.Run(flag.Args()[1:], outputWriter, progressFunc)
+		numHomogeneousWorkers := runtime.GOMAXPROCS(0)
+		if *numWorkers > 0 {
+			numHomogeneousWorkers = *numWorkers
+		}
+		homogeneousCmd.Run(flag.Args()[1:], outputWriter, numHomogeneousWorkers, progressFunc)
 	case "drone_flight":
 		droneFlightCmd.Parse(flag.Args()[1:])
 		fileArgs := droneFlightCmd.Args()

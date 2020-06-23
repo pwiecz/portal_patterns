@@ -158,7 +158,15 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 		params = params2.homogeneousParams
 		q = newBestHomogeneous2Query(portalsData, params2.scorer, params2.maxDepth, params2.perfect, onFilledIndexEntry)
 	} else if params.perfect {
-		q = newBestHomogeneousPerfectQuery(portalsData, params.maxDepth, onFilledIndexEntry)
+//		q = newBestHomogeneousPerfectQuery(portalsData, params.maxDepth, onFilledIndexEntry)
+//		resultIndices,bestDepth := numPortalsInTriangle(portalsData, params.maxDepth, params.progressFunc)
+		resultIndices, bestDepth := deepestPerfectHomogeneous(portalsData, params)
+		result := []Portal{}
+		for _, index := range resultIndices {
+			result = append(result, portals[index])
+		}
+
+		return result, uint16(bestDepth)
 	} else {
 		q = newBestHomogeneousNonPerfectQuery(portalsData, params.maxDepth, onFilledIndexEntry)
 	}
