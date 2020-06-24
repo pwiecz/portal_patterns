@@ -131,9 +131,9 @@ func (t *homogeneousTab) search() {
 	// set inner portals opion before setting top level scorer, as inner scorer
 	// overwrites the top level scorer
 	if t.innerPortals.CurrentIndex() == 1 {
-		options = append(options, lib.HomogeneousSpreadAround(len(portals)))
+		options = append(options, lib.HomogeneousSpreadAround{})
 		//	} else if t.innerPortals.CurrentIndex() == 2 {
-		//		options = append(options, lib.HomogeneousClumpTogether(len(portals)))
+		//		options = append(options, lib.HomogeneousClumpTogether{})
 	}
 	if t.strategy.CurrentIndex() == 1 {
 		options = append(options, lib.HomogeneousLargestArea{})
@@ -164,7 +164,12 @@ func (t *homogeneousTab) search() {
 	if t.solutionMap != nil {
 		t.solutionMap.SetSolution(lib.HomogeneousPolylines(t.depth, t.solution))
 	}
-	solutionText := fmt.Sprintf("Solution depth: %d", t.depth)
+	var solutionText string
+	if t.depth > 0 {
+		solutionText = fmt.Sprintf("Solution depth: %d", t.depth)
+	} else {
+		solutionText = fmt.Sprintf("No solution found")
+	}
 	t.solutionLabel.SetText(solutionText)
 	t.add.SetState(tk.StateNormal)
 	t.reset.SetState(tk.StateNormal)

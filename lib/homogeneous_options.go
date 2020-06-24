@@ -19,21 +19,21 @@ func (h HomogeneousMaxDepth) apply2(param *homogeneous2Params) {
 	param.maxDepth = int(h)
 }
 
-type HomogeneousSpreadAround int
+type HomogeneousSpreadAround struct{}
 
 func (h HomogeneousSpreadAround) requires2() bool                { return true }
 func (h HomogeneousSpreadAround) apply(param *homogeneousParams) { panic("unsupported") }
 func (h HomogeneousSpreadAround) apply2(param *homogeneous2Params) {
-	param.scorer = newThickTrianglesScorer(int(h))
+	param.scorer = newThickTrianglesScorer(param.numPortals)
 	param.topLevelScorer = param.scorer
 }
 
-type HomogeneousClumpTogether int
+type HomogeneousClumpTogether struct{}
 
 func (h HomogeneousClumpTogether) requires2() bool                { return true }
 func (h HomogeneousClumpTogether) apply(param *homogeneousParams) { panic("unsupported") }
 func (h HomogeneousClumpTogether) apply2(param *homogeneous2Params) {
-	param.scorer = newClumpPortalsScorer(int(h))
+	param.scorer = newClumpPortalsScorer(param.numPortals)
 	param.topLevelScorer = param.scorer
 }
 
@@ -145,6 +145,7 @@ func defaultHomogeneousParams() homogeneousParams {
 
 type homogeneous2Params struct {
 	homogeneousParams
+	numPortals int
 	scorer homogeneousScorer
 }
 
@@ -158,6 +159,7 @@ func defaultHomogeneous2Params(numPortals int) homogeneous2Params {
 			topLevelScorer: defaultScorer,
 			progressFunc:   func(int, int) {},
 		},
+		numPortals: numPortals,
 		scorer: defaultScorer,
 	}
 }

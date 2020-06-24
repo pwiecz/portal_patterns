@@ -105,6 +105,6 @@ func TestHomogeneousPretty(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	result, depth := DeepestHomogeneous(portals, HomogeneousSpreadAround(len(portals)), HomogeneousMaxDepth(6), HomogeneousLargestArea{})
+	result, depth := DeepestHomogeneous(portals, HomogeneousSpreadAround{}, HomogeneousMaxDepth(6), HomogeneousLargestArea{})
 	checkValidHomogeneousResult(5, result, depth, t)
 }

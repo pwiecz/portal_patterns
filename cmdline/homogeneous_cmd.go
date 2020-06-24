@@ -82,7 +82,7 @@ func (h *homogeneousCmd) Run(args []string, output io.Writer, numWorkers int, pr
 		if *h.maxDepth > 7 {
 			log.Fatalln("if -pretty is specified -max_depth must be at most 7")
 		}
-		options = append(options, lib.HomogeneousSpreadAround(len(portals)))
+		options = append(options, lib.HomogeneousSpreadAround{})
 	}
 	if *h.largestArea {
 		options = append(options, lib.HomogeneousLargestArea{})

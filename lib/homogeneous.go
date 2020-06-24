@@ -131,6 +131,29 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 		}
 	}
 	portalsData := portalsToPortalData(portals)
+	if len(params.fixedCornerIndices) == 3 {
+		fixedPortals := []portalData{
+			portalsData[params.fixedCornerIndices[0]],
+			portalsData[params.fixedCornerIndices[1]],
+			portalsData[params.fixedCornerIndices[2]],
+		}
+		filteredPortalsData := append(fixedPortals,
+			portalsInsideTriangle(portalsData,
+				fixedPortals[0], fixedPortals[1], fixedPortals[2],
+				[]portalData{})...)
+		filteredPortals := make([]Portal, 0, len(filteredPortalsData))
+		for _, p := range filteredPortalsData {
+			filteredPortals = append(filteredPortals, portals[p.Index])
+		}
+		portals = filteredPortals
+		portalsData = portalsToPortalData(portals)
+		params.fixedCornerIndices = []int{0, 1, 2}
+		for i, option := range options {
+			if _, ok := option.(HomogeneousFixedCornerIndices); ok {
+				options[i] = (HomogeneousFixedCornerIndices)([]int{0, 1, 2})
+			}
+		}
+	}
 
 	numIndexEntries := len(portals) * (len(portals) - 1) * (len(portals) - 2) / 6
 	everyNth := numIndexEntries / 1000
@@ -255,6 +278,9 @@ func AppendHomogeneousPolylines(p0, p1, p2 Portal, maxDepth uint16, result [][]P
 }
 
 func HomogeneousPolylines(depth uint16, result []Portal) [][]Portal {
+	if len(result) == 0 {
+		return ([][]Portal)(nil)
+	}
 	polylines := [][]Portal{{result[0], result[1], result[2], result[0]}}
 	polylines, _ = AppendHomogeneousPolylines(result[0], result[1], result[2], uint16(depth), polylines, result[3:])
 	return polylines
