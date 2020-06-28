@@ -42,7 +42,7 @@ func checkValidHomogeneousResult(expectedDepth uint16, result []Portal, depth ui
 		t.Errorf("Result is not correct homogeneous fielding")
 	}
 }
-func checkValidPerfectHomogeneousResult(expectedDepth uint16, result []Portal, depth uint16, allPortals []Portal, t *testing.T) {
+func checkValidPureHomogeneousResult(expectedDepth uint16, result []Portal, depth uint16, allPortals []Portal, t *testing.T) {
 	checkValidHomogeneousResult(expectedDepth, result, depth, t)
 
 	triangle := newTriangleQuery(
@@ -79,7 +79,7 @@ func TestHomogeneous(t *testing.T) {
 	checkValidHomogeneousResult(5, result, depth, t)
 }
 
-func TestHomogeneousPerfect(t *testing.T) {
+func TestHomogeneousPure(t *testing.T) {
 	portals, err := ParseFile("testdata/portals_test.json")
 	if err != nil {
 		panic(err)
@@ -90,8 +90,8 @@ func TestHomogeneousPerfect(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	result, depth := DeepestHomogeneous(portals, HomogeneousMaxDepth(6), HomogeneousLargestArea{}, HomogeneousPerfect(true), HomogeneousNumWorkers(6))
-	checkValidPerfectHomogeneousResult(4, result, depth, portals, t)
+	result, depth := DeepestHomogeneous(portals, HomogeneousMaxDepth(6), HomogeneousLargestArea{}, HomogeneousPure(true), HomogeneousNumWorkers(6))
+	checkValidPureHomogeneousResult(4, result, depth, portals, t)
 }
 
 func TestHomogeneousPretty(t *testing.T) {

@@ -83,6 +83,7 @@ func (h HomogeneousMostEquilateralTriangle) apply2(param *homogeneous2Params) {
 }
 
 type HomogeneousNumWorkers int
+
 func (h HomogeneousNumWorkers) requires2() bool { return false }
 
 func (h HomogeneousNumWorkers) apply(param *homogeneousParams) {
@@ -114,30 +115,30 @@ func (h HomogeneousFixedCornerIndices) apply2(param *homogeneous2Params) {
 	param.fixedCornerIndices = []int(h)
 }
 
-type HomogeneousPerfect bool
+type HomogeneousPure bool
 
-func (h HomogeneousPerfect) requires2() bool { return false }
+func (h HomogeneousPure) requires2() bool { return false }
 
-func (h HomogeneousPerfect) apply(param *homogeneousParams) {
-	param.perfect = bool(h)
+func (h HomogeneousPure) apply(param *homogeneousParams) {
+	param.pure = bool(h)
 }
-func (h HomogeneousPerfect) apply2(param *homogeneous2Params) {
-	param.perfect = bool(h)
+func (h HomogeneousPure) apply2(param *homogeneous2Params) {
+	param.pure = bool(h)
 }
 
 type homogeneousParams struct {
 	maxDepth           int
-	perfect            bool
+	pure               bool
 	topLevelScorer     homogeneousTopLevelScorer
 	fixedCornerIndices []int
-	numWorkers int
+	numWorkers         int
 	progressFunc       func(int, int)
 }
 
 func defaultHomogeneousParams() homogeneousParams {
 	return homogeneousParams{
 		maxDepth:       6,
-		perfect:        false,
+		pure:           false,
 		topLevelScorer: arbitraryScorer{},
 		progressFunc:   func(int, int) {},
 	}
@@ -146,7 +147,7 @@ func defaultHomogeneousParams() homogeneousParams {
 type homogeneous2Params struct {
 	homogeneousParams
 	numPortals int
-	scorer homogeneousScorer
+	scorer     homogeneousScorer
 }
 
 func defaultHomogeneous2Params(numPortals int) homogeneous2Params {
@@ -154,12 +155,12 @@ func defaultHomogeneous2Params(numPortals int) homogeneous2Params {
 	return homogeneous2Params{
 		homogeneousParams: homogeneousParams{
 			maxDepth: 6,
-			perfect:  false,
+			pure:     false,
 			// by default pick top level triangle with the highest score
 			topLevelScorer: defaultScorer,
 			progressFunc:   func(int, int) {},
 		},
 		numPortals: numPortals,
-		scorer: defaultScorer,
+		scorer:     defaultScorer,
 	}
 }

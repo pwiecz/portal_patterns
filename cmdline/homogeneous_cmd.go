@@ -17,7 +17,7 @@ type homogeneousCmd struct {
 	smallestArea    *bool
 	mostEquilateral *bool
 	random          *bool
-	perfect         *bool
+	pure            *bool
 	cornerPortals   *portalsValue
 }
 
@@ -31,7 +31,7 @@ func NewHomogeneousCmd() homogeneousCmd {
 		smallestArea:    flags.Bool("smallest_area", false, "pick the top triangle having the smallest possible area"),
 		mostEquilateral: flags.Bool("most_equilateral", false, "pick the top triangle being the most equilateral"),
 		random:          flags.Bool("random", false, "pick a random top triangle"),
-		perfect:         flags.Bool("perfect", false, "consider only perfect homogeneous fields (those that use all the portals inside the top level triangle)"),
+		pure:            flags.Bool("pure", false, "consider only pure homogeneous fields (those that use all the portals inside the top level triangle)"),
 		cornerPortals:   &portalsValue{},
 	}
 	flags.Var(cmd.cornerPortals, "corner_portal", "fix corner portal of the homogeneous field")
@@ -94,7 +94,7 @@ func (h *homogeneousCmd) Run(args []string, output io.Writer, numWorkers int, pr
 		rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 		options = append(options, lib.HomogeneousRandom{rand})
 	}
-	options = append(options, lib.HomogeneousPerfect(*h.perfect))
+	options = append(options, lib.HomogeneousPure(*h.pure))
 
 	result, depth := lib.DeepestHomogeneous(portals, options...)
 

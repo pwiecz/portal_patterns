@@ -86,8 +86,8 @@ type clumpPortalsDepthTriangleScorer struct {
 	candidate   portalIndex
 }
 
-// scorer for picking the best midpoint of triangle a,b,c for perfect homogeneous fields
-type thickTrianglesTriangleScorerPerfect struct {
+// scorer for picking the best midpoint of triangle a,b,c for pure homogeneous fields
+type thickTrianglesTriangleScorerPure struct {
 	minHeight            []float32
 	numPortals           uint
 	maxDepth             int
@@ -99,7 +99,7 @@ type thickTrianglesTriangleScorerPerfect struct {
 	scorePtrs            [6]*float32
 	candidates           [6]portalIndex
 }
-type clumpPortalsTriangleScorerPerfect struct {
+type clumpPortalsTriangleScorerPure struct {
 	minDistance          []float32
 	numPortals           uint
 	maxDepth             int
@@ -109,9 +109,9 @@ type clumpPortalsTriangleScorerPerfect struct {
 	candidates           [6]portalIndex
 }
 
-func (s *thickTrianglesScorer) newTriangleScorer(maxDepth int, perfect bool) homogeneousTriangleScorer {
-	if perfect {
-		return &thickTrianglesTriangleScorerPerfect{
+func (s *thickTrianglesScorer) newTriangleScorer(maxDepth int, pure bool) homogeneousTriangleScorer {
+	if pure {
+		return &thickTrianglesTriangleScorerPure{
 			minHeight:  s.minHeight,
 			numPortals: s.numPortals,
 			maxDepth:   maxDepth,
@@ -124,9 +124,9 @@ func (s *thickTrianglesScorer) newTriangleScorer(maxDepth int, perfect bool) hom
 	}
 }
 
-func (s *clumpPortalsScorer) newTriangleScorer(maxDepth int, perfect bool) homogeneousTriangleScorer {
-	if perfect {
-		return &clumpPortalsTriangleScorerPerfect{
+func (s *clumpPortalsScorer) newTriangleScorer(maxDepth int, pure bool) homogeneousTriangleScorer {
+	if pure {
+		return &clumpPortalsTriangleScorerPure{
 			minDistance: s.minDistance,
 			numPortals:  s.numPortals,
 			maxDepth:    maxDepth,
@@ -153,7 +153,7 @@ func (s *thickTrianglesTriangleScorer) reset(a, b, c portalData, numCandidates i
 	s.acDistance = newDistanceQuery(a.LatLng, c.LatLng)
 	s.bcDistance = newDistanceQuery(b.LatLng, c.LatLng)
 }
-func (s *thickTrianglesTriangleScorerPerfect) reset(a, b, c portalData, numCandidates int) {
+func (s *thickTrianglesTriangleScorerPure) reset(a, b, c portalData, numCandidates int) {
 	a, b, c = sorted(a, b, c)
 	for level := 2; level <= s.maxDepth; level++ {
 		i, j, k := indexOrdering(a.Index, b.Index, c.Index, level)
@@ -180,7 +180,7 @@ func (s *clumpPortalsTriangleScorer) reset(a, b, c portalData, numCandidates int
 	}
 	s.a, s.b, s.c = a, b, c
 }
-func (s *clumpPortalsTriangleScorerPerfect) reset(a, b, c portalData, numCandidates int) {
+func (s *clumpPortalsTriangleScorerPure) reset(a, b, c portalData, numCandidates int) {
 	a, b, c = sorted(a, b, c)
 	for level := 2; level <= s.maxDepth; level++ {
 		i, j, k := indexOrdering(a.Index, b.Index, c.Index, level)
@@ -196,13 +196,13 @@ func (s *clumpPortalsTriangleScorerPerfect) reset(a, b, c portalData, numCandida
 func (s *thickTrianglesTriangleScorer) getHeight(a, b, c portalIndex) float32 {
 	return s.minHeight[(uint(a)*s.numPortals+uint(b))*s.numPortals+uint(c)]
 }
-func (s *thickTrianglesTriangleScorerPerfect) getHeight(a, b, c portalIndex) float32 {
+func (s *thickTrianglesTriangleScorerPure) getHeight(a, b, c portalIndex) float32 {
 	return s.minHeight[(uint(a)*s.numPortals+uint(b))*s.numPortals+uint(c)]
 }
 func (s *clumpPortalsTriangleScorer) getDistance(a, b, c portalIndex) float32 {
 	return s.minDistance[(uint(a)*s.numPortals+uint(b))*s.numPortals+uint(c)]
 }
-func (s *clumpPortalsTriangleScorerPerfect) getDistance(a, b, c portalIndex) float32 {
+func (s *clumpPortalsTriangleScorerPure) getDistance(a, b, c portalIndex) float32 {
 	return s.minDistance[(uint(a)*s.numPortals+uint(b))*s.numPortals+uint(c)]
 }
 
@@ -292,7 +292,7 @@ func (s *clumpPortalsTriangleScorer) scoreCandidate(p portalData) {
 		}
 	}
 }
-func (s *thickTrianglesTriangleScorerPerfect) scoreCandidate(p portalData) {
+func (s *thickTrianglesTriangleScorerPure) scoreCandidate(p portalData) {
 	if s.validLevel2Candidate {
 		// We multiply by RadiansToMeters not to obtain any meaningful distance measure
 		// (as ChordAngle returns a squared distance anyway), but just to scale the number up
@@ -326,7 +326,7 @@ func (s *thickTrianglesTriangleScorerPerfect) scoreCandidate(p portalData) {
 		}
 	}
 }
-func (s *clumpPortalsTriangleScorerPerfect) scoreCandidate(p portalData) {
+func (s *clumpPortalsTriangleScorerPure) scoreCandidate(p portalData) {
 	// We multiply by RadiansToMeters not to obtain any meaningful distance measure
 	// (as ChordAngle returns a squared distance anyway), but just to scale the number up
 	// to make it fit in float32 precision range.
@@ -375,9 +375,9 @@ func (s *thickTrianglesTriangleScorer) bestMidpoints() [6]portalIndex {
 func (s *clumpPortalsTriangleScorer) bestMidpoints() [6]portalIndex {
 	return s.candidates
 }
-func (s *thickTrianglesTriangleScorerPerfect) bestMidpoints() [6]portalIndex {
+func (s *thickTrianglesTriangleScorerPure) bestMidpoints() [6]portalIndex {
 	return s.candidates
 }
-func (s *clumpPortalsTriangleScorerPerfect) bestMidpoints() [6]portalIndex {
+func (s *clumpPortalsTriangleScorerPure) bestMidpoints() [6]portalIndex {
 	return s.candidates
 }

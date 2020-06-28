@@ -12,7 +12,7 @@ type homogeneousTab struct {
 	*baseTab
 	maxDepth      *tk.Entry
 	innerPortals  *tk.ComboBox
-	perfect       *tk.CheckButton
+	pure          *tk.CheckButton
 	strategy      *tk.ComboBox
 	solution      []lib.Portal
 	depth         uint16
@@ -53,8 +53,8 @@ func NewHomogeneousTab(parent tk.Widget, conf *Configuration) *homogeneousTab {
 	t.strategy.OnSelected(func() { t.strategy.Entry().ClearSelection() })
 	strategyBox.AddWidget(t.strategy)
 	t.AddWidget(strategyBox)
-	t.perfect = tk.NewCheckButton(parent, "Perfect")
-	t.AddWidgetEx(t.perfect, tk.FillNone, true, tk.AnchorWest)
+	t.pure = tk.NewCheckButton(parent, "Pure")
+	t.AddWidgetEx(t.pure, tk.FillNone, true, tk.AnchorWest)
 	solutionBox := tk.NewHPackLayout(parent)
 	solutionBox.AddWidget(t.find)
 	solutionBox.AddWidget(t.save)
@@ -127,7 +127,7 @@ func (t *homogeneousTab) search() {
 		return
 	}
 	options = append(options, lib.HomogeneousMaxDepth(maxDepth))
-	options = append(options, lib.HomogeneousPerfect(t.perfect.IsChecked()))
+	options = append(options, lib.HomogeneousPure(t.pure.IsChecked()))
 	// set inner portals opion before setting top level scorer, as inner scorer
 	// overwrites the top level scorer
 	if t.innerPortals.CurrentIndex() == 1 {
@@ -151,7 +151,7 @@ func (t *homogeneousTab) search() {
 	t.reset.SetState(tk.StateDisable)
 	t.maxDepth.SetState(tk.StateDisable)
 	t.innerPortals.SetState(tk.StateDisable)
-	t.perfect.SetState(tk.StateDisable)
+	t.pure.SetState(tk.StateDisable)
 	t.strategy.SetState(tk.StateDisable)
 	t.find.SetState(tk.StateDisable)
 	t.save.SetState(tk.StateDisable)
@@ -175,7 +175,7 @@ func (t *homogeneousTab) search() {
 	t.reset.SetState(tk.StateNormal)
 	t.maxDepth.SetState(tk.StateNormal)
 	t.innerPortals.SetState(tk.StateReadOnly)
-	t.perfect.SetState(tk.StateNormal)
+	t.pure.SetState(tk.StateNormal)
 	t.strategy.SetState(tk.StateReadOnly)
 	t.find.SetState(tk.StateNormal)
 	t.save.SetState(tk.StateNormal)

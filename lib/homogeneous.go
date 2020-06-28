@@ -8,7 +8,7 @@ type bestHomogeneousQuery interface {
 	bestMidpointAtDepth(i, j, k portalIndex, depth int) portalIndex
 }
 
-type bestHomogeneousNonPerfectQuery struct {
+type bestHomogeneousNonPureQuery struct {
 	// all the portals
 	portals []portalData
 	// index of triple of portals to a solution
@@ -26,14 +26,14 @@ type bestHomogeneousNonPerfectQuery struct {
 	maxDepth uint16
 }
 
-func newBestHomogeneousNonPerfectQuery(portals []portalData, maxDepth int, onFilledIndexEntry func()) bestHomogeneousQuery {
+func newBestHomogeneousQuery(portals []portalData, maxDepth int, onFilledIndexEntry func()) bestHomogeneousQuery {
 	numPortals := uint(len(portals))
 	index := make([]bestSolution, numPortals*numPortals*numPortals)
 	for i := 0; i < len(index); i++ {
 		index[i].Index = invalidPortalIndex
 		index[i].Length = invalidLength
 	}
-	return &bestHomogeneousNonPerfectQuery{
+	return &bestHomogeneousNonPureQuery{
 		portals:            portals,
 		index:              index,
 		numPortals:         numPortals,
@@ -43,20 +43,20 @@ func newBestHomogeneousNonPerfectQuery(portals []portalData, maxDepth int, onFil
 	}
 }
 
-func (q *bestHomogeneousNonPerfectQuery) getIndex(i, j, k portalIndex) bestSolution {
+func (q *bestHomogeneousNonPureQuery) getIndex(i, j, k portalIndex) bestSolution {
 	return q.index[(uint(i)*q.numPortals+uint(j))*q.numPortals+uint(k)]
 }
-func (q *bestHomogeneousNonPerfectQuery) bestMidpointAtDepth(i, j, k portalIndex, depth int) portalIndex {
+func (q *bestHomogeneousNonPureQuery) bestMidpointAtDepth(i, j, k portalIndex, depth int) portalIndex {
 	solution := q.getIndex(i, j, k)
 	if int(solution.Length) < depth {
 		return invalidPortalIndex
 	}
 	return solution.Index
 }
-func (q *bestHomogeneousNonPerfectQuery) setIndex(i, j, k portalIndex, s bestSolution) {
+func (q *bestHomogeneousNonPureQuery) setIndex(i, j, k portalIndex, s bestSolution) {
 	q.index[(uint(i)*q.numPortals+uint(j))*q.numPortals+uint(k)] = s
 }
-func (q *bestHomogeneousNonPerfectQuery) findBestHomogeneous(p0, p1, p2 portalData) {
+func (q *bestHomogeneousNonPureQuery) findBestHomogeneous(p0, p1, p2 portalData) {
 	if q.getIndex(p0.Index, p1.Index, p2.Index).Length != invalidLength {
 		return
 	}
@@ -64,7 +64,7 @@ func (q *bestHomogeneousNonPerfectQuery) findBestHomogeneous(p0, p1, p2 portalDa
 	q.findBestHomogeneousAux(p0, p1, p2, q.portalsInTriangle[0])
 }
 
-func (q *bestHomogeneousNonPerfectQuery) findBestHomogeneousAux(p0, p1, p2 portalData, candidates []portalData) bestSolution {
+func (q *bestHomogeneousNonPureQuery) findBestHomogeneousAux(p0, p1, p2 portalData, candidates []portalData) bestSolution {
 	q.depth++
 	// make a copy of input slice to slice we'll be iterating over,
 	// as we're going to keep modifying the input slice by calling
@@ -179,11 +179,9 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 			option.apply2(&params2)
 		}
 		params = params2.homogeneousParams
-		q = newBestHomogeneous2Query(portalsData, params2.scorer, params2.maxDepth, params2.perfect, onFilledIndexEntry)
-	} else if params.perfect {
-//		q = newBestHomogeneousPerfectQuery(portalsData, params.maxDepth, onFilledIndexEntry)
-//		resultIndices,bestDepth := numPortalsInTriangle(portalsData, params.maxDepth, params.progressFunc)
-		resultIndices, bestDepth := deepestPerfectHomogeneous(portalsData, params)
+		q = newBestHomogeneous2Query(portalsData, params2.scorer, params2.maxDepth, params2.pure, onFilledIndexEntry)
+	} else if params.pure {
+		resultIndices, bestDepth := deepestPureHomogeneous(portalsData, params)
 		result := []Portal{}
 		for _, index := range resultIndices {
 			result = append(result, portals[index])
@@ -191,7 +189,7 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 
 		return result, uint16(bestDepth)
 	} else {
-		q = newBestHomogeneousNonPerfectQuery(portalsData, params.maxDepth, onFilledIndexEntry)
+		q = newBestHomogeneousQuery(portalsData, params.maxDepth, onFilledIndexEntry)
 	}
 	for i, p0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
