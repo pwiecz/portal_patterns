@@ -31,8 +31,6 @@ type bestHomogeneous2Query struct {
 	depth uint16
 	// maxDepth of solution to be found
 	maxDepth int
-	// accept only candidates that use all the portals within the top level triangle
-	pure bool
 	// a scorer for picking best of the possible solutions of the same depth
 	scorer homogeneousScorer
 }
@@ -55,7 +53,6 @@ func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, ma
 		triangleScorers:    triangleScorers,
 		portalsInTriangle:  make([][]portalData, len(portals)),
 		maxDepth:           maxDepth,
-		pure:               pure,
 		scorer:             scorer,
 	}
 }
