@@ -145,7 +145,7 @@ func LongestDroneFlight(portals []Portal, startIndex, endIndex int, progressFunc
 		targetPortal = portalIndex(endIndex)
 	}
 
-	bestDistance := s1.ChordAngle(0.)
+	bestDistance := s1.ChordAngle(-1.)
 	bestPath := []portalIndex{}
 	for _, p := range portalsData {
 		if startIndex >= 0 && p.Index != portalIndex(startIndex) {
