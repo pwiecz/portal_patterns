@@ -1,4 +1,4 @@
-package main
+package osm
 
 import "errors"
 import "fmt"
@@ -11,24 +11,20 @@ import "os"
 import "path"
 import "strconv"
 
-import "github.com/golang/groupcache/lru"
-import "github.com/pwiecz/atk/tk"
-
 const (
 	MAX_DOWNLOAD_THREADS = 2
 )
 
-type tileCoord struct {
-	x, y, zoom int
+type TileCoord struct {
+	X, Y, Zoom int
 }
 
 type empty struct{}
 type MapTiles struct {
 	cacheDir         string
-	memCache         *lru.Cache
 	fetchSemaphore   chan empty
-	requestsInFlight map[tileCoord]bool
-	onTileRead       func(tileCoord, *tk.Image)
+	requestsInFlight map[TileCoord]bool
+	onTileRead       func(TileCoord, image.Image)
 }
 
 func NewMapTiles() *MapTiles {
@@ -40,93 +36,67 @@ func NewMapTiles() *MapTiles {
 	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
 		os.MkdirAll(cacheDir, 0755)
 	}
-	memCache := lru.New(1000)
 	semaphore := make(chan empty, 50)
 	e := empty{}
 	for i := 0; i < MAX_DOWNLOAD_THREADS; i++ {
 		semaphore <- e
 	}
-	requestsInFlight := make(map[tileCoord]bool)
+	requestsInFlight := make(map[TileCoord]bool)
 	return &MapTiles{
 		cacheDir:         cacheDir,
-		memCache:         memCache,
 		fetchSemaphore:   semaphore,
 		requestsInFlight: requestsInFlight}
 }
 
-func (m *MapTiles) GetTile(coord tileCoord) (*tk.Image, bool) {
-	if coord.zoom < 0 || coord.y < 0 {
+func (m *MapTiles) GetTile(coord TileCoord) image.Image {
+	if coord.Zoom < 0 || coord.Y < 0 {
 		log.Println("Negative tile coordinates", coord)
-		return nil, false
+		return nil
 	}
-	if coord.zoom > 20 {
+	if coord.Zoom > 20 {
 		log.Println("Too high zoom factor", coord)
-		return nil, false
+		return nil
 	}
-	maxCoord := 1 << coord.zoom
-	if coord.y >= maxCoord {
+	maxCoord := 1 << coord.Zoom
+	if coord.Y >= maxCoord {
 		log.Println("Too high x,y coords", coord)
-		return nil, false
+		return nil
 	}
 	wrappedCoord := coord
-	for wrappedCoord.x < 0 {
-		wrappedCoord.x += maxCoord
+	for wrappedCoord.X < 0 {
+		wrappedCoord.X += maxCoord
 	}
-	wrappedCoord.x %= maxCoord
-	if tile, ok := m.memCache.Get(wrappedCoord); ok {
-		if tileImage, ok := tile.(*tk.Image); ok {
-			return tileImage, true
-		}
-		m.memCache.Remove(wrappedCoord)
-	}
+	wrappedCoord.X %= maxCoord
 	if _, ok := m.requestsInFlight[wrappedCoord]; !ok {
 		m.requestsInFlight[wrappedCoord] = true
-		go func(coord tileCoord) {
+		go func(coord TileCoord) {
 			img, err := m.getTileSlow(wrappedCoord)
-			tk.Async(func() {
-				delete(m.requestsInFlight, wrappedCoord)
-				if err != nil {
-					m.onTileRead(coord, nil)
-					return
-				}
+			delete(m.requestsInFlight, wrappedCoord)
+			if err != nil {
+				m.onTileRead(coord, nil)
+			}
 
-				tkImg := tk.NewImage()
-				tkImg.SetImage(img)
-				m.memCache.Add(wrappedCoord, tkImg)
-				m.onTileRead(coord, tkImg)
-			})
+			m.onTileRead(coord, img)
 		}(coord)
 	}
-	if wrappedCoord.zoom > 0 {
-		zoomedOutCoord := tileCoord{x: wrappedCoord.x / 2, y: wrappedCoord.y / 2, zoom: wrappedCoord.zoom - 1}
-		if tile, ok := m.memCache.Get(zoomedOutCoord); ok {
-			if tileImage, ok := tile.(*tk.Image); ok {
-				sourceX := (wrappedCoord.x % 2) * 128
-				sourceY := (wrappedCoord.y % 2) * 128
-				tkImg := tk.NewImage()
-				tkImg.Copy(tileImage, tk.ImageCopyAttrFrom(sourceX, sourceY, sourceX+128, sourceY+128), tk.ImageCopyAttrZoom(2.0, 2.0))
-				return tkImg, false
-			}
-		}
-	}
-	return nil, false
+	return nil
 }
 
-func (m *MapTiles) SetOnTileRead(onTileRead func(tileCoord, *tk.Image)) {
+func (m *MapTiles) SetOnTileRead(onTileRead func(TileCoord, image.Image)) {
 	m.onTileRead = onTileRead
 }
-func (m *MapTiles) getTileSlow(coord tileCoord) (image.Image, error) {
+func (m *MapTiles) getTileSlow(coord TileCoord) (image.Image, error) {
 	if m.cacheDir == "" {
 		return m.fetchTile(coord)
 	}
-	cachedTileDir := path.Join(m.cacheDir, strconv.Itoa(coord.zoom), strconv.Itoa(coord.x))
+	cachedTileDir := path.Join(m.cacheDir, strconv.Itoa(coord.Zoom), strconv.Itoa(coord.X))
 	if _, err := os.Stat(cachedTileDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(cachedTileDir, 0755); err != nil {
 			log.Println("Cannot create cache dir", err)
 			return m.fetchTile(coord)
 		}
 	}
-	cachedTilePath := path.Join(cachedTileDir, strconv.Itoa(coord.y)+".png")
+	cachedTilePath := path.Join(cachedTileDir, strconv.Itoa(coord.Y)+".png")
 	f, err := os.Open(cachedTilePath)
 	if err == nil {
 		img, err := png.Decode(f)
@@ -167,13 +137,13 @@ func (m *MapTiles) getTileSlow(coord tileCoord) (image.Image, error) {
 	return img, nil
 }
 
-func (m *MapTiles) fetchTile(coord tileCoord) (image.Image, error) {
+func (m *MapTiles) fetchTile(coord TileCoord) (image.Image, error) {
 	select {
 	case <-m.fetchSemaphore:
 		defer func() {
 			m.fetchSemaphore <- empty{}
 		}()
-		url := fmt.Sprintf("http://a.tile.openstreetmap.org/%d/%d/%d.png", coord.zoom, coord.x, coord.y)
+		url := fmt.Sprintf("http://a.tile.openstreetmap.org/%d/%d/%d.png", coord.Zoom, coord.X, coord.Y)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			return nil, err

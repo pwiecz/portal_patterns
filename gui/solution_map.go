@@ -7,7 +7,9 @@ import "time"
 
 import "github.com/golang/geo/r2"
 import "github.com/golang/geo/s2"
+import "github.com/golang/groupcache/lru"
 import "github.com/pwiecz/atk/tk"
+import "github.com/pwiecz/portal_patterns/gui/osm"
 import "github.com/pwiecz/portal_patterns/lib"
 
 var projection = NewWebMercatorProjection()
@@ -39,9 +41,10 @@ type SolutionMap struct {
 	dragPosX, dragPosY int
 	portalPaths        [][]r2.Point
 	lines              []*tk.CanvasLine
-	tileCache          *MapTiles
-	mapTiles           map[tileCoord]*tk.CanvasImage
-	missingTiles       map[tileCoord]bool
+	tileFetcher        *osm.MapTiles
+	tileCache          *lru.Cache
+	mapTiles           map[osm.TileCoord]*tk.CanvasImage
+	missingTiles       map[osm.TileCoord]bool
 	portals            map[string]mapPortal
 	onPortalLeftClick  func(string)
 	onPortalRightClick func(string, int, int)
@@ -80,10 +83,11 @@ func NewSolutionMap(name string) *SolutionMap {
 		s.OnZoomOut(s.canvas.Width()/2, s.canvas.Height()/2)
 	})
 	s.portals = make(map[string]mapPortal)
-	s.mapTiles = make(map[tileCoord]*tk.CanvasImage)
-	s.missingTiles = make(map[tileCoord]bool)
-	s.tileCache = NewMapTiles()
-	s.tileCache.SetOnTileRead(func(coord tileCoord, tile *tk.Image) { s.onTileRead(coord, tile) })
+	s.mapTiles = make(map[osm.TileCoord]*tk.CanvasImage)
+	s.missingTiles = make(map[osm.TileCoord]bool)
+	s.tileFetcher = osm.NewMapTiles()
+	s.tileFetcher.SetOnTileRead(func(coord osm.TileCoord, tile image.Image) { s.onTileRead(coord, tile) })
+	s.tileCache = lru.New(1000)
 	s.font = tk.LoadSysFont(tk.SysTextFont)
 	s.fontDescription = s.font.Description()
 	s.textAscent = s.font.Ascent()
@@ -106,8 +110,8 @@ func (s *SolutionMap) Clear() {
 	s.canvas.DeleteAllItems()
 	s.portalPaths = nil
 	s.lines = nil
-	s.mapTiles = make(map[tileCoord]*tk.CanvasImage)
-	s.missingTiles = make(map[tileCoord]bool)
+	s.mapTiles = make(map[osm.TileCoord]*tk.CanvasImage)
+	s.missingTiles = make(map[osm.TileCoord]bool)
 	s.portals = make(map[string]mapPortal)
 }
 func (s *SolutionMap) OnDrag(e *tk.Event) {
@@ -184,47 +188,58 @@ func (s *SolutionMap) OnZoomOut(cx, cy int) {
 	}
 }
 
-func (s *SolutionMap) showTile(coord tileCoord, tileImage *tk.Image) {
+func (s *SolutionMap) showTile(coord osm.TileCoord, tileImage *tk.Image) {
 	if tile, ok := s.mapTiles[coord]; ok {
 		s.canvas.DeleteImage(tile)
 	}
-	dx := float64(coord.x)*256.0 - s.x0
-	dy := float64(coord.y)*256.0 - s.y0
+	dx := float64(coord.X)*256.0 - s.x0
+	dy := float64(coord.Y)*256.0 - s.y0
 	mapTile := s.canvas.CreateImage(dx, dy, tk.CanvasItemAttrImage(tileImage), tk.CanvasItemAttrAnchor(tk.AnchorNorthWest), tk.CanvasItemAttrTags([]string{"tile"}))
 	mapTile.Lower()
 	s.mapTiles[coord] = mapTile
 }
 
-func (s *SolutionMap) onTileRead(coord tileCoord, tileImage *tk.Image) {
-	if s.missingTiles[coord] {
-		if tileImage == nil {
-			// try fetching again after 1 second
-			timer := time.NewTimer(time.Second)
-			go func() {
-				<-timer.C
-				tk.Async(func() {
-					// check if we still need the tile before refetching
-					if s.missingTiles[coord] {
-						s.tryShowTile(coord)
-					}
-				})
-			}()
-			return
+func (s *SolutionMap) onTileRead(coord osm.TileCoord, img image.Image) {
+	tk.Async(func() {
+		if s.missingTiles[coord] {
+			if img == nil {
+				// try fetching again after 1 second
+				timer := time.NewTimer(time.Second)
+				go func() {
+					<-timer.C
+					tk.Async(func() {
+						// check if we still need the tile before refetching
+						if s.missingTiles[coord] {
+							s.tryShowTile(coord)
+						}
+					})
+				}()
+				return
+			}
+			tileImage := tk.NewImage()
+			tileImage.SetImage(img)
+			wrappedCoord := coord
+			maxCoord := 1 << coord.Zoom
+			for wrappedCoord.X < 0 {
+				wrappedCoord.X += maxCoord
+			}
+			wrappedCoord.X %= maxCoord
+			s.tileCache.Add(wrappedCoord, tileImage)
+			s.showTile(coord, tileImage)
+			delete(s.missingTiles, coord)
 		}
-		s.showTile(coord, tileImage)
-		delete(s.missingTiles, coord)
-	}
+	})
 }
 func (s *SolutionMap) showTiles() {
 	if s.zoomPow == 0 {
 		return
 	}
-	tileCoords := make(map[tileCoord]bool)
+	tileCoords := make(map[osm.TileCoord]bool)
 	maxCoord := 1 << s.zoom
 	for x := int(math.Floor(s.x0 / 256)); x <= int(math.Floor(s.x0+float64(s.canvas.Width())))/256; x++ {
 		for y := int(math.Floor(s.y0 / 256)); y <= int(math.Floor(s.y0+float64(s.canvas.Height())))/256; y++ {
 			if y >= 0 && y < maxCoord {
-				tileCoords[tileCoord{x, y, s.zoom}] = true
+				tileCoords[osm.TileCoord{x, y, s.zoom}] = true
 			}
 		}
 	}
@@ -236,18 +251,43 @@ func (s *SolutionMap) showTiles() {
 			delete(tileCoords, coord)
 		}
 	}
-	s.missingTiles = make(map[tileCoord]bool)
+	s.missingTiles = make(map[osm.TileCoord]bool)
 	for coord := range tileCoords {
 		s.tryShowTile(coord)
 	}
 }
-func (s *SolutionMap) tryShowTile(coord tileCoord) {
-	tileImage, ok := s.tileCache.GetTile(coord)
+func (s *SolutionMap) tryShowTile(coord osm.TileCoord) {
+	wrappedCoord := coord
+	maxCoord := 1 << coord.Zoom
+	for wrappedCoord.X < 0 {
+		wrappedCoord.X += maxCoord
+	}
+	wrappedCoord.X %= maxCoord
+	var tileImage *tk.Image
+	if tile, ok := s.tileCache.Get(wrappedCoord); ok {
+		tileImage = tile.(*tk.Image)
+	}
+	if tileImage == nil {
+		img := s.tileFetcher.GetTile(coord)
+		if img != nil {
+			tileImage = tk.NewImage()
+			tileImage.SetImage(img)
+			s.tileCache.Add(wrappedCoord, tileImage)
+		} else if wrappedCoord.Zoom > 0 {
+			s.missingTiles[coord] = true
+			zoomedOutCoord := osm.TileCoord{X: wrappedCoord.X / 2, Y: wrappedCoord.Y / 2, Zoom: wrappedCoord.Zoom - 1}
+			if tile, ok := s.tileCache.Get(zoomedOutCoord); ok {
+				if zoomedOutTileImage, ok := tile.(*tk.Image); ok {
+					sourceX := (wrappedCoord.X % 2) * 128
+					sourceY := (wrappedCoord.Y % 2) * 128
+					tileImage = tk.NewImage()
+					tileImage.Copy(zoomedOutTileImage, tk.ImageCopyAttrFrom(sourceX, sourceY, sourceX+128, sourceY+128), tk.ImageCopyAttrZoom(2.0, 2.0))
+				}
+			}
+		}
+	}
 	if tileImage != nil {
 		s.showTile(coord, tileImage)
-	}
-	if !ok {
-		s.missingTiles[coord] = true
 	}
 }
 func (s *SolutionMap) showSolution() {
