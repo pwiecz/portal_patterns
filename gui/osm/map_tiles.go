@@ -10,21 +10,24 @@ import "net/http"
 import "os"
 import "path"
 import "strconv"
+import "sync"
 
 const (
 	MAX_DOWNLOAD_THREADS = 2
 )
+var ErrBusy = errors.New("Too many simultaneous requests")
 
 type TileCoord struct {
 	X, Y, Zoom int
 }
 
+
 type empty struct{}
 type MapTiles struct {
-	cacheDir         string
-	fetchSemaphore   chan empty
-	requestsInFlight map[TileCoord]bool
-	onTileRead       func(TileCoord, image.Image)
+	cacheDir              string
+	fetchSemaphore        chan empty
+	requestsInFlightMutex sync.Mutex
+	requestsInFlight      map[TileCoord]empty
 }
 
 func NewMapTiles() *MapTiles {
@@ -41,50 +44,51 @@ func NewMapTiles() *MapTiles {
 	for i := 0; i < MAX_DOWNLOAD_THREADS; i++ {
 		semaphore <- e
 	}
-	requestsInFlight := make(map[TileCoord]bool)
+	requestsInFlight := make(map[TileCoord]empty)
 	return &MapTiles{
 		cacheDir:         cacheDir,
 		fetchSemaphore:   semaphore,
-		requestsInFlight: requestsInFlight}
+		requestsInFlight: requestsInFlight,
+	}
 }
 
-func (m *MapTiles) GetTile(coord TileCoord) image.Image {
+func (m *MapTiles) GetTile(coord TileCoord) (image.Image, error) {
 	if coord.Zoom < 0 || coord.Y < 0 {
-		log.Println("Negative tile coordinates", coord)
-		return nil
+		return nil, fmt.Errorf("Negative tile coordinates %v", coord)
 	}
 	if coord.Zoom > 20 {
-		log.Println("Too high zoom factor", coord)
-		return nil
+		return nil, fmt.Errorf("Too high zoom factor %v", coord)
 	}
 	maxCoord := 1 << coord.Zoom
 	if coord.Y >= maxCoord {
-		log.Println("Too high x,y coords", coord)
-		return nil
+		return nil, fmt.Errorf("Invalid x,y coords %v", coord)
 	}
 	wrappedCoord := coord
 	for wrappedCoord.X < 0 {
 		wrappedCoord.X += maxCoord
 	}
 	wrappedCoord.X %= maxCoord
-	if _, ok := m.requestsInFlight[wrappedCoord]; !ok {
-		m.requestsInFlight[wrappedCoord] = true
-		go func(coord TileCoord) {
-			img, err := m.getTileSlow(wrappedCoord)
-			delete(m.requestsInFlight, wrappedCoord)
-			if err != nil {
-				m.onTileRead(coord, nil)
-			}
 
-			m.onTileRead(coord, img)
-		}(coord)
+	m.requestsInFlightMutex.Lock()
+	if _, ok := m.requestsInFlight[wrappedCoord]; ok {
+		m.requestsInFlightMutex.Unlock()
+		return nil, fmt.Errorf("Coords already requested %v", wrappedCoord)
 	}
-	return nil
+	m.requestsInFlight[wrappedCoord] = empty{}
+	m.requestsInFlightMutex.Unlock()
+
+	img, err := m.getTileSlow(wrappedCoord)
+
+	m.requestsInFlightMutex.Lock()
+	delete(m.requestsInFlight, wrappedCoord)
+	m.requestsInFlightMutex.Unlock()
+
+	if err != nil {
+		return nil, err
+	}
+	return img, nil
 }
 
-func (m *MapTiles) SetOnTileRead(onTileRead func(TileCoord, image.Image)) {
-	m.onTileRead = onTileRead
-}
 func (m *MapTiles) getTileSlow(coord TileCoord) (image.Image, error) {
 	if m.cacheDir == "" {
 		return m.fetchTile(coord)
@@ -163,6 +167,6 @@ func (m *MapTiles) fetchTile(coord TileCoord) (image.Image, error) {
 		}
 		return tile, nil
 	default:
-		return nil, errors.New("Too many simultaneous get requests")
+		return nil, ErrBusy
 	}
 }

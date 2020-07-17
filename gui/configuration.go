@@ -56,6 +56,9 @@ func SaveConfiguration(config *Configuration) {
 		return
 	}
 	bytes, err := json.Marshal(config)
+	if err != nil {
+		panic(err)
+	}
 	if err := ioutil.WriteFile(configPath, bytes, 0644); err != nil {
 		panic(err)
 	}
