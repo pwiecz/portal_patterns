@@ -2,6 +2,7 @@ package main
 
 import "fmt"
 
+import "github.com/pwiecz/portal_patterns/gui/osm"
 import "github.com/pwiecz/portal_patterns/lib"
 import "github.com/pwiecz/atk/tk"
 
@@ -12,9 +13,9 @@ type droneFlightTab struct {
 	endPortal   string
 }
 
-func NewDroneFlightTab(parent *Window, conf *Configuration) *droneFlightTab {
+func NewDroneFlightTab(parent *Window, conf *Configuration, tileFetcher *osm.MapTiles) *droneFlightTab {
 	t := &droneFlightTab{}
-	t.baseTab = NewBaseTab(parent, "Drone Flight", conf)
+	t.baseTab = NewBaseTab(parent, "Drone Flight", conf, tileFetcher)
 	t.pattern = t
 	addResetBox := tk.NewHPackLayout(parent)
 	addResetBox.AddWidget(t.add)

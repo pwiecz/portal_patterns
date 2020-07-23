@@ -3,6 +3,7 @@ package main
 import "fmt"
 import "runtime"
 
+import "github.com/pwiecz/portal_patterns/gui/osm"
 import "github.com/pwiecz/portal_patterns/lib"
 import "github.com/pwiecz/atk/tk"
 
@@ -13,9 +14,9 @@ type herringboneTab struct {
 	basePortals map[string]bool
 }
 
-func NewHerringboneTab(parent tk.Widget, conf *Configuration) *herringboneTab {
+func NewHerringboneTab(parent tk.Widget, conf *Configuration, tileFetcher *osm.MapTiles) *herringboneTab {
 	t := &herringboneTab{}
-	t.baseTab = NewBaseTab(parent, "Herringbone", conf)
+	t.baseTab = NewBaseTab(parent, "Herringbone", conf, tileFetcher)
 	t.pattern = t
 	addResetBox := tk.NewHPackLayout(parent)
 	addResetBox.AddWidget(t.add)

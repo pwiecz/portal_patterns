@@ -5,6 +5,7 @@ import "math/rand"
 import "strconv"
 import "time"
 
+import "github.com/pwiecz/portal_patterns/gui/osm"
 import "github.com/pwiecz/portal_patterns/lib"
 import "github.com/pwiecz/atk/tk"
 
@@ -19,9 +20,9 @@ type homogeneousTab struct {
 	anchorPortals map[string]bool
 }
 
-func NewHomogeneousTab(parent tk.Widget, conf *Configuration) *homogeneousTab {
+func NewHomogeneousTab(parent tk.Widget, conf *Configuration, tileFetcher *osm.MapTiles) *homogeneousTab {
 	t := &homogeneousTab{}
-	t.baseTab = NewBaseTab(parent, "Homogeneous", conf)
+	t.baseTab = NewBaseTab(parent, "Homogeneous", conf, tileFetcher)
 	t.pattern = t
 	addResetBox := tk.NewHPackLayout(parent)
 	addResetBox.AddWidget(t.add)

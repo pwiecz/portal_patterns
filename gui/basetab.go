@@ -6,6 +6,7 @@ import "path"
 
 import "github.com/golang/geo/s2"
 import "github.com/pwiecz/atk/tk"
+import "github.com/pwiecz/portal_patterns/gui/osm"
 import "github.com/pwiecz/portal_patterns/lib"
 
 type pattern interface {
@@ -20,6 +21,7 @@ type pattern interface {
 type baseTab struct {
 	*tk.PackLayout
 	configuration   *Configuration
+	tileFetcher     *osm.MapTiles
 	add             *tk.Button
 	reset           *tk.Button
 	find            *tk.Button
@@ -37,10 +39,11 @@ type baseTab struct {
 	name            string
 }
 
-func NewBaseTab(parent tk.Widget, name string, conf *Configuration) *baseTab {
+func NewBaseTab(parent tk.Widget, name string, conf *Configuration, tileFetcher *osm.MapTiles) *baseTab {
 	t := &baseTab{}
 	t.name = name
 	t.configuration = conf
+	t.tileFetcher = tileFetcher
 	t.PackLayout = tk.NewVPackLayout(parent)
 	t.add = tk.NewButton(parent, "Add Portals")
 	t.add.OnCommand(func() {
@@ -181,7 +184,7 @@ func (t *baseTab) addPortals(portals []lib.Portal) {
 		t.find.SetState(tk.StateNormal)
 	}
 	if t.solutionMap == nil {
-		t.solutionMap = NewSolutionMap(t.name)
+		t.solutionMap = NewSolutionMap(t.name, t.tileFetcher)
 		t.solutionMap.OnClose(func() bool {
 			t.solutionMap = nil
 			return true

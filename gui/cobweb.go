@@ -2,6 +2,7 @@ package main
 
 import "fmt"
 
+import "github.com/pwiecz/portal_patterns/gui/osm"
 import "github.com/pwiecz/portal_patterns/lib"
 import "github.com/pwiecz/atk/tk"
 
@@ -11,9 +12,9 @@ type cobwebTab struct {
 	cornerPortals map[string]bool
 }
 
-func NewCobwebTab(parent *Window, conf *Configuration) *cobwebTab {
+func NewCobwebTab(parent *Window, conf *Configuration, tileFetcher *osm.MapTiles) *cobwebTab {
 	t := &cobwebTab{}
-	t.baseTab = NewBaseTab(parent, "Cobweb", conf)
+	t.baseTab = NewBaseTab(parent, "Cobweb", conf, tileFetcher)
 	t.pattern = t
 	addResetBox := tk.NewHPackLayout(parent)
 	addResetBox.AddWidget(t.add)

@@ -13,7 +13,7 @@ import "github.com/pwiecz/atk/tk"
 import "github.com/pwiecz/portal_patterns/gui/osm"
 import "github.com/pwiecz/portal_patterns/lib"
 
-var projection = NewWebMercatorProjection()
+var projection = lib.NewWebMercatorProjection()
 
 type tile struct {
 	x, y, zoom int
@@ -51,7 +51,7 @@ type SolutionMap struct {
 	onPortalRightClick func(string, int, int)
 }
 
-func NewSolutionMap(name string) *SolutionMap {
+func NewSolutionMap(name string, tileFetcher *osm.MapTiles) *SolutionMap {
 	s := &SolutionMap{}
 	s.Window = tk.NewWindow()
 	s.Window.SetTitle(name + " - © OpenStreetMap")
@@ -86,7 +86,7 @@ func NewSolutionMap(name string) *SolutionMap {
 	s.portals = make(map[string]mapPortal)
 	s.mapTiles = make(map[osm.TileCoord]*tk.CanvasImage)
 	s.missingTiles = make(map[osm.TileCoord]bool)
-	s.tileFetcher = osm.NewMapTiles()
+	s.tileFetcher = tileFetcher
 	s.tileCache = lru.New(1000)
 	s.font = tk.LoadSysFont(tk.SysTextFont)
 	s.fontDescription = s.font.Description()
