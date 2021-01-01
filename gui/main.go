@@ -2,9 +2,10 @@ package main
 
 import "github.com/pwiecz/atk/tk"
 import "github.com/pwiecz/portal_patterns/gui/osm"
+import "github.com/pwiecz/portal_patterns/configuration"
 
 func main() {
-	conf := LoadConfiguration()
+	conf := configuration.LoadConfiguration()
 	tileFetcher := osm.NewMapTiles()
 	tk.MainLoop(func() {
 		tk.SetMenuTearoff(false)
@@ -21,7 +22,7 @@ type Window struct {
 	tab *tk.Notebook
 }
 
-func NewWindow(conf *Configuration, tileFetcher *osm.MapTiles) *Window {
+func NewWindow(conf *configuration.Configuration, tileFetcher *osm.MapTiles) *Window {
 
 	mw := &Window{}
 	mw.Window = tk.RootWindow()

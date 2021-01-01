@@ -2,10 +2,11 @@ package main
 
 import "fmt"
 import "os"
-import "path"
+import "path/filepath"
 
 import "github.com/golang/geo/s2"
 import "github.com/pwiecz/atk/tk"
+import "github.com/pwiecz/portal_patterns/configuration"
 import "github.com/pwiecz/portal_patterns/gui/osm"
 import "github.com/pwiecz/portal_patterns/lib"
 
@@ -20,7 +21,7 @@ type pattern interface {
 
 type baseTab struct {
 	*tk.PackLayout
-	configuration   *Configuration
+	configuration   *configuration.Configuration
 	tileFetcher     *osm.MapTiles
 	add             *tk.Button
 	reset           *tk.Button
@@ -39,7 +40,7 @@ type baseTab struct {
 	name            string
 }
 
-func NewBaseTab(parent tk.Widget, name string, conf *Configuration, tileFetcher *osm.MapTiles) *baseTab {
+func NewBaseTab(parent tk.Widget, name string, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *baseTab {
 	t := &baseTab{}
 	t.name = name
 	t.configuration = conf
@@ -107,9 +108,9 @@ func (t *baseTab) onAdd() {
 	if err != nil || len(filenames) == 0 {
 		return
 	}
-	portalsDir, _ := path.Split(filenames[0])
+	portalsDir, _ := filepath.Split(filenames[0])
 	t.configuration.PortalsDirectory = portalsDir
-	SaveConfiguration(t.configuration)
+	configuration.SaveConfiguration(t.configuration)
 	for _, filename := range filenames {
 		portals, err := lib.ParseFile(filename)
 		if err != nil {

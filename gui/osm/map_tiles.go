@@ -8,19 +8,20 @@ import "io/ioutil"
 import "log"
 import "net/http"
 import "os"
-import "path"
+import "path/filepath"
 import "strconv"
 import "sync"
 
 const (
 	MAX_DOWNLOAD_THREADS = 2
+	MAX_ZOOM_LEVEL       = 19
 )
+
 var ErrBusy = errors.New("Too many simultaneous requests")
 
 type TileCoord struct {
 	X, Y, Zoom int
 }
-
 
 type empty struct{}
 type MapTiles struct {
@@ -34,7 +35,7 @@ func NewMapTiles() *MapTiles {
 	cacheDirBase, err := os.UserCacheDir()
 	cacheDir := ""
 	if err == nil {
-		cacheDir = path.Join(cacheDirBase, "portal_patterns")
+		cacheDir = filepath.Join(cacheDirBase, "portal_patterns")
 	}
 	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
 		os.MkdirAll(cacheDir, 0755)
@@ -48,15 +49,14 @@ func NewMapTiles() *MapTiles {
 	return &MapTiles{
 		cacheDir:         cacheDir,
 		fetchSemaphore:   semaphore,
-		requestsInFlight: requestsInFlight,
-	}
+		requestsInFlight: requestsInFlight}
 }
 
 func (m *MapTiles) GetTile(coord TileCoord) (image.Image, error) {
 	if coord.Zoom < 0 || coord.Y < 0 {
 		return nil, fmt.Errorf("Negative tile coordinates %v", coord)
 	}
-	if coord.Zoom > 20 {
+	if coord.Zoom > MAX_ZOOM_LEVEL {
 		return nil, fmt.Errorf("Too high zoom factor %v", coord)
 	}
 	maxCoord := 1 << coord.Zoom
@@ -93,14 +93,14 @@ func (m *MapTiles) getTileSlow(coord TileCoord) (image.Image, error) {
 	if m.cacheDir == "" {
 		return m.fetchTile(coord)
 	}
-	cachedTileDir := path.Join(m.cacheDir, strconv.Itoa(coord.Zoom), strconv.Itoa(coord.X))
+	cachedTileDir := filepath.Join(m.cacheDir, strconv.Itoa(coord.Zoom), strconv.Itoa(coord.X))
 	if _, err := os.Stat(cachedTileDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(cachedTileDir, 0755); err != nil {
 			log.Println("Cannot create cache dir", err)
 			return m.fetchTile(coord)
 		}
 	}
-	cachedTilePath := path.Join(cachedTileDir, strconv.Itoa(coord.Y)+".png")
+	cachedTilePath := filepath.Join(cachedTileDir, strconv.Itoa(coord.Y)+".png")
 	f, err := os.Open(cachedTilePath)
 	if err == nil {
 		img, err := png.Decode(f)

@@ -6,6 +6,7 @@ import "strconv"
 
 import "github.com/golang/geo/s2"
 import "github.com/pwiecz/portal_patterns/gui/osm"
+import "github.com/pwiecz/portal_patterns/configuration"
 import "github.com/pwiecz/portal_patterns/lib"
 import "github.com/pwiecz/atk/tk"
 
@@ -19,7 +20,7 @@ type flipFieldTab struct {
 	rest                     []lib.Portal
 }
 
-func NewFlipFieldTab(parent *Window, conf *Configuration, tileFetcher *osm.MapTiles) *flipFieldTab {
+func NewFlipFieldTab(parent *Window, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *flipFieldTab {
 	t := &flipFieldTab{}
 	t.baseTab = NewBaseTab(parent, "Flip Field", conf, tileFetcher)
 

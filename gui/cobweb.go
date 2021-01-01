@@ -3,6 +3,7 @@ package main
 import "fmt"
 
 import "github.com/pwiecz/portal_patterns/gui/osm"
+import "github.com/pwiecz/portal_patterns/configuration"
 import "github.com/pwiecz/portal_patterns/lib"
 import "github.com/pwiecz/atk/tk"
 
@@ -12,7 +13,7 @@ type cobwebTab struct {
 	cornerPortals map[string]bool
 }
 
-func NewCobwebTab(parent *Window, conf *Configuration, tileFetcher *osm.MapTiles) *cobwebTab {
+func NewCobwebTab(parent *Window, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *cobwebTab {
 	t := &cobwebTab{}
 	t.baseTab = NewBaseTab(parent, "Cobweb", conf, tileFetcher)
 	t.pattern = t

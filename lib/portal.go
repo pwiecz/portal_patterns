@@ -8,7 +8,7 @@ import "io"
 import "io/ioutil"
 import "math"
 import "os"
-import "path"
+import "path/filepath"
 import "strconv"
 import "strings"
 
@@ -62,7 +62,7 @@ func ParseFile(filename string) ([]Portal, error) {
 //
 // It tries to guess the file format based on extensions of the file.
 func parseFileAsPortalInfo(filename string) ([]PortalInfo, error) {
-	switch path.Ext(filename) {
+	switch filepath.Ext(filename) {
 	case ".csv":
 		return parseCSVFileAsPortalInfo(filename)
 	case ".json":
