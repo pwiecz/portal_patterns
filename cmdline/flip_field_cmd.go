@@ -1,12 +1,14 @@
 package main
 
-import "flag"
-import "fmt"
-import "io"
-import "log"
-import "runtime"
+import (
+	"flag"
+	"fmt"
+	"io"
+	"log"
+	"runtime"
 
-import "github.com/pwiecz/portal_patterns/lib"
+	"github.com/pwiecz/portal_patterns/lib"
+)
 
 type flipFieldCmd struct {
 	flags              *flag.FlagSet
@@ -72,5 +74,9 @@ func (f *flipFieldCmd) Run(args []string, numWorkers int, output io.Writer, prog
 	for i, portal := range backbone {
 		fmt.Fprintf(output, "%d: %s\n", i, portal.Name)
 	}
-	fmt.Fprintf(output, "\n[%s,%s]\n", lib.PolylineFromPortalList(backbone), lib.MarkersFromPortalList(rest))
+	fmt.Fprintf(output, "\n[%s", lib.PolylineFromPortalList(backbone))
+	if len(rest) > 0 {
+		fmt.Fprintf(output, ",%s", lib.MarkersFromPortalList(rest))
+	}
+	fmt.Fprintln(output, "]")
 }

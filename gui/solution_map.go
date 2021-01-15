@@ -1,17 +1,19 @@
 package main
 
-import "errors"
-import "log"
-import "math"
-import "image"
-import "time"
+import (
+	"errors"
+	"image"
+	"log"
+	"math"
+	"time"
 
-import "github.com/golang/geo/r2"
-import "github.com/golang/geo/s2"
-import "github.com/golang/groupcache/lru"
-import "github.com/pwiecz/atk/tk"
-import "github.com/pwiecz/portal_patterns/gui/osm"
-import "github.com/pwiecz/portal_patterns/lib"
+	"github.com/golang/geo/r2"
+	"github.com/golang/geo/s2"
+	"github.com/golang/groupcache/lru"
+	"github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/portal_patterns/gui/osm"
+	"github.com/pwiecz/portal_patterns/lib"
+)
 
 var projection = lib.NewWebMercatorProjection()
 
@@ -242,7 +244,7 @@ func (s *SolutionMap) showTiles() {
 	for x := int(math.Floor(s.x0 / 256)); x <= int(math.Floor(s.x0+float64(s.canvas.Width())))/256; x++ {
 		for y := int(math.Floor(s.y0 / 256)); y <= int(math.Floor(s.y0+float64(s.canvas.Height())))/256; y++ {
 			if y >= 0 && y < maxCoord {
-				tileCoords[osm.TileCoord{x, y, s.zoom}] = true
+				tileCoords[osm.TileCoord{X: x, Y: y, Zoom: s.zoom}] = true
 			}
 		}
 	}

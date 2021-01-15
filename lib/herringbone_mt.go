@@ -1,7 +1,11 @@
 package lib
 
-import "sync"
-import "github.com/golang/geo/r3"
+import (
+	"fmt"
+	"sync"
+
+	"github.com/golang/geo/r3"
+)
 
 type bestHerringboneMtQuery struct {
 	portals []portalData
@@ -60,8 +64,11 @@ func bestHerringboneWorker(
 
 // LargestHerringboneMT - Find largest possible multilayer of portals to be made, parallel version
 func LargestHerringboneMT(portals []Portal, fixedBaseIndices []int, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal) {
+	if numWorkers < 1 {
+		panic(fmt.Errorf("Too few workers: %d", numWorkers))
+	}
 	if len(portals) < 3 {
-		panic("Too short portal list")
+		panic(fmt.Errorf("Too short portal list: %d", len(portals)))
 	}
 	portalsData := portalsToPortalData(portals)
 

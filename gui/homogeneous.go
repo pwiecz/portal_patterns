@@ -1,14 +1,16 @@
 package main
 
-import "fmt"
-import "math/rand"
-import "strconv"
-import "time"
+import (
+	"fmt"
+	"math/rand"
+	"strconv"
+	"time"
 
-import "github.com/pwiecz/portal_patterns/gui/osm"
-import "github.com/pwiecz/portal_patterns/configuration"
-import "github.com/pwiecz/portal_patterns/lib"
-import "github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/portal_patterns/configuration"
+	"github.com/pwiecz/portal_patterns/gui/osm"
+	"github.com/pwiecz/portal_patterns/lib"
+)
 
 type homogeneousTab struct {
 	*baseTab
@@ -145,7 +147,7 @@ func (t *homogeneousTab) search() {
 		options = append(options, lib.HomogeneousMostEquilateralTriangle{})
 	} else if t.strategy.CurrentIndex() == 4 {
 		rand := rand.New(rand.NewSource(time.Now().UnixNano()))
-		options = append(options, lib.HomogeneousRandom{rand})
+		options = append(options, lib.HomogeneousRandom{Rand: rand})
 	}
 	options = append(options, lib.HomogeneousProgressFunc(
 		func(val int, max int) { t.onProgress(val, max) }))

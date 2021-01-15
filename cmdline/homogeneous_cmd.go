@@ -1,13 +1,15 @@
 package main
 
-import "flag"
-import "fmt"
-import "io"
-import "log"
-import "math/rand"
-import "time"
+import (
+	"flag"
+	"fmt"
+	"io"
+	"log"
+	"math/rand"
+	"time"
 
-import "github.com/pwiecz/portal_patterns/lib"
+	"github.com/pwiecz/portal_patterns/lib"
+)
 
 type homogeneousCmd struct {
 	flags           *flag.FlagSet
@@ -92,7 +94,7 @@ func (h *homogeneousCmd) Run(args []string, output io.Writer, numWorkers int, pr
 		options = append(options, lib.HomogeneousMostEquilateralTriangle{})
 	} else if *h.random {
 		rand := rand.New(rand.NewSource(time.Now().UnixNano()))
-		options = append(options, lib.HomogeneousRandom{rand})
+		options = append(options, lib.HomogeneousRandom{Rand: rand})
 	}
 	options = append(options, lib.HomogeneousPure(*h.pure))
 

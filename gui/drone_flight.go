@@ -1,17 +1,21 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"runtime"
 
-import "github.com/pwiecz/portal_patterns/gui/osm"
-import "github.com/pwiecz/portal_patterns/configuration"
-import "github.com/pwiecz/portal_patterns/lib"
-import "github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/portal_patterns/configuration"
+	"github.com/pwiecz/portal_patterns/gui/osm"
+	"github.com/pwiecz/portal_patterns/lib"
+)
 
 type droneFlightTab struct {
 	*baseTab
-	solution    []lib.Portal
-	startPortal string
-	endPortal   string
+	useLongJumps   *tk.CheckButton
+	solution, keys []lib.Portal
+	startPortal    string
+	endPortal      string
 }
 
 func NewDroneFlightTab(parent *Window, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *droneFlightTab {
@@ -22,6 +26,9 @@ func NewDroneFlightTab(parent *Window, conf *configuration.Configuration, tileFe
 	addResetBox.AddWidget(t.add)
 	addResetBox.AddWidget(t.reset)
 	t.AddWidget(addResetBox)
+	t.useLongJumps = tk.NewCheckButton(parent, "Use long jumps (key needed)")
+	t.useLongJumps.SetChecked(true)
+	t.AddWidgetEx(t.useLongJumps, tk.FillNone, true, tk.AnchorWest)
 	solutionBox := tk.NewHPackLayout(parent)
 	solutionBox.AddWidget(t.find)
 	solutionBox.AddWidget(t.save)
@@ -94,24 +101,27 @@ func (t *droneFlightTab) search() {
 	t.copy.SetState(tk.StateDisable)
 	tk.Update()
 	portals := []lib.Portal{}
-	startPortal, endPortal := -1, -1
+	options := []lib.DroneFlightOption{lib.DroneFlightNumWorkers(runtime.GOMAXPROCS(0))}
 	for _, portal := range t.portals {
 		if !t.disabledPortals[portal.Guid] {
 			portals = append(portals, portal)
 			if t.startPortal == portal.Guid {
-				startPortal = len(portals) - 1
+				options = append(options, lib.DroneFlightStartPortalIndex(len(portals)-1))
 			}
 			if t.endPortal == portal.Guid {
-				endPortal = len(portals) - 1
+				options = append(options, lib.DroneFlightEndPortalIndex(len(portals)-1))
 			}
 		}
 	}
-	t.solution = lib.LongestDroneFlight(portals, startPortal, endPortal, func(val int, max int) { t.onProgress(val, max) })
+	options = append(options, lib.DroneFlightUseLongJumps(t.useLongJumps.IsChecked()))
+	options = append(options, lib.DroneFlightProgressFunc(
+		func(val int, max int) { t.onProgress(val, max) }))
+	t.solution, t.keys = lib.LongestDroneFlight(portals, options...)
 	if t.solutionMap != nil {
 		t.solutionMap.SetSolution([][]lib.Portal{t.solution})
 	}
 	distance := t.solution[0].LatLng.Distance(t.solution[len(t.solution)-1].LatLng) * lib.RadiansToMeters
-	solutionText := fmt.Sprintf("Flight distance: %f", distance)
+	solutionText := fmt.Sprintf("Flight distance: %.1f, keys needed: %d", distance, len(t.keys))
 	t.solutionLabel.SetText(solutionText)
 	t.add.SetState(tk.StateNormal)
 	t.reset.SetState(tk.StateNormal)
@@ -122,7 +132,11 @@ func (t *droneFlightTab) search() {
 }
 
 func (t *droneFlightTab) solutionString() string {
-	return fmt.Sprintf("[%s]", lib.PolylineFromPortalList(t.solution))
+	s := fmt.Sprintf("[%s", lib.PolylineFromPortalList(t.solution))
+	if len(t.keys) > 0 {
+		s += fmt.Sprintf(",%s", lib.MarkersFromPortalList(t.keys))
+	}
+	return s + "]"
 }
 func (t *droneFlightTab) EnablePortal(guid string) {
 	delete(t.disabledPortals, guid)

@@ -1,6 +1,9 @@
 package lib
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 type bestFlipFieldMtQuery struct {
 	maxBackbonePortals int
@@ -59,8 +62,11 @@ func bestFlipFieldWorker(
 }
 
 func LargestFlipFieldMT(portals []Portal, params flipFieldParams) ([]Portal, []Portal) {
+	if params.numWorkers < 1 {
+		panic(fmt.Errorf("Too few workers: %d", params.numWorkers))
+	}
 	if len(portals) < 3 {
-		panic("Too short portal list")
+		panic(fmt.Errorf("Too short portal list: %d", len(portals)))
 	}
 	portalsData := portalsToPortalData(portals)
 
