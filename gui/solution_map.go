@@ -15,7 +15,7 @@ import (
 	"github.com/pwiecz/portal_patterns/lib"
 )
 
-var projection = lib.NewWebMercatorProjection()
+var projection = s2.NewMercatorProjection(180)
 
 type tile struct {
 	x, y, zoom int
@@ -372,6 +372,9 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 	minX, minY, maxX, maxY := math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64
 	for _, portal := range portals {
 		mapCoords := projection.FromLatLng(portal.LatLng)
+		mapCoords.X = (mapCoords.X + 180) / 360
+		mapCoords.Y = (180 - mapCoords.Y) / 360
+
 		minX = math.Min(mapCoords.X, minX)
 		minY = math.Min(mapCoords.Y, minY)
 		maxX = math.Max(mapCoords.X, maxX)
@@ -397,6 +400,9 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 	s.showSolution()
 	for _, portal := range portals {
 		mapCoords := projection.FromLatLng(portal.LatLng)
+		mapCoords.X = (mapCoords.X + 180) / 360
+		mapCoords.Y = (180 - mapCoords.Y) / 360
+
 		x, y := s.GeoToScreenCoordinates(mapCoords.X, mapCoords.Y)
 		item := s.canvas.CreateOval(x-4, y-4, x+5, y+5, tk.CanvasItemAttrFill("orange"), tk.CanvasItemAttrTags([]string{"portal"}))
 		item.Raise()
@@ -440,6 +446,10 @@ func (s *SolutionMap) SetSolutionPoints(lines [][]s2.Point) {
 		path := []r2.Point{}
 		for i := 1; i < len(line); i++ {
 			path = tesselator.AppendProjected(line[i-1], line[i], path)
+		}
+		for i := range path {
+			path[i].X = (path[i].X + 180) / 360
+			path[i].Y = (180 - path[i].Y) / 360
 		}
 		s.portalPaths = append(s.portalPaths, path)
 	}
