@@ -1,12 +1,16 @@
 package main
 
-import "fmt"
-import "runtime"
-import "strconv"
+import (
+	"fmt"
+	"runtime"
+	"strconv"
 
-import "github.com/golang/geo/s2"
-import "github.com/pwiecz/portal_patterns/lib"
-import "github.com/pwiecz/atk/tk"
+	"github.com/golang/geo/s2"
+	"github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/portal_patterns/configuration"
+	"github.com/pwiecz/portal_patterns/gui/osm"
+	"github.com/pwiecz/portal_patterns/lib"
+)
 
 type flipFieldTab struct {
 	*baseTab
@@ -18,9 +22,9 @@ type flipFieldTab struct {
 	rest                     []lib.Portal
 }
 
-func NewFlipFieldTab(parent *Window, conf *Configuration) *flipFieldTab {
+func NewFlipFieldTab(parent *Window, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *flipFieldTab {
 	t := &flipFieldTab{}
-	t.baseTab = NewBaseTab(parent, "Flip Field", conf)
+	t.baseTab = NewBaseTab(parent, "Flip Field", conf, tileFetcher)
 
 	t.AddWidget(tk.NewLabel(parent, "EXPERIMENTAL: SLOW AND INACCURATE"))
 
@@ -157,7 +161,11 @@ func (t *flipFieldTab) search() {
 }
 
 func (t *flipFieldTab) solutionString() string {
-	return fmt.Sprintf("\n[%s,%s]\n", lib.PolylineFromPortalList(t.backbone), lib.MarkersFromPortalList(t.rest))
+	s := fmt.Sprintf("[%s", lib.PolylineFromPortalList(t.backbone))
+	if len(t.rest) > 0 {
+		s += fmt.Sprintf(",%s", lib.MarkersFromPortalList(t.rest))
+	}
+	return s + "]"
 }
 func (t *flipFieldTab) EnablePortal(guid string) {
 	delete(t.disabledPortals, guid)

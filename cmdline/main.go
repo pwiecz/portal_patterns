@@ -1,18 +1,19 @@
 package main
 
-import "bufio"
-import "flag"
-import "fmt"
-import "io"
-import "log"
-import "math"
-import "os"
-import "runtime"
+import (
+	"bufio"
+	"flag"
+	"fmt"
+	"io"
+	"log"
+	"math"
+	"os"
+	"path/filepath"
+	"runtime"
+	"runtime/pprof"
 
-import "path/filepath"
-import "runtime/pprof"
-
-import "github.com/pwiecz/portal_patterns/lib"
+	"github.com/pwiecz/portal_patterns/lib"
+)
 
 func main() {
 	fileBase := filepath.Base(os.Args[0])
@@ -48,15 +49,7 @@ func main() {
 	}
 	flipFieldCmd := NewFlipFieldCmd()
 	homogeneousCmd := NewHomogeneousCmd()
-	droneFlightCmd := flag.NewFlagSet("drone_flight", flag.ExitOnError)
-	droneFlightStartPortalValue := portalValue{}
-	droneFlightEndPortalValue := portalValue{}
-	droneFlightCmd.Var(&droneFlightStartPortalValue, "start_portal", "fix the start portal of the drone flight path")
-	droneFlightCmd.Var(&droneFlightEndPortalValue, "end_portal", "fix the end portal of the drone flight path")
-	droneFlightCmd.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s drone_flight <portals_file>\n", fileBase)
-		droneFlightCmd.PrintDefaults()
-	}
+	droneFlightCmd := NewDroneFlightCmd()
 
 	defaultUsage := flag.Usage
 	flag.Usage = func() {
@@ -67,7 +60,7 @@ func main() {
 		doubleHerringboneCmd.Usage()
 		flipFieldCmd.Usage(fileBase)
 		homogeneousCmd.Usage(fileBase)
-		droneFlightCmd.Usage()
+		droneFlightCmd.Usage(fileBase)
 	}
 	flag.Parse()
 	if len(flag.Args()) <= 1 {
@@ -232,28 +225,13 @@ func main() {
 	case "homogeneous":
 		fallthrough
 	case "homogenous":
-		homogeneousCmd.Run(flag.Args()[1:], outputWriter, progressFunc)
+		numHomogeneousWorkers := runtime.GOMAXPROCS(0)
+		if *numWorkers > 0 {
+			numHomogeneousWorkers = *numWorkers
+		}
+		homogeneousCmd.Run(flag.Args()[1:], outputWriter, numHomogeneousWorkers, progressFunc)
 	case "drone_flight":
-		droneFlightCmd.Parse(flag.Args()[1:])
-		fileArgs := droneFlightCmd.Args()
-		if len(fileArgs) != 1 {
-			log.Fatalln("drone_flight command requires exactly one file argument")
-		}
-		portals, err := lib.ParseFile(fileArgs[0])
-		if err != nil {
-			log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
-		}
-		fmt.Printf("Read %d portals\n", len(portals))
-		startPortalIndex := portalToIndex(droneFlightStartPortalValue, portals)
-		endPortalIndex := portalToIndex(droneFlightEndPortalValue, portals)
-		result := lib.LongestDroneFlight(portals, startPortalIndex, endPortalIndex, progressFunc)
-		distance := result[0].LatLng.Distance(result[len(result)-1].LatLng) * lib.RadiansToMeters
-		fmt.Fprintln(outputWriter, "")
-		fmt.Fprintf(outputWriter, "Max flight distance: %fm\n", distance)
-		for i, portal := range result {
-			fmt.Fprintf(outputWriter, "%d: %s\n", i, portal.Name)
-		}
-		fmt.Fprintf(outputWriter, "\n[%s]\n", lib.PolylineFromPortalList(result))
+		droneFlightCmd.Run(flag.Args()[1:], *numWorkers, outputWriter, progressFunc)
 	default:
 		log.Fatalf("Unknown command: \"%s\"\n", flag.Args()[0])
 	}

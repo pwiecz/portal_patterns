@@ -1,9 +1,9 @@
-package main
+package configuration
 
 import "os"
-import "path"
-import "io/ioutil"
 import "encoding/json"
+import "io/ioutil"
+import "path/filepath"
 
 type Configuration struct {
 	PortalsDirectory string `json:"portals_directory"`
@@ -14,14 +14,14 @@ func ConfigDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return path.Join(userConfigDir, "portal_patterns"), nil
+	return filepath.Join(userConfigDir, "portal_patterns"), nil
 }
 func ConfigPath() (string, error) {
 	configDir, err := ConfigDir()
 	if err != nil {
 		return "", err
 	}
-	return path.Join(configDir, "config.json"), nil
+	return filepath.Join(configDir, "config.json"), nil
 }
 
 func LoadConfiguration() *Configuration {
@@ -56,6 +56,9 @@ func SaveConfiguration(config *Configuration) {
 		return
 	}
 	bytes, err := json.Marshal(config)
+	if err != nil {
+		panic(err)
+	}
 	if err := ioutil.WriteFile(configPath, bytes, 0644); err != nil {
 		panic(err)
 	}

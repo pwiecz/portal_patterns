@@ -6,15 +6,9 @@ type homogeneousTriangleScorer interface {
 	scoreCandidate(p portalData)
 	bestMidpoints() [6]portalIndex
 }
-type homogeneousDepthTriangleScorer interface {
-	// resets scorer to compute scores for this triangle
-	reset(a, b, c portalData)
-	scoreCandidate(p portalData)
-	bestMidpoint() portalIndex
-}
 
 type homogeneousScorer interface {
-	newTriangleScorer(maxDepth int, perfect bool) homogeneousTriangleScorer
+	newTriangleScorer(maxDepth int, pure bool) homogeneousTriangleScorer
 	scoreTriangle(a, b, c portalData) float32
 }
 
@@ -37,13 +31,11 @@ type bestHomogeneous2Query struct {
 	depth uint16
 	// maxDepth of solution to be found
 	maxDepth int
-	// accept only candidates that use all the portals within the top level triangle
-	perfect bool
 	// a scorer for picking best of the possible solutions of the same depth
 	scorer homogeneousScorer
 }
 
-func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, maxDepth int, perfect bool, onFilledIndexEntry func()) *bestHomogeneous2Query {
+func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, maxDepth int, pure bool, onFilledIndexEntry func()) *bestHomogeneous2Query {
 	numPortals := uint(len(portals))
 	index := make([]portalIndex, numPortals*numPortals*numPortals)
 	for i := 0; i < len(index); i++ {
@@ -51,7 +43,7 @@ func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, ma
 	}
 	triangleScorers := make([]homogeneousTriangleScorer, len(portals))
 	for i := 0; i < len(portals); i++ {
-		triangleScorers[i] = scorer.newTriangleScorer(maxDepth, perfect)
+		triangleScorers[i] = scorer.newTriangleScorer(maxDepth, pure)
 	}
 	return &bestHomogeneous2Query{
 		portals:            portals,
@@ -61,7 +53,6 @@ func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, ma
 		triangleScorers:    triangleScorers,
 		portalsInTriangle:  make([][]portalData, len(portals)),
 		maxDepth:           maxDepth,
-		perfect:            perfect,
 		scorer:             scorer,
 	}
 }

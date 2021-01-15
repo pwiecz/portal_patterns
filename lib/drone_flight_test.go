@@ -6,7 +6,15 @@ import "testing"
 import "github.com/golang/geo/s1"
 import "github.com/golang/geo/s2"
 
-func isCorrectDroneFlight(route []Portal) bool {
+func portalIsOnList(portal Portal, list []Portal) bool {
+	for _, p := range list {
+		if portal.Guid == p.Guid {
+			return true
+		}
+	}
+	return false
+}
+func isCorrectDroneFlight(route, keys []Portal) bool {
 	if len(route) <= 1 {
 		return true
 	}
@@ -16,17 +24,21 @@ func isCorrectDroneFlight(route []Portal) bool {
 	}
 	secondPortalCellLvl16 := s2.CellFromCellID(secondPortalCellId.Parent(16))
 	distance := secondPortalCellLvl16.Distance(s2.PointFromLatLng(route[0].LatLng)).Angle()
-	if distance > s1.Angle(500/RadiansToMeters) {
+	if distance > s1.Angle(1250/RadiansToMeters) {
 		return false
 	}
-	return isCorrectDroneFlight(route[1:])
+	if distance > s1.Angle(500/RadiansToMeters) && !portalIsOnList(route[1], keys) {
+		return false
+	}
+	
+	return isCorrectDroneFlight(route[1:], keys)
 }
 
-func checkValidDroneFlight(expectedLength float64, route []Portal, t *testing.T) {
+func checkValidDroneFlight(expectedLength float64, route, keys []Portal, t *testing.T) {
 	if len(route) < 2 {
 		t.Errorf("Expected at least 2 portals in route, got %d", len(route))
 	}
-	if !isCorrectDroneFlight(route) {
+	if !isCorrectDroneFlight(route, keys) {
 		t.Errorf("Result is not a correct drone flight route")
 	}
 	routeLengthRadians := route[0].LatLng.Distance(route[len(route)-1].LatLng)
@@ -47,8 +59,8 @@ func TestDroneFlight(t *testing.T) {
 	if len(portals) < 2 {
 		t.FailNow()
 	}
-	route := LongestDroneFlight(portals, -1, -1, func(int, int) {})
-	checkValidDroneFlight(542.555248, route, t)
+	route, keys := LongestDroneFlight(portals, DroneFlightNumWorkers(1))
+	checkValidDroneFlight(542.555248, route, keys, t)
 }
 
 func TestDroneFlightFrom(t *testing.T) {
@@ -62,11 +74,11 @@ func TestDroneFlightFrom(t *testing.T) {
 	if len(portals) < 2 {
 		t.FailNow()
 	}
-	route := LongestDroneFlight(portals, 1, -1, func(int, int) {})
+	route, keys := LongestDroneFlight(portals, DroneFlightStartPortalIndex(1), DroneFlightNumWorkers(6))
 	if route[0].Guid != portals[1].Guid {
 		t.Errorf("Expected %s as first route portal, got %s", portals[1].Guid, route[0].Guid)
 	}
-	checkValidDroneFlight(354.740861, route, t)
+	checkValidDroneFlight(354.740861, route, keys, t)
 }
 
 func TestDroneFlightTo(t *testing.T) {
@@ -80,11 +92,11 @@ func TestDroneFlightTo(t *testing.T) {
 	if len(portals) < 2 {
 		t.FailNow()
 	}
-	route := LongestDroneFlight(portals, -1, 2, func(int, int) {})
+	route, keys := LongestDroneFlight(portals, DroneFlightEndPortalIndex(2), DroneFlightNumWorkers(6))
 	if route[len(route)-1].Guid != portals[2].Guid {
 		t.Errorf("Expected %s as last route portal, got %s", portals[2].Guid, route[len(route)-1].Guid)
 	}
-	checkValidDroneFlight(475.863679, route, t)
+	checkValidDroneFlight(475.863679, route, keys, t)
 }
 
 func TestDroneFlightFromTo(t *testing.T) {
@@ -98,12 +110,12 @@ func TestDroneFlightFromTo(t *testing.T) {
 	if len(portals) < 2 {
 		t.FailNow()
 	}
-	route := LongestDroneFlight(portals, 3, 4, func(int, int) {})
+	route, keys := LongestDroneFlight(portals, DroneFlightStartPortalIndex(3), DroneFlightEndPortalIndex(4), DroneFlightNumWorkers(6))
 	if route[0].Guid != portals[3].Guid {
 		t.Errorf("Expected %s as first route portal, got %s", portals[3].Guid, route[0].Guid)
 	}
 	if route[len(route)-1].Guid != portals[4].Guid {
 		t.Errorf("Expected %s as last route portal, got %s", portals[4].Guid, route[len(route)-1].Guid)
 	}
-	checkValidDroneFlight(139.842564, route, t)
+	checkValidDroneFlight(139.842564, route, keys, t)
 }

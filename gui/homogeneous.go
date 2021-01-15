@@ -1,27 +1,31 @@
 package main
 
-import "fmt"
-import "math/rand"
-import "strconv"
-import "time"
+import (
+	"fmt"
+	"math/rand"
+	"strconv"
+	"time"
 
-import "github.com/pwiecz/portal_patterns/lib"
-import "github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/portal_patterns/configuration"
+	"github.com/pwiecz/portal_patterns/gui/osm"
+	"github.com/pwiecz/portal_patterns/lib"
+)
 
 type homogeneousTab struct {
 	*baseTab
 	maxDepth      *tk.Entry
 	innerPortals  *tk.ComboBox
-	perfect       *tk.CheckButton
+	pure          *tk.CheckButton
 	strategy      *tk.ComboBox
 	solution      []lib.Portal
 	depth         uint16
 	anchorPortals map[string]bool
 }
 
-func NewHomogeneousTab(parent tk.Widget, conf *Configuration) *homogeneousTab {
+func NewHomogeneousTab(parent tk.Widget, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *homogeneousTab {
 	t := &homogeneousTab{}
-	t.baseTab = NewBaseTab(parent, "Homogeneous", conf)
+	t.baseTab = NewBaseTab(parent, "Homogeneous", conf, tileFetcher)
 	t.pattern = t
 	addResetBox := tk.NewHPackLayout(parent)
 	addResetBox.AddWidget(t.add)
@@ -53,8 +57,8 @@ func NewHomogeneousTab(parent tk.Widget, conf *Configuration) *homogeneousTab {
 	t.strategy.OnSelected(func() { t.strategy.Entry().ClearSelection() })
 	strategyBox.AddWidget(t.strategy)
 	t.AddWidget(strategyBox)
-	t.perfect = tk.NewCheckButton(parent, "Perfect")
-	t.AddWidgetEx(t.perfect, tk.FillNone, true, tk.AnchorWest)
+	t.pure = tk.NewCheckButton(parent, "Pure")
+	t.AddWidgetEx(t.pure, tk.FillNone, true, tk.AnchorWest)
 	solutionBox := tk.NewHPackLayout(parent)
 	solutionBox.AddWidget(t.find)
 	solutionBox.AddWidget(t.save)
@@ -127,13 +131,13 @@ func (t *homogeneousTab) search() {
 		return
 	}
 	options = append(options, lib.HomogeneousMaxDepth(maxDepth))
-	options = append(options, lib.HomogeneousPerfect(t.perfect.IsChecked()))
+	options = append(options, lib.HomogeneousPure(t.pure.IsChecked()))
 	// set inner portals opion before setting top level scorer, as inner scorer
 	// overwrites the top level scorer
 	if t.innerPortals.CurrentIndex() == 1 {
-		options = append(options, lib.HomogeneousSpreadAround(len(portals)))
+		options = append(options, lib.HomogeneousSpreadAround{})
 		//	} else if t.innerPortals.CurrentIndex() == 2 {
-		//		options = append(options, lib.HomogeneousClumpTogether(len(portals)))
+		//		options = append(options, lib.HomogeneousClumpTogether{})
 	}
 	if t.strategy.CurrentIndex() == 1 {
 		options = append(options, lib.HomogeneousLargestArea{})
@@ -143,7 +147,7 @@ func (t *homogeneousTab) search() {
 		options = append(options, lib.HomogeneousMostEquilateralTriangle{})
 	} else if t.strategy.CurrentIndex() == 4 {
 		rand := rand.New(rand.NewSource(time.Now().UnixNano()))
-		options = append(options, lib.HomogeneousRandom{rand})
+		options = append(options, lib.HomogeneousRandom{Rand: rand})
 	}
 	options = append(options, lib.HomogeneousProgressFunc(
 		func(val int, max int) { t.onProgress(val, max) }))
@@ -151,7 +155,7 @@ func (t *homogeneousTab) search() {
 	t.reset.SetState(tk.StateDisable)
 	t.maxDepth.SetState(tk.StateDisable)
 	t.innerPortals.SetState(tk.StateDisable)
-	t.perfect.SetState(tk.StateDisable)
+	t.pure.SetState(tk.StateDisable)
 	t.strategy.SetState(tk.StateDisable)
 	t.find.SetState(tk.StateDisable)
 	t.save.SetState(tk.StateDisable)
@@ -164,13 +168,18 @@ func (t *homogeneousTab) search() {
 	if t.solutionMap != nil {
 		t.solutionMap.SetSolution(lib.HomogeneousPolylines(t.depth, t.solution))
 	}
-	solutionText := fmt.Sprintf("Solution depth: %d", t.depth)
+	var solutionText string
+	if t.depth > 0 {
+		solutionText = fmt.Sprintf("Solution depth: %d", t.depth)
+	} else {
+		solutionText = fmt.Sprintf("No solution found")
+	}
 	t.solutionLabel.SetText(solutionText)
 	t.add.SetState(tk.StateNormal)
 	t.reset.SetState(tk.StateNormal)
 	t.maxDepth.SetState(tk.StateNormal)
 	t.innerPortals.SetState(tk.StateReadOnly)
-	t.perfect.SetState(tk.StateNormal)
+	t.pure.SetState(tk.StateNormal)
 	t.strategy.SetState(tk.StateReadOnly)
 	t.find.SetState(tk.StateNormal)
 	t.save.SetState(tk.StateNormal)
