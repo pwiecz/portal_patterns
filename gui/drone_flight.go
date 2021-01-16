@@ -13,6 +13,7 @@ import (
 type droneFlightTab struct {
 	*baseTab
 	useLongJumps   *tk.CheckButton
+	optimizeFor    *tk.ComboBox
 	solution, keys []lib.Portal
 	startPortal    string
 	endPortal      string
@@ -29,6 +30,15 @@ func NewDroneFlightTab(parent *Window, conf *configuration.Configuration, tileFe
 	t.useLongJumps = tk.NewCheckButton(parent, "Use long jumps (key needed)")
 	t.useLongJumps.SetChecked(true)
 	t.AddWidgetEx(t.useLongJumps, tk.FillNone, true, tk.AnchorWest)
+	optimizeForBox := tk.NewHPackLayout(parent)
+	optimizeForLabel := tk.NewLabel(parent, "Optimize for: ")
+	optimizeForBox.AddWidget(optimizeForLabel)
+	t.optimizeFor = tk.NewComboBox(parent, tk.ComboBoxAttrState(tk.StateReadOnly))
+	t.optimizeFor.SetValues([]string{"Least keys needed", "Least jumps"})
+	t.optimizeFor.SetCurrentIndex(0)
+	t.optimizeFor.OnSelected(func() { t.optimizeFor.Entry().ClearSelection() })
+	optimizeForBox.AddWidget(t.optimizeFor)
+	t.AddWidget(optimizeForBox)
 	solutionBox := tk.NewHPackLayout(parent)
 	solutionBox.AddWidget(t.find)
 	solutionBox.AddWidget(t.save)
@@ -116,6 +126,9 @@ func (t *droneFlightTab) search() {
 	options = append(options, lib.DroneFlightUseLongJumps(t.useLongJumps.IsChecked()))
 	options = append(options, lib.DroneFlightProgressFunc(
 		func(val int, max int) { t.onProgress(val, max) }))
+	if t.optimizeFor.CurrentIndex() == 1 {
+		options = append(options, lib.DroneFlightLeastJumps{})
+	}
 	t.solution, t.keys = lib.LongestDroneFlight(portals, options...)
 	if t.solutionMap != nil {
 		t.solutionMap.SetSolution([][]lib.Portal{t.solution})

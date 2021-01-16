@@ -1,10 +1,12 @@
 package lib
 
-import "math"
-import "testing"
+import (
+	"math"
+	"testing"
 
-import "github.com/golang/geo/s1"
-import "github.com/golang/geo/s2"
+	"github.com/golang/geo/s1"
+	"github.com/golang/geo/s2"
+)
 
 func portalIsOnList(portal Portal, list []Portal) bool {
 	for _, p := range list {
@@ -30,7 +32,7 @@ func isCorrectDroneFlight(route, keys []Portal) bool {
 	if distance > s1.Angle(500/RadiansToMeters) && !portalIsOnList(route[1], keys) {
 		return false
 	}
-	
+
 	return isCorrectDroneFlight(route[1:], keys)
 }
 
@@ -60,6 +62,21 @@ func TestDroneFlight(t *testing.T) {
 		t.FailNow()
 	}
 	route, keys := LongestDroneFlight(portals, DroneFlightNumWorkers(1))
+	checkValidDroneFlight(542.555248, route, keys, t)
+}
+
+func TestDroneFlightLeastJumps(t *testing.T) {
+	portals, err := ParseFile("testdata/portals_test.json")
+	if err != nil {
+		panic(err)
+	}
+	if testing.Short() {
+		t.Skip()
+	}
+	if len(portals) < 2 {
+		t.FailNow()
+	}
+	route, keys := LongestDroneFlight(portals, DroneFlightNumWorkers(1), DroneFlightLeastJumps{})
 	checkValidDroneFlight(542.555248, route, keys, t)
 }
 

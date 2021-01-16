@@ -13,6 +13,8 @@ import (
 type droneFlightCmd struct {
 	flags        *flag.FlagSet
 	useLongJumps *bool
+	leastKeys * bool
+	leastJumps *bool
 	startPortal  *portalValue
 	endPortal    *portalValue
 }
@@ -22,6 +24,8 @@ func NewDroneFlightCmd() droneFlightCmd {
 	cmd := droneFlightCmd{
 		flags:        flags,
 		useLongJumps: flags.Bool("use_long_jumps", true, "when creating the drone flight consider using long jumps that require a key to the target portal"),
+		leastKeys:    flags.Bool("least_keys", false, "among the longest flights find one that requires the least keys (default)"),
+		leastJumps:   flags.Bool("least_jumps", false, "among the longest flights find one that requires the least jumps"),
 		startPortal:  &portalValue{},
 		endPortal:    &portalValue{},
 	}
@@ -31,7 +35,7 @@ func NewDroneFlightCmd() droneFlightCmd {
 }
 
 func (d *droneFlightCmd) Usage(fileBase string) {
-	fmt.Fprintf(flag.CommandLine.Output(), "%s drone_flight [--start_portal=<lat>,<lng>] [--end_portal=<lat>,<lng>] [--use_long_jumps]\n", fileBase)
+	fmt.Fprintf(flag.CommandLine.Output(), "%s drone_flight [-start_portal=<lat>,<lng>] [-end_portal=<lat>,<lng>] [-use_long_jumps] [-least_keys|-least_jumps]\n", fileBase)
 	d.flags.PrintDefaults()
 }
 
@@ -44,6 +48,9 @@ func (d *droneFlightCmd) Run(args []string, numWorkers int, output io.Writer, pr
 	portals, err := lib.ParseFile(fileArgs[0])
 	if err != nil {
 		log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
+	}
+	if *d.leastJumps && *d.leastKeys {
+		log.Fatalln("only one of -least_keys -least_jumps can be specified at the same time")
 	}
 	fmt.Printf("Read %d portals\n", len(portals))
 
@@ -59,6 +66,12 @@ func (d *droneFlightCmd) Run(args []string, numWorkers int, output io.Writer, pr
 		lib.DroneFlightEndPortalIndex(portalToIndex(*d.endPortal, portals)),
 		lib.DroneFlightUseLongJumps(*d.useLongJumps),
 	}
+	if *d.leastJumps {
+		options = append(options, lib.DroneFlightLeastJumps{})
+	} else if *d.leastKeys {
+		options = append(options, lib.DroneFlightLeastKeys{})
+	}
+
 	result, keysNeeded := lib.LongestDroneFlight(portals, options...)
 	distance := result[0].LatLng.Distance(result[len(result)-1].LatLng) * lib.RadiansToMeters
 	fmt.Fprintln(output, "")
