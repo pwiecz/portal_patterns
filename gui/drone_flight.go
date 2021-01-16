@@ -121,7 +121,7 @@ func (t *droneFlightTab) search() {
 		t.solutionMap.SetSolution([][]lib.Portal{t.solution})
 	}
 	distance := t.solution[0].LatLng.Distance(t.solution[len(t.solution)-1].LatLng) * lib.RadiansToMeters
-	solutionText := fmt.Sprintf("Flight distance: %.1f, keys needed: %d", distance, len(t.keys))
+	solutionText := fmt.Sprintf("Flight distance: %.1fm, keys needed: %d", distance, len(t.keys))
 	t.solutionLabel.SetText(solutionText)
 	t.add.SetState(tk.StateNormal)
 	t.reset.SetState(tk.StateNormal)

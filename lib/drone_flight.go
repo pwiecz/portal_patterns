@@ -62,8 +62,7 @@ type droneFlightNeighbour struct {
 type longestDroneFlightQuery struct {
 	neighbours     [][]droneFlightNeighbour
 	portalDistance func(portalIndex, portalIndex) float64
-	queueItems     []droneFlightPrioQueueItem
-	queue          droneFlightPrioQueue
+	queue          fifo
 	visited        []bool
 }
 
@@ -72,41 +71,74 @@ func newLongestDroneFlightQuery(neighbours [][]droneFlightNeighbour, portalDista
 		neighbours:     neighbours,
 		portalDistance: portalDistance,
 		visited:        make([]bool, len(neighbours)),
-		queueItems:     make([]droneFlightPrioQueueItem, len(neighbours)),
-	}
-	for i := 0; i < len(neighbours); i++ {
-		q.queueItems[i].index = portalIndex(i)
 	}
 	return q
 }
 
-// If end is != invalidPortalIndex return only from from start to end if it exists.
-func (q *longestDroneFlightQuery) longestFlightFrom(start, end portalIndex) ([]portalIndex, []portalIndex, float64) {
-	bestDistance := 0.
-	bestNumKeysNeeded := 0
+// Returns most distant target portal reachable from the start portal.
+// If end is != invalidPortalIndex returns either the end or invalidPortalIndex depending whether
+// there is path from start to end.
+func (q *longestDroneFlightQuery) longestFlightFrom(start, end portalIndex) (portalIndex, float64) {
+	bestDistance := 0.0
 	bestEndPortal := start
-	q.queue = q.queue[:0]
 	for i := 0; i < len(q.neighbours); i++ {
 		q.visited[i] = false
-		q.queueItems[i].prev = invalidPortalIndex
-		q.queueItems[i].numKeysNeeded = len(q.neighbours) + 1
-		if portalIndex(i) == start {
-			q.queueItems[i].numKeysNeeded = 0
-		}
-		q.queueItems[i].queueIndex = i
-		q.queue = append(q.queue, &q.queueItems[i])
 	}
-	heap.Init(&q.queue)
-	for q.queue.Len() > 0 {
-		p := heap.Pop(&q.queue).(*droneFlightPrioQueueItem)
+	q.queue.Reset()
+	q.queue.Enqueue(start)
+	q.visited[start] = true
+mainloop:
+	for !q.queue.Empty() {
+		p := q.queue.Dequeue()
+		for _, n := range q.neighbours[p] {
+			if q.visited[n.index] {
+				continue
+			}
+			q.queue.Enqueue(n.index)
+			q.visited[n.index] = true
+			distance := q.portalDistance(n.index, start)
+			if n.index == end {
+				bestEndPortal = end
+				bestDistance = distance
+				break mainloop
+			}
+			if distance > bestDistance {
+				bestEndPortal = n.index
+				bestDistance = distance
+			}
+		}
+	}
+	if end != invalidPortalIndex && bestEndPortal != end {
+		return invalidPortalIndex, 0
+	}
+	return bestEndPortal, bestDistance
+}
+
+func (q *longestDroneFlightQuery) longestFlightWithMinKeys(start, end portalIndex) ([]portalIndex, []portalIndex) {
+	if start == invalidPortalIndex || end == invalidPortalIndex {
+		panic(fmt.Errorf("%d, %d", int(start), int(end)))
+	}
+	queueItems := make([]droneFlightPrioQueueItem, len(q.neighbours))
+	queue := make(droneFlightPrioQueue, 0, len(q.neighbours))
+	for i := 0; i < len(q.neighbours); i++ {
+		q.visited[i] = false
+		queueItems[i].index = portalIndex(i)
+		queueItems[i].prev = invalidPortalIndex
+		queueItems[i].numKeysNeeded = len(q.neighbours) + 1
+		if portalIndex(i) == start {
+			queueItems[i].numKeysNeeded = 0
+		}
+		queueItems[i].queueIndex = i
+		queue = append(queue, &queueItems[i])
+	}
+	heap.Init(&queue)
+	for queue.Len() > 0 {
+		p := heap.Pop(&queue).(*droneFlightPrioQueueItem)
 		if q.visited[p.index] || p.numKeysNeeded > len(q.neighbours) {
 			continue
 		}
 		q.visited[p.index] = true
 		if p.index == end {
-			bestEndPortal = p.index
-			bestDistance = q.portalDistance(p.index, start)
-			bestNumKeysNeeded = p.numKeysNeeded
 			break
 		}
 		for _, n := range q.neighbours[p.index] {
@@ -118,38 +150,29 @@ func (q *longestDroneFlightQuery) longestFlightFrom(start, end portalIndex) ([]p
 				keysNeeded++
 			}
 			numJumps := p.numJumps + 1
-			if keysNeeded < q.queueItems[n.index].numKeysNeeded ||
-				(keysNeeded == q.queueItems[n.index].numKeysNeeded && numJumps < q.queueItems[n.index].numJumps) {
-				q.queueItems[n.index].numKeysNeeded = keysNeeded
-				q.queueItems[n.index].numJumps = numJumps
-				q.queueItems[n.index].prev = p.index
-				heap.Fix(&q.queue, q.queueItems[n.index].queueIndex)
-			}
-			distance := q.portalDistance(n.index, start)
-			if distance > bestDistance || (distance == bestDistance && p.numKeysNeeded < bestNumKeysNeeded) {
-				bestEndPortal = n.index
-				bestDistance = distance
-				bestNumKeysNeeded = p.numKeysNeeded + keysNeeded
+			if keysNeeded < queueItems[n.index].numKeysNeeded ||
+				(keysNeeded == queueItems[n.index].numKeysNeeded && numJumps < queueItems[n.index].numJumps) {
+				queueItems[n.index].numKeysNeeded = keysNeeded
+				queueItems[n.index].numJumps = numJumps
+				queueItems[n.index].prev = p.index
+				heap.Fix(&queue, queueItems[n.index].queueIndex)
 			}
 		}
 	}
-	if end != invalidPortalIndex && bestEndPortal != end {
-		return nil, nil, 0
-	}
-	bestPath := []portalIndex{bestEndPortal}
+	bestPath := []portalIndex{end}
 	keysNeeded := []portalIndex{}
 	for {
 		lastPortal := bestPath[len(bestPath)-1]
-		if prev := q.queueItems[lastPortal].prev; prev != invalidPortalIndex {
+		if prev := queueItems[lastPortal].prev; prev != invalidPortalIndex {
 			bestPath = append(bestPath, prev)
-			if q.queueItems[lastPortal].numKeysNeeded > q.queueItems[prev].numKeysNeeded {
+			if queueItems[lastPortal].numKeysNeeded > queueItems[prev].numKeysNeeded {
 				keysNeeded = append(keysNeeded, lastPortal)
 			}
 		} else {
 			break
 		}
 	}
-	return bestPath, keysNeeded, bestDistance
+	return bestPath, keysNeeded
 }
 
 const droneFlightNeighbourCellRange = 500
@@ -226,7 +249,7 @@ func longestDroneFlightST(portals []Portal, params droneFlightParams) ([]Portal,
 	// route from the endIndex using reversed neighbours list, and later reverse the
 	// result route.
 	reverseRoute := false
-	if params.startPortalIndex < 0 && params.endPortalIndex >= 0 {
+	if params.startPortalIndex == invalidPortalIndex && params.endPortalIndex != invalidPortalIndex {
 		reverseRoute = true
 		params.startPortalIndex, params.endPortalIndex = params.endPortalIndex, params.startPortalIndex
 	}
@@ -246,23 +269,19 @@ func longestDroneFlightST(portals []Portal, params droneFlightParams) ([]Portal,
 
 	q := newLongestDroneFlightQuery(neighbours, portalDistanceInRadians)
 
-	targetPortal := invalidPortalIndex
-	if params.endPortalIndex >= 0 {
-		targetPortal = portalIndex(params.endPortalIndex)
-	}
-
-	bestDistance := -1.
-	bestPath := []portalIndex{}
-	bestKeysNeeded := []portalIndex{}
+	// First find most distant pair of portals reachable from one another.
+	// We assume that there is not better solution for a different pair with exactly
+	// the same distance.
+	bestDistance := -1.0
+	bestStart, bestEnd := invalidPortalIndex, invalidPortalIndex
 	for _, p := range portalsData {
-		if params.startPortalIndex >= 0 && p.Index != portalIndex(params.startPortalIndex) {
+		if params.startPortalIndex != invalidPortalIndex && p.Index != params.startPortalIndex {
 			continue
 		}
-		path, keysNeeded, distance := q.longestFlightFrom(p.Index, targetPortal)
-		if distance > bestDistance || (distance == bestDistance && (len(keysNeeded) < len(bestKeysNeeded) || (len(keysNeeded) == len(bestKeysNeeded) && len(path) < len(bestPath)))) {
+		end, distance := q.longestFlightFrom(p.Index, params.endPortalIndex)
+		if end != invalidPortalIndex && distance > bestDistance {
 			bestDistance = distance
-			bestKeysNeeded = keysNeeded
-			bestPath = path
+			bestStart, bestEnd = p.Index, end
 		}
 		indexEntriesFilled++
 		indexEntriesFilledModN++
@@ -271,16 +290,30 @@ func longestDroneFlightST(portals []Portal, params droneFlightParams) ([]Portal,
 			params.progressFunc(indexEntriesFilled, numIndexEntries)
 		}
 	}
+	if bestStart == invalidPortalIndex || bestEnd == invalidPortalIndex {
+		return nil, nil
+	}
+	// Now find the most optimal path between those two portals (in both ways).
+	// It's way faster two split the search into two parts, as the first one
+	// can be calculated using a trivial DFS on the reachability graph using
+	// only a simple FIFO queue instead of priority queue.
+	bestPath, bestKeysNeeded := q.longestFlightWithMinKeys(bestStart, bestEnd)
+	if params.startPortalIndex == invalidPortalIndex {
+		path, keysNeeded := q.longestFlightWithMinKeys(bestEnd, bestStart)
+		if path != nil && len(keysNeeded) < len(bestKeysNeeded) || (len(keysNeeded) == len(bestKeysNeeded) && len(path) < len(bestPath)) {
+			bestPath, bestKeysNeeded = path, keysNeeded
+		}
+	}
 	params.progressFunc(numIndexEntries, numIndexEntries)
 
 	if reverseRoute {
 		reverse(bestPath)
 	}
-	bestPortalPath := []Portal{}
+	bestPortalPath := []Portal(nil)
 	for i := len(bestPath) - 1; i >= 0; i-- {
 		bestPortalPath = append(bestPortalPath, portals[bestPath[i]])
 	}
-	bestPortalKeysNeeded := []Portal{}
+	bestPortalKeysNeeded := []Portal(nil)
 	for _, index := range bestKeysNeeded {
 		bestPortalKeysNeeded = append(bestPortalKeysNeeded, portals[index])
 	}

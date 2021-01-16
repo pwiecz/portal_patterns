@@ -11,8 +11,8 @@ type longestDroneFlightMtQuery struct {
 }
 
 type droneFlightResponse struct {
-	path, keysNeeded []portalIndex
-	distance         float64
+	start, end portalIndex
+	distance   float64
 }
 
 func longestDroneFlightWorker(
@@ -23,11 +23,11 @@ func longestDroneFlightWorker(
 	wg *sync.WaitGroup) {
 	q := newLongestDroneFlightQuery(neighbours, portalDistance)
 	for start := range requestChannel {
-		path, keysNeeded, distance := q.longestFlightFrom(start, targetPortal)
+		end, distance := q.longestFlightFrom(start, targetPortal)
 		responseChannel <- droneFlightResponse{
-			path:       path,
-			keysNeeded: keysNeeded,
-			distance:   distance,
+			start:    start,
+			end:      end,
+			distance: distance,
 		}
 	}
 	wg.Done()
@@ -46,17 +46,13 @@ func longestDroneFlightMT(portals []Portal, params droneFlightParams) ([]Portal,
 	// route from the endIndex using reversed neighbours list, and later reverse the
 	// result route.
 	reverseRoute := false
-	if params.startPortalIndex < 0 && params.endPortalIndex >= 0 {
+	if params.startPortalIndex == invalidPortalIndex && params.endPortalIndex != invalidPortalIndex {
 		reverseRoute = true
 		params.startPortalIndex, params.endPortalIndex = params.endPortalIndex, params.startPortalIndex
 	}
 	neighbours := prepareDroneGraph(portalsData, params.useLongJumps, reverseRoute)
 	portalDistanceInRadians := func(i, j portalIndex) float64 {
 		return distanceSq(portalsData[i], portalsData[j])
-	}
-	targetPortal := invalidPortalIndex
-	if params.endPortalIndex >= 0 {
-		targetPortal = portalIndex(params.endPortalIndex)
 	}
 
 	requestChannel := make(chan portalIndex, params.numWorkers)
@@ -66,12 +62,12 @@ func longestDroneFlightMT(portals []Portal, params droneFlightParams) ([]Portal,
 	wg.Add(params.numWorkers)
 
 	for i := 0; i < params.numWorkers; i++ {
-		go longestDroneFlightWorker(neighbours, portalDistanceInRadians, targetPortal,
+		go longestDroneFlightWorker(neighbours, portalDistanceInRadians, params.endPortalIndex,
 			requestChannel, responseChannel, &wg)
 	}
 	go func() {
 		for _, p := range portalsData {
-			if params.startPortalIndex >= 0 && p.Index != portalIndex(params.startPortalIndex) {
+			if params.startPortalIndex != invalidPortalIndex && p.Index != params.startPortalIndex {
 				continue
 			}
 			requestChannel <- p.Index
@@ -91,15 +87,12 @@ func longestDroneFlightMT(portals []Portal, params droneFlightParams) ([]Portal,
 	indexEntriesFilledModN := 0
 	params.progressFunc(0, numIndexEntries)
 
-	bestDistance := -1.
-	bestPath := []portalIndex{}
-	bestKeysNeeded := []portalIndex{}
-
+	bestDistance := -1.0
+	bestStart, bestEnd := invalidPortalIndex, invalidPortalIndex
 	for resp := range responseChannel {
-		if resp.distance > bestDistance || (resp.distance == bestDistance && (len(resp.keysNeeded) < len(bestKeysNeeded) || (len(resp.keysNeeded) == len(bestKeysNeeded) && len(resp.path) < len(bestPath)))) {
+		if resp.distance > bestDistance {
 			bestDistance = resp.distance
-			bestKeysNeeded = resp.keysNeeded
-			bestPath = resp.path
+			bestStart, bestEnd = resp.start, resp.end
 		}
 
 		indexEntriesFilled++
@@ -109,16 +102,27 @@ func longestDroneFlightMT(portals []Portal, params droneFlightParams) ([]Portal,
 			params.progressFunc(indexEntriesFilled, numIndexEntries)
 		}
 	}
+	if bestStart == invalidPortalIndex || bestEnd == invalidPortalIndex {
+		return nil, nil
+	}
+	q := newLongestDroneFlightQuery(neighbours, portalDistanceInRadians)
+	bestPath, bestKeysNeeded := q.longestFlightWithMinKeys(bestStart, bestEnd)
+	if params.startPortalIndex == invalidPortalIndex {
+		path, keysNeeded := q.longestFlightWithMinKeys(bestEnd, bestStart)
+		if path != nil && len(keysNeeded) < len(bestKeysNeeded) || (len(keysNeeded) == len(bestKeysNeeded) && len(path) < len(bestPath)) {
+			bestPath, bestKeysNeeded = path, keysNeeded
+		}
+	}
 	params.progressFunc(numIndexEntries, numIndexEntries)
 
 	if reverseRoute {
 		reverse(bestPath)
 	}
-	bestPortalPath := []Portal{}
+	bestPortalPath := []Portal(nil)
 	for i := len(bestPath) - 1; i >= 0; i-- {
 		bestPortalPath = append(bestPortalPath, portals[bestPath[i]])
 	}
-	bestPortalKeysNeeded := []Portal{}
+	bestPortalKeysNeeded := []Portal(nil)
 	for _, index := range bestKeysNeeded {
 		bestPortalKeysNeeded = append(bestPortalKeysNeeded, portals[index])
 	}

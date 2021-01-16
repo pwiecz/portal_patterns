@@ -12,13 +12,21 @@ func (d DroneFlightUseLongJumps) apply(params *droneFlightParams) {
 type DroneFlightStartPortalIndex int
 
 func (d DroneFlightStartPortalIndex) apply(params *droneFlightParams) {
-	params.startPortalIndex = int(d)
+	if d < 0 {
+		params.startPortalIndex = invalidPortalIndex
+	} else {
+		params.startPortalIndex = portalIndex(d)
+	}
 }
 
 type DroneFlightEndPortalIndex int
 
 func (d DroneFlightEndPortalIndex) apply(params *droneFlightParams) {
-	params.endPortalIndex = int(d)
+	if d < 0 {
+		params.endPortalIndex = invalidPortalIndex
+	} else {
+		params.endPortalIndex = portalIndex(d)
+	}
 }
 
 type DroneFlightNumWorkers int
@@ -34,7 +42,7 @@ func (d DroneFlightProgressFunc) apply(params *droneFlightParams) {
 }
 
 type droneFlightParams struct {
-	startPortalIndex, endPortalIndex int
+	startPortalIndex, endPortalIndex portalIndex
 	useLongJumps                     bool
 	numWorkers                       int
 	progressFunc                     func(int, int)
@@ -42,8 +50,8 @@ type droneFlightParams struct {
 
 func defaultDroneFlightParams() droneFlightParams {
 	return droneFlightParams{
-		startPortalIndex: -1,
-		endPortalIndex:   -1,
+		startPortalIndex: invalidPortalIndex,
+		endPortalIndex:   invalidPortalIndex,
 		useLongJumps:     true,
 		numWorkers:       0,
 		progressFunc:     func(int, int) {},
