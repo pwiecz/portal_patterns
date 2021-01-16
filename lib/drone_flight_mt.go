@@ -106,11 +106,19 @@ func longestDroneFlightMT(portals []Portal, params droneFlightParams) ([]Portal,
 		return nil, nil
 	}
 	q := newLongestDroneFlightQuery(neighbours, portalDistanceInRadians)
-	bestPath, bestKeysNeeded := q.longestFlightWithMinKeys(bestStart, bestEnd)
+	bestPath, bestKeysNeeded := q.optimalFlight(bestStart, bestEnd, params.optimizeNumKeys)
 	if params.startPortalIndex == invalidPortalIndex {
-		path, keysNeeded := q.longestFlightWithMinKeys(bestEnd, bestStart)
-		if path != nil && len(keysNeeded) < len(bestKeysNeeded) || (len(keysNeeded) == len(bestKeysNeeded) && len(path) < len(bestPath)) {
-			bestPath, bestKeysNeeded = path, keysNeeded
+		path, keysNeeded := q.optimalFlight(bestEnd, bestStart, params.optimizeNumKeys)
+		if path != nil {
+			if params.optimizeNumKeys {
+				if len(keysNeeded) < len(bestKeysNeeded) || (len(keysNeeded) == len(bestKeysNeeded) && len(path) < len(bestPath)) {
+					bestPath, bestKeysNeeded = path, keysNeeded
+				}
+			} else {
+				if len(path) < len(bestPath) {
+					bestPath, bestKeysNeeded = path, keysNeeded
+				}
+			}
 		}
 	}
 	params.progressFunc(numIndexEntries, numIndexEntries)
