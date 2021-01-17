@@ -1,9 +1,11 @@
 package lib
 
-import "math"
-import "testing"
+import (
+	"math"
+	"testing"
 
-import "github.com/golang/geo/s2"
+	"github.com/golang/geo/s2"
+)
 
 func numPortalsPerDepth(depth uint16) int {
 	return int(math.Pow(3, float64(depth-1)))/2 + 3
@@ -75,7 +77,7 @@ func TestHomogeneous(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	result, depth := DeepestHomogeneous(portals, HomogeneousMaxDepth(6), HomogeneousLargestArea{})
+	result, depth := DeepestHomogeneous(portals, HomogeneousMaxDepth(6), HomogeneousLargestArea{}, HomogeneousNumWorkers(6))
 	checkValidHomogeneousResult(5, result, depth, t)
 }
 
@@ -105,6 +107,6 @@ func TestHomogeneousPretty(t *testing.T) {
 	if len(portals) < 3 {
 		t.FailNow()
 	}
-	result, depth := DeepestHomogeneous(portals, HomogeneousSpreadAround{}, HomogeneousMaxDepth(6), HomogeneousLargestArea{})
+	result, depth := DeepestHomogeneous(portals, HomogeneousSpreadAround{}, HomogeneousMaxDepth(6), HomogeneousLargestArea{}, HomogeneousNumWorkers(6))
 	checkValidHomogeneousResult(5, result, depth, t)
 }

@@ -15,7 +15,7 @@ func bestDoubleHerringboneWorker(
 	q *bestHerringboneMtQuery,
 	requestChannel, responseChannel chan doubleHerringboneRequest,
 	doneChannel chan struct{}) {
-	nodes := make([]node, 0, len(q.portals))
+	nodes := make([]herringboneNode, 0, len(q.portals))
 	weights := make([]float32, len(q.portals))
 	for req := range requestChannel {
 		nodes = nodes[:0]

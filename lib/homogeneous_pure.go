@@ -1,29 +1,23 @@
 package lib
 
-import "fmt"
-import "math"
-import "runtime"
-import "sync"
-import "github.com/golang/geo/r3"
-import "github.com/golang/geo/s1"
-import "github.com/golang/geo/s2"
+import (
+	"fmt"
+	"math"
+	"sync"
 
-type triangle struct {
-	third  portalIndex
-	center portalIndex
-}
-type edge struct {
-	p0, p1 portalIndex
-}
+	"github.com/golang/geo/r3"
+	"github.com/golang/geo/s1"
+	"github.com/golang/geo/s2"
+)
 
-type perfNode struct {
+type homogeneousPureNode struct {
 	index      portalIndex
 	start, end float64
 	distance   s1.ChordAngle
 }
 
 // specialize a simple sorting function, to limit overhead of a std sort package.
-func sortPerfByDistance(nodes []perfNode) {
+func sortHomogeneousPureNodesByDistance(nodes []homogeneousPureNode) {
 	if len(nodes) < 2 {
 		return
 	}
@@ -48,8 +42,8 @@ func sortPerfByDistance(nodes []perfNode) {
 	nodes[left], nodes[right] = nodes[right], nodes[left]
 
 	// Go down the rabbit hole
-	sortPerfByDistance(nodes[:left])
-	sortPerfByDistance(nodes[left+1:])
+	sortHomogeneousPureNodesByDistance(nodes[:left])
+	sortHomogeneousPureNodesByDistance(nodes[left+1:])
 }
 
 type lvl2TriangleQuery struct {
@@ -63,8 +57,8 @@ func newLvl2TriangleQuery(portals []portalData) *lvl2TriangleQuery {
 }
 
 type lvl2TriangleRequest struct {
-	p0, p1    portalData
-	triangles []triangle
+	p0, p1 portalData
+	third  []portalIndex
 }
 
 func lvl2TriangleWorker(
@@ -77,9 +71,9 @@ func lvl2TriangleWorker(
 		return b1.Cross(b0.Vector).Normalize()
 	}
 
-	portalsLeftOfLine := []perfNode{}
+	portalsLeftOfLine := []homogeneousPureNode{}
 	for req := range requestChannel {
-		req.triangles = req.triangles[:0]
+		req.third = req.third[:0]
 		p0, p1 := req.p0, req.p1
 		portalsLeftOfLine = portalsLeftOfLine[:0]
 		p01, p10 := normalizedVector(p0.LatLng, p1.LatLng), normalizedVector(p1.LatLng, p0.LatLng)
@@ -95,29 +89,27 @@ func lvl2TriangleWorker(
 			a0 := p01.Dot(normalizedVector(p1.LatLng, p2.LatLng)) // acos of angle p0,p1,p2
 			a1 := p10.Dot(normalizedVector(p0.LatLng, p2.LatLng)) // acos of angle p1,p0,p2
 			dist := distQuery.ChordAngle(p2.LatLng)
-			portalsLeftOfLine = append(portalsLeftOfLine, perfNode{
+			portalsLeftOfLine = append(portalsLeftOfLine, homogeneousPureNode{
 				p2.Index, a0, a1, dist})
 		}
-		sortPerfByDistance(portalsLeftOfLine)
+		sortHomogeneousPureNodesByDistance(portalsLeftOfLine)
 		for k, node := range portalsLeftOfLine {
 			// Emit each triangle only once to make sure we have consistent data,
 			// even in the face of duplicate or colinear portals.
 			if node.index <= p0.Index || node.index <= p1.Index {
 				continue
 			}
-			portalsInTriangle := 0
-			centerIndex := invalidPortalIndex
+			numPortalsInTriangle := 0
 			for j := 0; j < k; j++ {
 				if portalsLeftOfLine[j].start <= node.start && portalsLeftOfLine[j].end <= node.end {
-					portalsInTriangle++
-					centerIndex = portalsLeftOfLine[j].index
-					if portalsInTriangle > 1 {
+					numPortalsInTriangle++
+					if numPortalsInTriangle > 1 {
 						break
 					}
 				}
 			}
-			if portalsInTriangle == 1 {
-				req.triangles = append(req.triangles, triangle{third: node.index, center: centerIndex})
+			if numPortalsInTriangle == 1 {
+				req.third = append(req.third, node.index)
 			}
 		}
 		responseChannel <- req
@@ -125,62 +117,44 @@ func lvl2TriangleWorker(
 	wg.Done()
 }
 
-type triangleAndEdge struct {
-	triangle triangle
-	edge     edge
+type edge struct {
+	p0, p1 portalIndex
+}
+type triangle struct {
+	p0, p1, p2 portalIndex
 }
 type mergeTrianglesRequest struct {
-	p0, p1            portalIndex
-	trianglesAndEdges []triangleAndEdge
+	p0, p1    portalIndex
+	triangles []triangle
 }
 
 func mergeTrianglesWorker(
 	portals []portalData,
-	triangles [][]triangle,
+	triangles [][]portalIndex,
 	requestChannel, responseChannel chan mergeTrianglesRequest,
 	wg *sync.WaitGroup) {
-	numPortals := uint(len(portals))
+	numPortals := uint32(len(portals))
 	for req := range requestChannel {
-		req.trianglesAndEdges = req.trianglesAndEdges[:0]
+		req.triangles = req.triangles[:0]
+		// p0 is the central portal of the triangle, p1 is one of the corners.
+		// Find two remaining corners.
 		p0, p1 := req.p0, req.p1
-		edgeIndex := uint(p0)*numPortals + uint(p1)
-		revEdgeIndex := uint(p1)*numPortals + uint(p0)
-		for _, triangle0 := range triangles[edgeIndex] {
-			for _, triangle1 := range triangles[revEdgeIndex] {
+		edgeIndex := uint32(p0)*numPortals + uint32(p1)
+		revEdgeIndex := uint32(p1)*numPortals + uint32(p0)
+		for _, third0 := range triangles[edgeIndex] {
+			for _, third1 := range triangles[revEdgeIndex] {
 				// Emit each triangle only once to make sure we have consistent
 				// data, even in the face of duplicate or colinear portals.
 				// So emit triangle only if triangle1.third is the largest of
 				// its vertices.
-				if triangle1.third <= p0 || triangle1.third <= triangle0.third ||
-					!s2.Sign(portals[p0].LatLng,
-						portals[triangle0.third].LatLng,
-						portals[triangle1.third].LatLng) {
+				if third1 <= p0 || third1 <= third0 ||
+					!s2.Sign(portals[p0].LatLng, portals[third0].LatLng, portals[third1].LatLng) {
 					continue
 				}
-				thirdEdgeIndex := uint(triangle0.third)*numPortals + uint(triangle1.third)
-				for _, triangle2 := range triangles[thirdEdgeIndex] {
-					if triangle2.third == p0 {
-						req.trianglesAndEdges = append(req.trianglesAndEdges,
-							triangleAndEdge{
-								triangle{
-									third:  triangle1.third,
-									center: p0,
-								},
-								edge{p1, triangle0.third},
-							},
-							triangleAndEdge{
-								triangle{
-									third:  triangle0.third,
-									center: p0,
-								},
-								edge{triangle1.third, p1},
-							},
-							triangleAndEdge{
-								triangle{
-									third: p1, center: p0,
-								},
-								edge{triangle0.third, triangle1.third},
-							})
+				thirdEdgeIndex := uint32(third0)*numPortals + uint32(third1)
+				for _, third2 := range triangles[thirdEdgeIndex] {
+					if third2 == p0 {
+						req.triangles = append(req.triangles, triangle{p1, third0, third1})
 					}
 				}
 			}
@@ -190,10 +164,10 @@ func mergeTrianglesWorker(
 	wg.Done()
 }
 
-func findAllLvl2Triangles(portals []portalData, params homogeneousParams) ([][]triangle, []edge) {
+func findAllLvl2Triangles(portals []portalData, params homogeneousParams) ([][]portalIndex, []edge) {
 	resultCache := sync.Pool{
 		New: func() interface{} {
-			return []triangle{}
+			return []portalIndex{}
 		},
 	}
 
@@ -209,14 +183,14 @@ func findAllLvl2Triangles(portals []portalData, params homogeneousParams) ([][]t
 		for i, p0 := range portals {
 			for _, p1 := range portals[i+1:] {
 				requestChannel <- lvl2TriangleRequest{
-					p0:        p0,
-					p1:        p1,
-					triangles: resultCache.Get().([]triangle),
+					p0:    p0,
+					p1:    p1,
+					third: resultCache.Get().([]portalIndex),
 				}
 				requestChannel <- lvl2TriangleRequest{
-					p0:        p1,
-					p1:        p0,
-					triangles: resultCache.Get().([]triangle),
+					p0:    p1,
+					p1:    p0,
+					third: resultCache.Get().([]portalIndex),
 				}
 			}
 		}
@@ -226,7 +200,7 @@ func findAllLvl2Triangles(portals []portalData, params homogeneousParams) ([][]t
 		wg.Wait()
 		close(responseChannel)
 	}()
-	lvl2Triangles := make([][]triangle, len(portals)*len(portals))
+	lvl2Triangles := make([][]portalIndex, len(portals)*len(portals))
 	lvl2Edges := []edge{}
 
 	numPairs := len(portals) * (len(portals) - 1)
@@ -237,35 +211,36 @@ func findAllLvl2Triangles(portals []portalData, params homogeneousParams) ([][]t
 
 	params.progressFunc(0, numPairs)
 	numProcessedPairs := 0
+	numProcessedPairsModN := 0
 
-	numPortals := uint(len(portals))
+	numPortals := uint32(len(portals))
 	numLvl2Triangles := 0
 	for resp := range responseChannel {
-		if len(resp.triangles) > 0 {
-			edge0Index := uint(resp.p0.Index)*numPortals + uint(resp.p1.Index)
+		if len(resp.third) > 0 {
+			edge0Index := uint32(resp.p0.Index)*numPortals + uint32(resp.p1.Index)
 			if len(lvl2Triangles[edge0Index]) == 0 {
 				lvl2Edges = append(lvl2Edges, edge{resp.p0.Index, resp.p1.Index})
 			}
-			lvl2Triangles[edge0Index] = append(lvl2Triangles[edge0Index], resp.triangles...)
-			for _, t := range resp.triangles {
-				edge1Index := uint(resp.p1.Index)*numPortals + uint(t.third)
+			lvl2Triangles[edge0Index] = append(lvl2Triangles[edge0Index], resp.third...)
+			for _, third := range resp.third {
+				edge1Index := uint32(resp.p1.Index)*numPortals + uint32(third)
 				if len(lvl2Triangles[edge1Index]) == 0 {
-					lvl2Edges = append(lvl2Edges, edge{resp.p1.Index, t.third})
+					lvl2Edges = append(lvl2Edges, edge{resp.p1.Index, third})
 				}
-				lvl2Triangles[edge1Index] = append(lvl2Triangles[edge1Index],
-					triangle{third: resp.p0.Index, center: t.center})
-				edge2Index := uint(t.third)*numPortals + uint(resp.p0.Index)
+				lvl2Triangles[edge1Index] = append(lvl2Triangles[edge1Index], resp.p0.Index)
+				edge2Index := uint32(third)*numPortals + uint32(resp.p0.Index)
 				if len(lvl2Triangles[edge2Index]) == 0 {
-					lvl2Edges = append(lvl2Edges, edge{t.third, resp.p0.Index})
+					lvl2Edges = append(lvl2Edges, edge{third, resp.p0.Index})
 				}
-				lvl2Triangles[edge2Index] = append(lvl2Triangles[edge2Index],
-					triangle{third: resp.p1.Index, center: t.center})
+				lvl2Triangles[edge2Index] = append(lvl2Triangles[edge2Index], resp.p1.Index)
 			}
-			numLvl2Triangles += len(resp.triangles)
+			numLvl2Triangles += len(resp.third)
 		}
-		resultCache.Put(resp.triangles[:0])
+		resultCache.Put(resp.third[:0])
 		numProcessedPairs++
-		if numProcessedPairs%everyNth == 0 {
+		numProcessedPairsModN++
+		if numProcessedPairsModN == everyNth {
+			numProcessedPairsModN = 0
 			params.progressFunc(numProcessedPairs, numPairs)
 		}
 	}
@@ -279,42 +254,37 @@ func findAllLvl2Triangles(portals []portalData, params homogeneousParams) ([][]t
 }
 
 func deepestPureHomogeneous(portals []portalData, params homogeneousParams) ([]portalIndex, int) {
-	if params.numWorkers <= 0 {
-		params.numWorkers = runtime.GOMAXPROCS(0)
-	}
-
-	lvl2Triangles, lvlEdges := findAllLvl2Triangles(portals, params)
-
-	lvlTriangles := [][][]triangle{lvl2Triangles}
+	prevTriangles, prevEdges := findAllLvl2Triangles(portals, params)
 
 	resultCache := sync.Pool{
 		New: func() interface{} {
-			return make([]triangleAndEdge, 0, len(portals))
+			return make([]triangle, 0, len(portals))
 		},
 	}
 
+	bestDepth := 2
 	for depth := 3; depth < params.maxDepth; depth++ {
 		requestChannel := make(chan mergeTrianglesRequest, params.numWorkers)
 		responseChannel := make(chan mergeTrianglesRequest, params.numWorkers)
 		var wg sync.WaitGroup
 		wg.Add(params.numWorkers)
 		for i := 0; i < params.numWorkers; i++ {
-			go mergeTrianglesWorker(portals, lvlTriangles[depth-3], requestChannel, responseChannel, &wg)
+			go mergeTrianglesWorker(portals, prevTriangles, requestChannel, responseChannel, &wg)
 		}
 
 		newTriangles := 0
 
 		go func() {
-			for _, commonEdge := range lvlEdges {
+			for _, commonEdge := range prevEdges {
 				requestChannel <- mergeTrianglesRequest{
-					p0:                commonEdge.p0,
-					p1:                commonEdge.p1,
-					trianglesAndEdges: resultCache.Get().([]triangleAndEdge),
+					p0:        commonEdge.p0,
+					p1:        commonEdge.p1,
+					triangles: resultCache.Get().([]triangle),
 				}
 				requestChannel <- mergeTrianglesRequest{
-					p0:                commonEdge.p1,
-					p1:                commonEdge.p0,
-					trianglesAndEdges: resultCache.Get().([]triangleAndEdge),
+					p0:        commonEdge.p1,
+					p1:        commonEdge.p0,
+					triangles: resultCache.Get().([]triangle),
 				}
 			}
 			close(requestChannel)
@@ -324,7 +294,7 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousParams) ([]p
 			close(responseChannel)
 		}()
 
-		numEdges := len(lvlEdges) * 2
+		numEdges := len(prevEdges) * 2
 		everyNth := numEdges / 1000
 		if everyNth < 50 {
 			everyNth = 2
@@ -332,24 +302,37 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousParams) ([]p
 
 		params.progressFunc(0, numEdges)
 		numProcessedEdges := 0
+		numProcessedEdgesModN := 0
 
-		lvlNTriangles := make([][]triangle, len(portals)*len(portals))
+		lvlNTriangles := make([][]portalIndex, len(portals)*len(portals))
 		lvlNEdges := []edge{}
-		numPortals := uint(len(portals))
+		numPortals := uint32(len(portals))
 
 		for resp := range responseChannel {
-			for _, triangleAndEdge := range resp.trianglesAndEdges {
+			for _, triangle := range resp.triangles {
 				newTriangles++
-				edgeIndex := uint(triangleAndEdge.edge.p0)*numPortals + uint(triangleAndEdge.edge.p1)
-				lvlNTriangles[edgeIndex] = append(lvlNTriangles[edgeIndex], triangleAndEdge.triangle)
-				if len(lvlNTriangles[edgeIndex]) == 1 {
-					lvlNEdges = append(lvlNEdges, triangleAndEdge.edge)
+				edgeIndex0 := uint32(triangle.p0)*numPortals + uint32(triangle.p1)
+				lvlNTriangles[edgeIndex0] = append(lvlNTriangles[edgeIndex0], triangle.p2)
+				if len(lvlNTriangles[edgeIndex0]) == 1 {
+					lvlNEdges = append(lvlNEdges, edge{triangle.p0, triangle.p1})
+				}
+				edgeIndex1 := uint32(triangle.p1)*numPortals + uint32(triangle.p2)
+				lvlNTriangles[edgeIndex1] = append(lvlNTriangles[edgeIndex1], triangle.p0)
+				if len(lvlNTriangles[edgeIndex1]) == 1 {
+					lvlNEdges = append(lvlNEdges, edge{triangle.p1, triangle.p2})
+				}
+				edgeIndex2 := uint32(triangle.p2)*numPortals + uint32(triangle.p0)
+				lvlNTriangles[edgeIndex2] = append(lvlNTriangles[edgeIndex2], triangle.p1)
+				if len(lvlNTriangles[edgeIndex2]) == 1 {
+					lvlNEdges = append(lvlNEdges, edge{triangle.p2, triangle.p0})
 				}
 			}
-			resultCache.Put(resp.trianglesAndEdges)
+			resultCache.Put(resp.triangles)
 
 			numProcessedEdges++
-			if numProcessedEdges%everyNth == 0 {
+			numProcessedEdgesModN++
+			if numProcessedEdgesModN == everyNth {
+				numProcessedEdgesModN = 0
 				params.progressFunc(numProcessedEdges, numEdges)
 			}
 		}
@@ -359,31 +342,29 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousParams) ([]p
 			break
 		}
 		fmt.Println("\nNum lvl", depth, "triangles", newTriangles, len(lvlNEdges))
-		lvlTriangles = append(lvlTriangles, lvlNTriangles)
-		lvlEdges = lvlNEdges
+		prevTriangles = lvlNTriangles
+		prevEdges = lvlNEdges
+		bestDepth = depth
 	}
 
-	var bestTriangle triangle
-	var bestP0, bestP1 int
-	bestDepth := len(lvlTriangles) + 1
+	var bestP0, bestP1, bestP2 int
 	foundSolution := false
 	bestTriangleScore := float32(-math.MaxFloat32)
-	for edge, edgeTriangles := range lvlTriangles[len(lvlTriangles)-1] {
+	for edge, edgeTriangles := range prevTriangles {
 		if len(edgeTriangles) == 0 {
 			continue
 		}
 		p0 := edge / len(portals)
 		p1 := edge % len(portals)
-		for _, t := range edgeTriangles {
-			if !hasAllIndicesInTheTriple(params.fixedCornerIndices, p0, p1, int(t.third)) {
+		for _, p2 := range edgeTriangles {
+			if !hasAllIndicesInTheTriple(params.fixedCornerIndices, p0, p1, int(p2)) {
 				continue
 			}
 			score := params.topLevelScorer.scoreTriangle(
-				portals[p0], portals[p1], portals[t.third])
+				portals[p0], portals[p1], portals[p2])
 			if score > bestTriangleScore {
 				bestTriangleScore = score
-				bestTriangle = t
-				bestP0, bestP1 = p0, p1
+				bestP0, bestP1, bestP2 = p0, p1, int(p2)
 				foundSolution = true
 			}
 		}
@@ -393,51 +374,61 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousParams) ([]p
 		return []portalIndex{}, 0
 	}
 
-	var triangleVertices func(p0, p1 int, t triangle, depth int, lvlTriangles [][][]triangle) []portalIndex
-	triangleVertices = func(p0, p1 int, t triangle, depth int, lvlTriangles [][][]triangle) []portalIndex {
-		result := []portalIndex{t.center}
+	var triangleVertices func(p0, p1, p2 int, depth int) []portalIndex
+	triangleVertices = func(p0, p1, p2 int, depth int) []portalIndex {
+		center := findHomogeneousCenterPortal(p0, p1, p2, portals)
+		if center < 0 {
+			panic(center)
+		}
+		result := []portalIndex{portalIndex(center)}
 		if depth == 2 {
 			return result
 		}
-		revEdge0Index := int(t.center)*len(portals) + p1
-		found1 := false
-		for _, triangle := range lvlTriangles[depth-3][revEdge0Index] {
-			if triangle.third == t.third {
-				result = append(result, triangleVertices(int(t.center), p1, triangle, depth-1, lvlTriangles)...)
-				found1 = true
-				break
-			}
-		}
-		if !found1 {
-			panic(fmt.Errorf("Could not find triangle %d,%d,%d at depth %d", t.center, p1, t.third, depth))
-		}
-		edge0Index := p0*len(portals) + int(t.center)
-		found0 := false
-		for _, triangle := range lvlTriangles[depth-3][edge0Index] {
-			if triangle.third == t.third {
-				result = append(result, triangleVertices(p0, int(t.center), triangle, depth-1, lvlTriangles)...)
-				found0 = true
-				break
-			}
-		}
-		if !found0 {
-			panic(fmt.Errorf("Could not find triangle %d,%d,%d at depth %d", p0, t.center, t.third, depth))
-		}
-		edge2Index := p0*len(portals) + p1
-		found2 := false
-		for _, triangle := range lvlTriangles[depth-3][edge2Index] {
-			if triangle.third == t.center {
-				result = append(result, triangleVertices(p0, p1, triangle, depth-1, lvlTriangles)...)
-				found2 = true
-				break
-			}
-		}
-		if !found2 {
-			panic(fmt.Errorf("Could not find triangle %d,%d,%d at depth %d", p0, p1, t.center, depth))
-		}
+		result = append(result, triangleVertices(center, p1, p2, depth-1)...)
+		result = append(result, triangleVertices(p0, center, p2, depth-1)...)
+		result = append(result, triangleVertices(p0, p1, center, depth-1)...)
 		return result
 
 	}
-	return append([]portalIndex{portalIndex(bestP0), portalIndex(bestP1), bestTriangle.third},
-		triangleVertices(bestP0, bestP1, bestTriangle, bestDepth, lvlTriangles)...), bestDepth
+	return append([]portalIndex{portalIndex(bestP0), portalIndex(bestP1), portalIndex(bestP2)},
+		triangleVertices(bestP0, bestP1, bestP2, bestDepth)...), bestDepth
+}
+
+// Assuming p0, p1, p2 are corners of a pure homogeneous field, find its center portal.
+// Return -1 if no suitable center portal found.
+func findHomogeneousCenterPortal(p0, p1, p2 int, portals []portalData) int {
+	q := newTriangleQuery(portals[p0].LatLng, portals[p1].LatLng, portals[p2].LatLng)
+	portalsInTriangle := []portalData{}
+	for i := 0; i < len(portals); i++ {
+		if i == p0 || i == p1 || i == p2 {
+			continue
+		}
+		if q.ContainsPoint(portals[i].LatLng) {
+			portalsInTriangle = append(portalsInTriangle, portals[i])
+		}
+	}
+	for candidate := 0; candidate < len(portalsInTriangle); candidate++ {
+		q0 := newTriangleQuery(portals[p0].LatLng, portals[p1].LatLng, portalsInTriangle[candidate].LatLng)
+		q1 := newTriangleQuery(portals[p1].LatLng, portals[p2].LatLng, portalsInTriangle[candidate].LatLng)
+		q2 := newTriangleQuery(portals[p2].LatLng, portals[p0].LatLng, portalsInTriangle[candidate].LatLng)
+		c0, c1, c2 := 0, 0, 0
+		for i, p := range portalsInTriangle {
+			if i == candidate {
+				continue
+			}
+			if q0.ContainsPoint(p.LatLng) {
+				c0++
+			}
+			if q1.ContainsPoint(p.LatLng) {
+				c1++
+			}
+			if q2.ContainsPoint(p.LatLng) {
+				c2++
+			}
+		}
+		if c0 == c1 && c0 == c2 {
+			return int(portalsInTriangle[candidate].Index)
+		}
+	}
+	return -1
 }
