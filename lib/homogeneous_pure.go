@@ -254,15 +254,23 @@ func findAllLvlNTriangles(portals []portalData, params homogeneousParams, level 
 	params.progressFunc(numPairs, numPairs)
 
 	fmt.Println()
-	fmt.Println("Num portals", numPortals)
 	fmt.Println("Num lvl", level, "triangles", numLvlNTriangles, len(lvlNEdges))
 
 	return lvlNTriangles, lvlNEdges
 }
 
 func deepestPureHomogeneous(portals []portalData, params homogeneousParams) ([]portalIndex, int) {
+	var prevTriangles [][]portalIndex
+	var prevEdges []edge
 	initialLevel := 4
-	prevTriangles, prevEdges := findAllLvlNTriangles(portals, params, initialLevel)
+	for {
+		prevTriangles, prevEdges = findAllLvlNTriangles(portals, params, initialLevel)
+		if len(prevEdges) > 0 || initialLevel <= 1 {
+			break
+		}
+		initialLevel--
+	}
+	
 
 	resultCache := sync.Pool{
 		New: func() interface{} {
@@ -379,14 +387,14 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousParams) ([]p
 
 	var triangleVertices func(p0, p1, p2 int, depth int) []portalIndex
 	triangleVertices = func(p0, p1, p2 int, depth int) []portalIndex {
+		if depth == 1 {
+			return []portalIndex{}
+		}
 		center := findHomogeneousCenterPortal(p0, p1, p2, portals)
 		if center < 0 {
 			panic(center)
 		}
 		result := []portalIndex{portalIndex(center)}
-		if depth == 2 {
-			return result
-		}
 		result = append(result, triangleVertices(center, p1, p2, depth-1)...)
 		result = append(result, triangleVertices(p0, center, p2, depth-1)...)
 		result = append(result, triangleVertices(p0, p1, center, depth-1)...)
@@ -437,7 +445,7 @@ func findHomogeneousCenterPortal(p0, p1, p2 int, portals []portalData) int {
 }
 
 func areValidPureHomogeneousPortals(p0, p1, p2 portalIndex, inside []portalIndex, portals []portalData) bool {
-	if len(inside) == 1 {
+	if len(inside) <= 1 {
 		return true
 	}
 	insideCopy := make([]portalIndex, len(inside)-1)

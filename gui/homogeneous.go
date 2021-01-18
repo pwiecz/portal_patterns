@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -125,7 +126,7 @@ func (t *homogeneousTab) search() {
 		}
 	}
 
-	options := []lib.HomogeneousOption{}
+	options := []lib.HomogeneousOption{lib.HomogeneousNumWorkers(runtime.GOMAXPROCS(0))}
 	maxDepth, err := strconv.Atoi(t.maxDepth.Text())
 	if err != nil || maxDepth < 1 {
 		return
