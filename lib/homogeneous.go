@@ -1,7 +1,9 @@
 package lib
 
-import "math"
-import "strings"
+import (
+	"math"
+	"strings"
+)
 
 type bestHomogeneousQuery interface {
 	findBestHomogeneous(p0, p1, p2 portalData)

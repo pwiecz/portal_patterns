@@ -35,7 +35,7 @@ type herringboneRequest struct {
 	result []portalIndex
 }
 
-func (q *bestHerringboneMtQuery) findBestHerringbone(b0, b1 portalData, nodes []node, weights []float32, result []portalIndex) []portalIndex {
+func (q *bestHerringboneMtQuery) findBestHerringbone(b0, b1 portalData, nodes []herringboneNode, weights []float32, result []portalIndex) []portalIndex {
 	hq := bestHerringboneQuery{
 		portals: q.portals,
 		nodes:   nodes,
@@ -49,7 +49,7 @@ func bestHerringboneWorker(
 	q *bestHerringboneMtQuery,
 	requestChannel, responseChannel chan herringboneRequest,
 	wg *sync.WaitGroup) {
-	nodes := make([]node, 0, len(q.portals))
+	nodes := make([]herringboneNode, 0, len(q.portals))
 	weights := make([]float32, len(q.portals))
 	for req := range requestChannel {
 		nodes = nodes[:0]

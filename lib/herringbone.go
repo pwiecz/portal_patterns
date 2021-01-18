@@ -1,9 +1,12 @@
 package lib
 
-import "sort"
-import "github.com/golang/geo/r3"
-import "github.com/golang/geo/s1"
-import "github.com/golang/geo/s2"
+import (
+	"sort"
+
+	"github.com/golang/geo/r3"
+	"github.com/golang/geo/s1"
+	"github.com/golang/geo/s2"
+)
 
 // LargestHerringbone - Find largest possible multilayer of portals to be made
 func LargestHerringbone(portals []Portal, fixedBaseIndices []int, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal) {
@@ -13,7 +16,7 @@ func LargestHerringbone(portals []Portal, fixedBaseIndices []int, numWorkers int
 	return LargestHerringboneMT(portals, fixedBaseIndices, numWorkers, progressFunc)
 }
 
-type node struct {
+type herringboneNode struct {
 	index      portalIndex
 	start, end float64
 	distance   s1.ChordAngle
@@ -23,7 +26,7 @@ type node struct {
 
 type bestHerringboneQuery struct {
 	portals []portalData
-	nodes   []node
+	nodes   []herringboneNode
 	weights []float32
 	// Array of normalized direction vectors between all the pairs of portals
 	norms []r3.Vector
@@ -42,17 +45,17 @@ func newBestHerringboneQuery(portals []portalData) *bestHerringboneQuery {
 	}
 	return &bestHerringboneQuery{
 		portals: portals,
-		nodes:   make([]node, 0, len(portals)),
+		nodes:   make([]herringboneNode, 0, len(portals)),
 		weights: make([]float32, len(portals)),
 		norms:   norms,
 	}
 }
 
-type byDistance []node
+type herringboneNodesByDistance []herringboneNode
 
-func (d byDistance) Len() int           { return len(d) }
-func (d byDistance) Swap(i, j int)      { d[i], d[j] = d[j], d[i] }
-func (d byDistance) Less(i, j int) bool { return d[i].distance < d[j].distance }
+func (d herringboneNodesByDistance) Len() int           { return len(d) }
+func (d herringboneNodesByDistance) Swap(i, j int)      { d[i], d[j] = d[j], d[i] }
+func (d herringboneNodesByDistance) Less(i, j int) bool { return d[i].distance < d[j].distance }
 
 func (q *bestHerringboneQuery) normalizedVector(b0, b1 portalData) r3.Vector {
 	return q.norms[uint(b0.Index)*uint(len(q.portals))+uint(b1.Index)]
@@ -71,9 +74,9 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 		a0 := b01.Dot(q.normalizedVector(b1, portal)) // acos of angle b0,b1,portal
 		a1 := b10.Dot(q.normalizedVector(b0, portal)) // acos of angle b1,b0,portal
 		dist := distQuery.ChordAngle(portal.LatLng)
-		q.nodes = append(q.nodes, node{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
+		q.nodes = append(q.nodes, herringboneNode{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
 	}
-	sort.Sort(byDistance(q.nodes))
+	sort.Sort(herringboneNodesByDistance(q.nodes))
 	for i := 0; i < len(q.weights); i++ {
 		q.weights[i] = 0
 	}
