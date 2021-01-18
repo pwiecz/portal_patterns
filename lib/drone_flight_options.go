@@ -1,5 +1,7 @@
 package lib
 
+import "runtime"
+
 type DroneFlightOption interface {
 	apply(params *droneFlightParams)
 }
@@ -67,7 +69,7 @@ func defaultDroneFlightParams() droneFlightParams {
 		endPortalIndex:   invalidPortalIndex,
 		useLongJumps:     true,
 		optimizeNumKeys:  true,
-		numWorkers:       0,
+		numWorkers:       runtime.GOMAXPROCS(0),
 		progressFunc:     func(int, int) {},
 	}
 }

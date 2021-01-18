@@ -176,7 +176,7 @@ func mergeTrianglesWorker(
 	wg.Done()
 }
 
-func findAllLvlNTriangles(portals []portalData, params homogeneousParams, level int) ([][]portalIndex, []edge) {
+func findAllLvlNTriangles(portals []portalData, params homogeneousPureParams, level int) ([][]portalIndex, []edge) {
 	resultCache := sync.Pool{
 		New: func() interface{} {
 			return []portalIndex{}
@@ -259,7 +259,7 @@ func findAllLvlNTriangles(portals []portalData, params homogeneousParams, level 
 	return lvlNTriangles, lvlNEdges
 }
 
-func deepestPureHomogeneous(portals []portalData, params homogeneousParams) ([]portalIndex, int) {
+func deepestPureHomogeneous(portals []portalData, params homogeneousPureParams) ([]portalIndex, int) {
 	var prevTriangles [][]portalIndex
 	var prevEdges []edge
 	initialLevel := 4
@@ -270,7 +270,6 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousParams) ([]p
 		}
 		initialLevel--
 	}
-	
 
 	resultCache := sync.Pool{
 		New: func() interface{} {
@@ -367,12 +366,19 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousParams) ([]p
 		}
 		p0 := edge / len(portals)
 		p1 := edge % len(portals)
+		// Every triangle is stored three times on the list pick only one representative.
+		if p0 >= p1 {
+			continue
+		}
 		for _, p2 := range edgeTriangles {
+			if p0 >= int(p2) {
+				continue
+			}
 			if !hasAllIndicesInTheTriple(params.fixedCornerIndices, p0, p1, int(p2)) {
 				continue
 			}
-			score := params.topLevelScorer.scoreTriangle(
-				portals[p0], portals[p1], portals[p2])
+			score := params.scorer.scoreTrianglePure(
+				portals[p0], portals[p1], portals[p2], bestDepth, portals)
 			if score > bestTriangleScore {
 				bestTriangleScore = score
 				bestP0, bestP1, bestP2 = p0, p1, int(p2)
@@ -385,46 +391,34 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousParams) ([]p
 		return []portalIndex{}, 0
 	}
 
-	var triangleVertices func(p0, p1, p2 int, depth int) []portalIndex
-	triangleVertices = func(p0, p1, p2 int, depth int) []portalIndex {
+	var triangleVertices func(p0, p1, p2 portalData, depth int, portals []portalData) []portalIndex
+	triangleVertices = func(p0, p1, p2 portalData, depth int, portals []portalData) []portalIndex {
 		if depth == 1 {
 			return []portalIndex{}
 		}
-		center := findHomogeneousCenterPortal(p0, p1, p2, portals)
-		if center < 0 {
-			panic(center)
-		}
-		result := []portalIndex{portalIndex(center)}
-		result = append(result, triangleVertices(center, p1, p2, depth-1)...)
-		result = append(result, triangleVertices(p0, center, p2, depth-1)...)
-		result = append(result, triangleVertices(p0, p1, center, depth-1)...)
+		portalsInTriangle := portalsInsideTriangle(portals, p0, p1, p2, nil)
+		center := findHomogeneousCenterPortal(p0, p1, p2, portalsInTriangle)
+		result := []portalIndex{portalIndex(center.Index)}
+		result = append(result, triangleVertices(center, p1, p2, depth-1, portalsInTriangle)...)
+		result = append(result, triangleVertices(p0, center, p2, depth-1, portalsInTriangle)...)
+		result = append(result, triangleVertices(p0, p1, center, depth-1, portalsInTriangle)...)
 		return result
 
 	}
 	return append([]portalIndex{portalIndex(bestP0), portalIndex(bestP1), portalIndex(bestP2)},
-		triangleVertices(bestP0, bestP1, bestP2, bestDepth)...), bestDepth
+		triangleVertices(portals[bestP0], portals[bestP1], portals[bestP2], bestDepth, portals)...), bestDepth
 }
 
 // Assuming p0, p1, p2 are corners of a pure homogeneous field, find its center portal.
 // Return -1 if no suitable center portal found.
-func findHomogeneousCenterPortal(p0, p1, p2 int, portals []portalData) int {
-	q := newTriangleQuery(portals[p0].LatLng, portals[p1].LatLng, portals[p2].LatLng)
-	portalsInTriangle := []portalData{}
-	for i := 0; i < len(portals); i++ {
-		if i == p0 || i == p1 || i == p2 {
-			continue
-		}
-		if q.ContainsPoint(portals[i].LatLng) {
-			portalsInTriangle = append(portalsInTriangle, portals[i])
-		}
-	}
-	for candidate := 0; candidate < len(portalsInTriangle); candidate++ {
-		q0 := newTriangleQuery(portals[p0].LatLng, portals[p1].LatLng, portalsInTriangle[candidate].LatLng)
-		q1 := newTriangleQuery(portals[p1].LatLng, portals[p2].LatLng, portalsInTriangle[candidate].LatLng)
-		q2 := newTriangleQuery(portals[p2].LatLng, portals[p0].LatLng, portalsInTriangle[candidate].LatLng)
+func findHomogeneousCenterPortal(p0, p1, p2 portalData, portalsInTriangle []portalData) portalData {
+	for _, candidate := range portalsInTriangle {
+		q0 := newTriangleQuery(p0.LatLng, p1.LatLng, candidate.LatLng)
+		q1 := newTriangleQuery(p1.LatLng, p2.LatLng, candidate.LatLng)
+		q2 := newTriangleQuery(p2.LatLng, p0.LatLng, candidate.LatLng)
 		c0, c1, c2 := 0, 0, 0
-		for i, p := range portalsInTriangle {
-			if i == candidate {
+		for _, p := range portalsInTriangle {
+			if p.Index == candidate.Index {
 				continue
 			}
 			if q0.ContainsPoint(p.LatLng) {
@@ -438,10 +432,10 @@ func findHomogeneousCenterPortal(p0, p1, p2 int, portals []portalData) int {
 			}
 		}
 		if c0 == c1 && c0 == c2 {
-			return int(portalsInTriangle[candidate].Index)
+			return candidate
 		}
 	}
-	return -1
+	panic("Could not find center portal")
 }
 
 func areValidPureHomogeneousPortals(p0, p1, p2 portalIndex, inside []portalIndex, portals []portalData) bool {

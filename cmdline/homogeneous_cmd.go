@@ -81,8 +81,8 @@ func (h *homogeneousCmd) Run(args []string, output io.Writer, numWorkers int, pr
 	}
 	// check for pretty before setting top level scorer, as pretty overwrites the top level scorer
 	if *h.pretty {
-		if *h.maxDepth > 7 {
-			log.Fatalln("if -pretty is specified -max_depth must be at most 7")
+		if !*h.pure && *h.maxDepth > 7 {
+			log.Fatalln("if -pretty is specified and -pure is not -max_depth must be at most 7")
 		}
 		options = append(options, lib.HomogeneousSpreadAround{})
 	}

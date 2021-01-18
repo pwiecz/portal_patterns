@@ -125,8 +125,11 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 	}
 	params := defaultHomogeneousParams()
 	requires2 := false
+	pure := false
 	for _, option := range options {
-		if option.requires2() {
+		if v, ok := option.(HomogeneousPure); ok && bool(v) {
+			pure = true
+		} else if option.requires2() {
 			requires2 = true
 		} else {
 			option.apply(&params)
@@ -175,21 +178,25 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 
 	params.progressFunc(0, numIndexEntries)
 	var q bestHomogeneousQuery
-	if requires2 {
-		params2 := defaultHomogeneous2Params(len(portals))
+	if pure {
+		paramsPure := defaultHomogeneousPureParams()
 		for _, option := range options {
-			option.apply2(&params2)
+			option.applyPure(&paramsPure)
 		}
-		params = params2.homogeneousParams
-		q = newBestHomogeneous2Query(portalsData, params2.scorer, params2.maxDepth, params2.pure, onFilledIndexEntry)
-	} else if params.pure {
-		resultIndices, bestDepth := deepestPureHomogeneous(portalsData, params)
+		resultIndices, bestDepth := deepestPureHomogeneous(portalsData, paramsPure)
 		result := []Portal{}
 		for _, index := range resultIndices {
 			result = append(result, portals[index])
 		}
 
 		return result, uint16(bestDepth)
+	} else if requires2 {
+		params2 := defaultHomogeneous2Params(len(portals))
+		for _, option := range options {
+			option.apply2(&params2)
+		}
+		params = params2.homogeneousParams
+		q = newBestHomogeneous2Query(portalsData, params2.scorer, params2.maxDepth, onFilledIndexEntry)
 	} else {
 		q = newBestHomogeneousQuery(portalsData, params.maxDepth, onFilledIndexEntry)
 	}
