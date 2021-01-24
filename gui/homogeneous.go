@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/pwiecz/go-fltk"
 	"github.com/pwiecz/portal_patterns/configuration"
@@ -29,50 +31,51 @@ func NewHomogeneousTab(configuration *configuration.Configuration) *HomogeneousT
 		configuration: configuration,
 	}
 	homogeneous := fltk.NewGroup(20, 30, 760, 550, "Homogeneous")
-	t.maxDepth = fltk.NewSpinner(20, 50, 200, 30, "Max depth:")
+	y := 40
+	t.maxDepth = fltk.NewSpinner(200, y, 200, 30, "Max depth:")
 	t.maxDepth.SetMinimum(1)
 	t.maxDepth.SetMaximum(8)
 	t.maxDepth.SetValue(6)
 	t.maxDepth.SetType(fltk.SPINNER_INT_INPUT)
-	t.innerPortals = fltk.NewChoice(20, 80, 200, 30, "Inner portal positions:")
+	y += 35
+	t.innerPortals = fltk.NewChoice(200, y, 200, 30, "Inner portal positions:")
 	t.innerPortals.Add("Arbitrary", func() {})
 	t.innerPortals.Add("Spread around (slow)", func() {})
 	t.innerPortals.SetValue(0)
-	t.topLevel = fltk.NewChoice(20, 110, 200, 30, "Top level triangle:")
+	y += 35
+	t.topLevel = fltk.NewChoice(200, y, 200, 30, "Top level triangle:")
 	t.topLevel.Add("Arbitrary", func() {})
 	t.topLevel.Add("Smallest area", func() {})
 	t.topLevel.Add("Largest area", func() {})
 	t.topLevel.Add("Most Equilateral", func() {})
 	t.topLevel.Add("Random", func() {})
 	t.topLevel.SetValue(0)
-	{
-		labelW, _ := t.maxDepth.MeasureLabel()
-		t.maxDepth.SetPosition(labelW+t.maxDepth.X(), t.maxDepth.Y())
-		t.maxDepth.Redraw()
-	}
-	{
-		labelW, _ := t.topLevel.MeasureLabel()
-		t.topLevel.SetPosition(labelW+t.topLevel.X(), t.topLevel.Y())
-		t.topLevel.Redraw()
-	}
-	{
-		labelW, _ := t.innerPortals.MeasureLabel()
-		t.innerPortals.SetPosition(labelW+t.innerPortals.X(), t.innerPortals.Y())
-		t.innerPortals.Redraw()
-	}
-	t.pure = fltk.NewCheckButton(20, 140, 200, 30, "Pure")
-	t.search = fltk.NewButton(20, 180, 80, 30, "Search")
+	y += 35
+	t.pure = fltk.NewCheckButton(200, y, 200, 30, "Pure")
+	y += 35
+	buttonPack := fltk.NewPack(20, y, 200, 30)
+	buttonPack.SetType(fltk.HORIZONTAL)
+	buttonPack.SetSpacing(5)
+	t.search = fltk.NewButton(0, 0, 80, 30, "Search")
 	t.search.SetCallback(func() { t.OnSearchPressed() })
 	t.search.Deactivate()
-
-	t.addPortals = fltk.NewButton(120, 180, 80, 30, "Add portals")
+	t.addPortals = fltk.NewButton(0, 0, 100, 30, "Add portals")
+	buttonPack.End()
+	y += 35
 	t.addPortals.SetCallback(func() { t.OnAddPortalsPressed() })
-	t.progress = fltk.NewProgress(20, 220, 720, 30, "")
-	t.portalList = fltk.NewTableRow(20, 260, 730, 300, func(context fltk.TableContext, r, c, x, y, w, h int) {
+	t.progress = fltk.NewProgress(20, y, 740, 30, "")
+	t.progress.SetSelectionColor(0x0000ffff)
+	y += 35
+	t.portalList = fltk.NewTableRow(20, y, 740, 550-10-y, func(context fltk.TableContext, r, c, x, y, w, h int) {
 		t.PortalListDrawCallback(context, r, c, x, y, w, h)
 	})
+	t.portalList.EnableColumnHeaders()
+	t.portalList.AllowColumnResizing()
+	t.portalList.SetColumnWidth(0, 200)
 
 	homogeneous.End()
+
+	homogeneous.Resizable(t.portalList)
 	return t
 }
 
@@ -90,7 +93,7 @@ func (t *HomogeneousTab) OnSearchPressed() {
 	if t.pure.Value() {
 		options = append(options, lib.HomogeneousPure(true))
 	}
-	if t.innerPortals.Value() == 1{
+	if t.innerPortals.Value() == 1 {
 		options = append(options, lib.HomogeneousSpreadAround{})
 	}
 	switch t.topLevel.Value() {
@@ -101,7 +104,8 @@ func (t *HomogeneousTab) OnSearchPressed() {
 	case 3:
 		options = append(options, lib.HomogeneousMostEquilateralTriangle{})
 	case 4:
-		options = append(options, lib.HomogeneousRandom{})
+		rand := rand.New(rand.NewSource(time.Now().UnixNano()))
+		options = append(options, lib.HomogeneousRandom{Rand: rand})
 	}
 	go func() {
 		solution, depth := lib.DeepestHomogeneous(t.portals, options...)
@@ -130,23 +134,23 @@ func (t *HomogeneousTab) OnAddPortalsPressed() {
 		})
 		var prevX, prevY int
 		glWindow.SetEventHandler(func(event fltk.Event) bool {
-			if event == fltk.PUSH {
+			switch event {
+			case fltk.PUSH:
 				prevX, prevY = fltk.EventX(), fltk.EventY()
 				// return true to receive drag events
 				return true
-			}
-			if event == fltk.FOCUS {
+			case fltk.FOCUS:
 				// return true to receive keyboard events
 				return true
-			}
-			if event == fltk.DRAG && fltk.EventButton1() {
-				currX, currY := fltk.EventX(), fltk.EventY()
-				t.mapDrawer.Drag(prevX-currX, prevY-currY)
-				prevX, prevY = currX, currY
-				fltk.Awake(func() { glWindow.Redraw() })
-				return true
-			}
-			if event == fltk.MOUSEWHEEL {
+			case fltk.DRAG:
+				if fltk.EventButton1() {
+					currX, currY := fltk.EventX(), fltk.EventY()
+					t.mapDrawer.Drag(prevX-currX, prevY-currY)
+					prevX, prevY = currX, currY
+					fltk.Awake(func() { glWindow.Redraw() })
+					return true
+				}
+			case fltk.MOUSEWHEEL:
 				dy := fltk.EventDY()
 				if dy < 0 {
 					t.mapDrawer.ZoomIn(fltk.EventX(), fltk.EventY())
@@ -157,8 +161,7 @@ func (t *HomogeneousTab) OnAddPortalsPressed() {
 					fltk.Awake(func() { glWindow.Redraw() })
 					return true
 				}
-			}
-			if event == fltk.KEY {
+			case fltk.KEY:
 				if (fltk.EventState()&fltk.CTRL) != 0 &&
 					(fltk.EventKey() == '+' || fltk.EventKey() == '=') {
 					t.mapDrawer.ZoomIn(glWindow.W()/2, glWindow.H()/2)
@@ -193,18 +196,26 @@ func (t *HomogeneousTab) OnAddPortalsPressed() {
 }
 
 func (t *HomogeneousTab) PortalListDrawCallback(context fltk.TableContext, row, column, x, y, w, h int) {
-	if context != fltk.ContextCell {
-		return
-	}
-	if row >= len(t.portals) {
-		return
-	}
-	//fmt.Println("drawing portal", t.portals[row].Name, "column:", column)
-	fltk.DrawBox(fltk.THIN_UP_BOX, x, y, w, h, 0xffffffff)
-	fltk.Color(0x00000000)
-	if column == 0 {
-		fltk.Draw(t.portals[row].Name, x, y, w, h, fltk.ALIGN_LEFT)
-	} else if column == 1 {
-		fltk.Draw("-", x, y, w, h, fltk.ALIGN_CENTER)
+	switch context {
+	case fltk.ContextCell:
+		if row >= len(t.portals) {
+			return
+		}
+		//fmt.Println("drawing portal", t.portals[row].Name, "column:", column)
+		fltk.DrawBox(fltk.THIN_UP_BOX, x, y, w, h, 0xffffffff)
+		fltk.Color(0x00000000)
+		if column == 0 {
+			fltk.Draw(t.portals[row].Name, x, y, w, h, fltk.ALIGN_LEFT)
+		} else if column == 1 {
+			fltk.Draw("-", x, y, w, h, fltk.ALIGN_CENTER)
+		}
+	case fltk.ContextColHeader:
+		fltk.DrawBox(fltk.UP_BOX, x, y, w, h, 0x8f8f8fff)
+		fltk.Color(0x00000000)
+		if column == 0 {
+			fltk.Draw("Name", x, y, w, h, fltk.ALIGN_CENTER)
+		} else if column == 1 {
+			fltk.Draw("State", x, y, w, h, fltk.ALIGN_CENTER)
+		}
 	}
 }
