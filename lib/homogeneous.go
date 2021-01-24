@@ -127,8 +127,8 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 	requires2 := false
 	pure := false
 	for _, option := range options {
-		if v, ok := option.(HomogeneousPure); ok && bool(v) {
-			pure = true
+		if v, ok := option.(HomogeneousPure); ok {
+			pure = bool(v)
 		} else if option.requires2() {
 			requires2 = true
 		} else {
