@@ -237,14 +237,19 @@ func (w *MapWindow) Update() {
 			callback()
 		}
 	case paths := <-w.setPathsChannel:
+		tesselator := s2.NewEdgeTessellator(projection, 1e-3)
 		w.paths = w.paths[:0]
 		for _, path := range paths {
 			mapPath := []r2.Point{}
-			for _, portal := range path {
-				mapCoords := projection.FromLatLng(portal.LatLng)
-				mapCoords.X = (mapCoords.X + 180) / 360
-				mapCoords.Y = (180 - mapCoords.Y) / 360
-				mapPath = append(mapPath, mapCoords)
+			for i := 1; i < len(path); i++ {
+				mapPath = tesselator.AppendProjected(
+					s2.PointFromLatLng(path[i-1].LatLng),
+					s2.PointFromLatLng(path[i].LatLng),
+					mapPath)
+			}
+			for i := range mapPath {
+				mapPath[i].X = (mapPath[i].X + 180) / 360
+				mapPath[i].Y = (180 - mapPath[i].Y) / 360
 			}
 			w.paths = append(w.paths, mapPath)
 		}
