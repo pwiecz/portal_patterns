@@ -16,7 +16,7 @@ import (
 	"github.com/golang/geo/r2"
 	"github.com/golang/geo/s2"
 	"github.com/golang/groupcache/lru"
-	"github.com/inkyblackness/imgui-go"
+	"github.com/pwiecz/imgui-go"
 	"github.com/pwiecz/portal_patterns/gui/osm"
 	"github.com/pwiecz/portal_patterns/lib"
 	"golang.org/x/image/draw"
@@ -479,7 +479,7 @@ func (w *MapWindow) DrawAllTilesImgui() {
 	for coord, tex := range w.mapTiles {
 		dx := float32(coord.X)*256 - float32(w.x0)
 		dy := float32(coord.Y)*256 - float32(w.y0)
-		drawList.AddImage(imgui.TextureID(tex), imgui.Vec2{dx, dy}, imgui.Vec2{dx + 256, dy + 256}, imgui.Vec2{0, 0}, imgui.Vec2{1, 1}, imgui.Packed(color.NRGBA{255, 255, 255, 255}))
+		drawList.AddImage(imgui.TextureID(tex), imgui.Vec2{dx, dy}, imgui.Vec2{dx + 256, dy + 256})
 	}
 	imgui.Render()
 	//	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
