@@ -1,14 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 
 	"github.com/pwiecz/go-fltk"
 	"github.com/pwiecz/portal_patterns/configuration"
-	guigl "github.com/pwiecz/portal_patterns/gui/gl"
-	"github.com/pwiecz/portal_patterns/gui/osm"
 	"github.com/pwiecz/portal_patterns/lib"
 )
 
@@ -22,7 +19,7 @@ type HomogeneousTab struct {
 	addPortals    *fltk.Button
 	progress      *fltk.Progress
 	portalList    *fltk.TableRow
-	mapDrawer     *guigl.MapWindow
+	mapWindow     *MapWindow
 	portals       []lib.Portal
 }
 
@@ -80,7 +77,6 @@ func NewHomogeneousTab(configuration *configuration.Configuration) *HomogeneousT
 }
 
 func (t *HomogeneousTab) OnSearchPressed() {
-	fmt.Println("Homogeneous: ", t.maxDepth.Value(), t.topLevel.Value(), t.pure.Value())
 	options := []lib.HomogeneousOption{
 		lib.HomogeneousMaxDepth(t.maxDepth.Value()),
 		lib.HomogeneousProgressFunc(func(val, max int) {
@@ -109,8 +105,8 @@ func (t *HomogeneousTab) OnSearchPressed() {
 	}
 	go func() {
 		solution, depth := lib.DeepestHomogeneous(t.portals, options...)
-		if t.mapDrawer != nil {
-			t.mapDrawer.SetPaths(lib.HomogeneousPolylines(depth, solution))
+		if t.mapWindow != nil {
+			t.mapWindow.SetPaths(lib.HomogeneousPolylines(depth, solution))
 		}
 	}()
 }
@@ -120,74 +116,18 @@ func (t *HomogeneousTab) OnAddPortalsPressed() {
 		"Select portals file",
 		"JSON files (*.json)\tCSV files (*.csv)", t.configuration.PortalsDirectory, false)
 	if !ok {
-		fmt.Println("Cancelled")
 		return
 	}
-	if t.mapDrawer == nil {
-		mw := fltk.NewWindow(800, 600)
-		mw.Begin()
-		tileFetcher := osm.NewMapTiles()
-		t.mapDrawer = guigl.NewMapWindow("map", tileFetcher)
-		var glWindow *fltk.GlWindow
-		glWindow = fltk.NewGlWindow(0, 0, 800, 600, func() {
-			DrawMap(glWindow, t.mapDrawer)
-		})
-		var prevX, prevY int
-		glWindow.SetEventHandler(func(event fltk.Event) bool {
-			switch event {
-			case fltk.PUSH:
-				prevX, prevY = fltk.EventX(), fltk.EventY()
-				// return true to receive drag events
-				return true
-			case fltk.FOCUS:
-				// return true to receive keyboard events
-				return true
-			case fltk.DRAG:
-				if fltk.EventButton1() {
-					currX, currY := fltk.EventX(), fltk.EventY()
-					t.mapDrawer.Drag(prevX-currX, prevY-currY)
-					prevX, prevY = currX, currY
-					fltk.Awake(func() { glWindow.Redraw() })
-					return true
-				}
-			case fltk.MOUSEWHEEL:
-				dy := fltk.EventDY()
-				if dy < 0 {
-					t.mapDrawer.ZoomIn(fltk.EventX(), fltk.EventY())
-					fltk.Awake(func() { glWindow.Redraw() })
-					return true
-				} else if dy > 0 {
-					t.mapDrawer.ZoomOut(fltk.EventX(), fltk.EventY())
-					fltk.Awake(func() { glWindow.Redraw() })
-					return true
-				}
-			case fltk.KEY:
-				if (fltk.EventState()&fltk.CTRL) != 0 &&
-					(fltk.EventKey() == '+' || fltk.EventKey() == '=') {
-					t.mapDrawer.ZoomIn(glWindow.W()/2, glWindow.H()/2)
-					fltk.Awake(func() { glWindow.Redraw() })
-					return true
-				} else if fltk.EventKey() == '-' && (fltk.EventState()&fltk.CTRL) != 0 {
-					t.mapDrawer.ZoomOut(glWindow.W()/2, glWindow.H()/2)
-					fltk.Awake(func() { glWindow.Redraw() })
-					return true
-				}
-			}
-			return false
-		})
-		mw.End()
-		t.mapDrawer.OnMapChanged(
-			func() {
-				fmt.Println("map changed")
-				fltk.Awake(func() { glWindow.Redraw() })
-			})
-		mw.Show()
+	if t.mapWindow == nil {
+		t.mapWindow = NewMapWindow("Homogeneous")
+	} else {
+		t.mapWindow.Show()
 	}
 	portals, _ := lib.ParseFile(filename)
 	t.portals = portals
 	t.portalList.SetRowCount(len(t.portals))
 	t.portalList.SetColumnCount(2)
-	t.mapDrawer.SetPortals(t.portals)
+	t.mapWindow.SetPortals(t.portals)
 	if len(t.portals) > 0 {
 		t.search.Activate()
 	} else {
@@ -201,7 +141,6 @@ func (t *HomogeneousTab) PortalListDrawCallback(context fltk.TableContext, row, 
 		if row >= len(t.portals) {
 			return
 		}
-		//fmt.Println("drawing portal", t.portals[row].Name, "column:", column)
 		fltk.DrawBox(fltk.THIN_UP_BOX, x, y, w, h, 0xffffffff)
 		fltk.Color(0x00000000)
 		if column == 0 {
