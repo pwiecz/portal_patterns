@@ -1,5 +1,7 @@
 package lib
 
+import "runtime"
+
 type FlipFieldOption interface {
 	apply(params *flipFieldParams)
 }
@@ -52,7 +54,7 @@ func defaultFlipFieldParams() flipFieldParams {
 		backbonePortalLimit: EQUAL,
 		maxFlipPortals:      0,
 		simpleBackbone:      false,
-		numWorkers:          0,
+		numWorkers:          runtime.GOMAXPROCS(0),
 		progressFunc:        func(int, int) {},
 	}
 }
