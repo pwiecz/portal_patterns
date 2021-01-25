@@ -1,10 +1,12 @@
 package lib
 
-import "math"
+import (
+	"math"
 
-import "github.com/golang/geo/r3"
-import "github.com/golang/geo/s1"
-import "github.com/golang/geo/s2"
+	"github.com/golang/geo/r3"
+	"github.com/golang/geo/s1"
+	"github.com/golang/geo/s2"
+)
 
 const RadiansToMeters = 6371010.0 // 2e+7 / math.Pi
 const unitAreaToSquareMeters = 5.1e+14

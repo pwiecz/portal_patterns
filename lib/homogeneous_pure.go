@@ -263,6 +263,9 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousPureParams) 
 	var prevTriangles [][]portalIndex
 	var prevEdges []edge
 	initialLevel := 4
+	if params.maxDepth < initialLevel {
+		initialLevel = params.maxDepth
+	}
 	for {
 		prevTriangles, prevEdges = findAllLvlNTriangles(portals, params, initialLevel)
 		if len(prevEdges) > 0 || initialLevel <= 1 {
