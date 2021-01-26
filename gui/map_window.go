@@ -98,6 +98,10 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 			fltk.Awake(func() { w.glWindow.Redraw() })
 			return true
 		}
+	case fltk.MOVE:
+		w.mapDrawer.Hover(fltk.EventX(), fltk.EventY())
+	case fltk.LEAVE:
+		w.mapDrawer.Leave()
 	}
 	return false
 }
