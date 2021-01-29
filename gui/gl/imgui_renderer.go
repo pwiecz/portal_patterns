@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"unsafe"
 
+	"github.com/adrg/sysfont"
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/pwiecz/imgui-go"
 )
@@ -12,6 +13,7 @@ import (
 type OpenGL2 struct {
 	imguiIO imgui.IO
 
+	glyphRanges imgui.AllocatedGlyphRanges
 	fontTexture uint32
 }
 
@@ -22,9 +24,18 @@ func NewOpenGL2(io imgui.IO) (*OpenGL2, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize OpenGL: %w", err)
 	}
+	finder := sysfont.NewFinder(nil)
+	font := finder.Match("Helvetica")
+	fonts := imgui.CurrentIO().Fonts()
+	glyphRangesBuilder := imgui.GlyphRangesBuilder{}
+	glyphRangesBuilder.AddExisting(fonts.GlyphRangesDefault())
+	glyphRangesBuilder.Add(0x100, 0x17f)
+	glyphRanges := glyphRangesBuilder.Build()
+	fonts.AddFontFromFileTTFV(font.Filename, 20, imgui.DefaultFontConfig, glyphRanges.GlyphRanges)
 
 	renderer := &OpenGL2{
 		imguiIO: io,
+		glyphRanges: glyphRanges,
 	}
 	renderer.createFontsTexture()
 	return renderer, nil
@@ -33,6 +44,7 @@ func NewOpenGL2(io imgui.IO) (*OpenGL2, error) {
 // Dispose cleans up the resources.
 func (renderer *OpenGL2) Dispose() {
 	renderer.destroyFontsTexture()
+	renderer.glyphRanges.Free()
 }
 
 // PreRender clears the framebuffer.

@@ -213,6 +213,7 @@ func (w *MapDrawer) Init() {
 	if err != nil {
 		panic(err)
 	}
+
 	w.imguiContext = context
 	w.imguiRenderer = renderer
 	//	w.InitOpenGL()
@@ -302,24 +303,35 @@ func (w *MapDrawer) Update() {
 		w.DrawAllTilesImgui()
 		w.DrawAllPortalsImgui()
 		w.DrawAllPathsImgui()
-		if w.portalUnderMouse >= 0 && w.portalUnderMouse < len(w.portals) {
-			w.DrawPortalLabelImgui()
-		}
+		w.DrawPortalLabelImgui()
 	}
 }
 
 func (w *MapDrawer) DrawPortalLabelImgui() {
+	if w.portalUnderMouse < 0 || w.portalUnderMouse >= len(w.portals) {
+		return
+	}
 	imgui.NewFrame()
 	drawList := imgui.BackgroundDrawList()
 	portal := w.portals[w.portalUnderMouse]
 	x := float32(portal.coords.X*w.zoomPow*256 - w.x0)
 	y := float32(portal.coords.Y*w.zoomPow*256 - w.y0)
 	textSize := imgui.CalcTextSize(portal.name, false, 0)
-	portalPos := imgui.Vec2{x, y}
+	labelPosX, labelPosY := x-textSize.X/2, y-PORTAL_CIRCLE_RADIUS-2
+	if labelPosX < 0 {
+		labelPosX = 0
+	} else if labelPosX+textSize.X >= 800 {
+		labelPosX = 800 - textSize.X
+	}
+	if labelPosY-textSize.Y < 0 {
+		labelPosY = y + 5 + textSize.Y + 4
+	}
+	labelPos := imgui.Vec2{labelPosX - 10, labelPosY - 20}
 	white := imgui.Packed(color.NRGBA{255, 255, 255, 255})
-	drawList.AddRectFilled(portalPos, portalPos.Plus(textSize), white)
+	drawList.AddRectFilled(labelPos, labelPos.Plus(imgui.Vec2{textSize.X+10, textSize.Y}), white)
 	black := imgui.Packed(color.NRGBA{0, 0, 0, 255})
-	drawList.AddText(portalPos, black, portal.name)
+	textPos := labelPos.Plus(imgui.Vec2{10, 0})
+	drawList.AddText(textPos, black, portal.name)
 	imgui.Render()
 	w.imguiRenderer.Render([2]float32{800, 600}, [2]float32{800, 600}, imgui.RenderedDrawData())
 }
