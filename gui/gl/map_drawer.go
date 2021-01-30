@@ -328,7 +328,7 @@ func (w *MapDrawer) DrawPortalLabelImgui() {
 	}
 	labelPos := imgui.Vec2{labelPosX - 10, labelPosY - 20}
 	white := imgui.Packed(color.NRGBA{255, 255, 255, 255})
-	drawList.AddRectFilled(labelPos, labelPos.Plus(imgui.Vec2{textSize.X+10, textSize.Y}), white)
+	drawList.AddRectFilled(labelPos, labelPos.Plus(imgui.Vec2{textSize.X + 10, textSize.Y}), white)
 	black := imgui.Packed(color.NRGBA{0, 0, 0, 255})
 	textPos := labelPos.Plus(imgui.Vec2{10, 0})
 	drawList.AddText(textPos, black, portal.name)

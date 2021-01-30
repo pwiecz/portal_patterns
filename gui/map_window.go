@@ -18,12 +18,13 @@ type MapWindow struct {
 	prevX, prevY int
 }
 
-func NewMapWindow(title string) *MapWindow {
+func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
 	w := &MapWindow{}
 	w.window = fltk.NewWindow(800, 600)
+	menu := fltk.NewMenuButton(0, 0, 800, 600)
+	menu.Add("Test", func() {fmt.Println("on test")})
 	w.window.SetLabel(title + " - © OpenStreetMap")
 	w.window.Begin()
-	tileFetcher := osm.NewMapTiles()
 	w.mapDrawer = gl.NewMapDrawer(tileFetcher)
 	w.glWindow = fltk.NewGlWindow(0, 0, 800, 600, func() { w.drawMap() })
 	w.glWindow.SetEventHandler(func(event fltk.Event) bool { return w.handleEvent(event) })
@@ -36,6 +37,9 @@ func NewMapWindow(title string) *MapWindow {
 	return w
 }
 
+func (w *MapWindow) Hide() {
+	w.window.Hide()
+}
 func (w *MapWindow) Show() {
 	w.window.Show()
 }
@@ -52,7 +56,6 @@ func (w *MapWindow) drawMap() {
 		}
 	}
 	if !w.glWindow.ContextValid() {
-		fmt.Println("Initializing glWindow")
 		w.mapDrawer.Init()
 	}
 

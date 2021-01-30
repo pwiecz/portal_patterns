@@ -1,82 +1,87 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 
 	"github.com/pwiecz/go-fltk"
 	"github.com/pwiecz/portal_patterns/configuration"
+	"github.com/pwiecz/portal_patterns/gui/osm"
 	"github.com/pwiecz/portal_patterns/lib"
 )
 
-type HomogeneousTab struct {
-	configuration *configuration.Configuration
-	maxDepth      *fltk.Spinner
-	innerPortals  *fltk.Choice
-	topLevel      *fltk.Choice
-	pure          *fltk.CheckButton
-	search        *fltk.Button
-	addPortals    *fltk.Button
-	progress      *fltk.Progress
-	portalList    *fltk.TableRow
-	mapWindow     *MapWindow
-	portals       []lib.Portal
+type homogeneousTab struct {
+	*baseTab
+	maxDepth     *fltk.Spinner
+	innerPortals *fltk.Choice
+	topLevel     *fltk.Choice
+	pure         *fltk.CheckButton
+	depth        uint16
+	solution     []lib.Portal
 }
 
-func NewHomogeneousTab(configuration *configuration.Configuration) *HomogeneousTab {
-	t := &HomogeneousTab{
-		configuration: configuration,
-	}
-	homogeneous := fltk.NewGroup(20, 30, 760, 550, "Homogeneous")
-	y := 40
-	t.maxDepth = fltk.NewSpinner(200, y, 200, 30, "Max depth:")
+func NewHomogeneousTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *homogeneousTab {
+	t := &homogeneousTab{}
+	mainPack := fltk.NewPack(20, 40, 760, 540, "Homogeneous")
+	mainPack.SetType(fltk.VERTICAL)
+	mainPack.SetSpacing(5)
+	t.baseTab = newBaseTab("Drone Flight", configuration, tileFetcher, t)
+
+	maxDepthPack := fltk.NewPack(0, 0, 760, 30)
+	maxDepthPack.SetType(fltk.HORIZONTAL)
+	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
+	t.maxDepth = fltk.NewSpinner(0, 0, 200, 30, "Max depth:")
 	t.maxDepth.SetMinimum(1)
 	t.maxDepth.SetMaximum(8)
 	t.maxDepth.SetValue(6)
 	t.maxDepth.SetType(fltk.SPINNER_INT_INPUT)
-	y += 35
-	t.innerPortals = fltk.NewChoice(200, y, 200, 30, "Inner portal positions:")
+	maxDepthPack.End()
+	mainPack.Add(maxDepthPack)
+
+	innerPortalsPack := fltk.NewPack(0, 0, 760, 30)
+	innerPortalsPack.SetType(fltk.HORIZONTAL)
+	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
+	t.innerPortals = fltk.NewChoice(0, 0, 200, 30, "Inner portal positions:")
 	t.innerPortals.Add("Arbitrary", func() {})
 	t.innerPortals.Add("Spread around (slow)", func() {})
 	t.innerPortals.SetValue(0)
-	y += 35
-	t.topLevel = fltk.NewChoice(200, y, 200, 30, "Top level triangle:")
+	innerPortalsPack.End()
+	mainPack.Add(innerPortalsPack)
+
+	topLevelPack := fltk.NewPack(0, 0, 760, 30)
+	topLevelPack.SetType(fltk.HORIZONTAL)
+	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
+	t.topLevel = fltk.NewChoice(0, 0, 200, 30, "Top level triangle:")
 	t.topLevel.Add("Arbitrary", func() {})
 	t.topLevel.Add("Smallest area", func() {})
 	t.topLevel.Add("Largest area", func() {})
 	t.topLevel.Add("Most Equilateral", func() {})
 	t.topLevel.Add("Random", func() {})
 	t.topLevel.SetValue(0)
-	y += 35
-	t.pure = fltk.NewCheckButton(200, y, 200, 30, "Pure")
-	y += 35
-	buttonPack := fltk.NewPack(20, y, 200, 30)
-	buttonPack.SetType(fltk.HORIZONTAL)
-	buttonPack.SetSpacing(5)
-	t.search = fltk.NewButton(0, 0, 80, 30, "Search")
-	t.search.SetCallback(func() { t.OnSearchPressed() })
-	t.search.Deactivate()
-	t.addPortals = fltk.NewButton(0, 0, 100, 30, "Add portals")
-	buttonPack.End()
-	y += 35
-	t.addPortals.SetCallback(func() { t.OnAddPortalsPressed() })
-	t.progress = fltk.NewProgress(20, y, 740, 30, "")
-	t.progress.SetSelectionColor(0x0000ffff)
-	y += 35
-	t.portalList = fltk.NewTableRow(20, y, 740, 550-10-y, func(context fltk.TableContext, r, c, x, y, w, h int) {
-		t.PortalListDrawCallback(context, r, c, x, y, w, h)
-	})
-	t.portalList.EnableColumnHeaders()
-	t.portalList.AllowColumnResizing()
-	t.portalList.SetColumnWidth(0, 200)
+	topLevelPack.End()
+	mainPack.Add(topLevelPack)
 
-	homogeneous.End()
+	purePack := fltk.NewPack(0, 0, 760, 30)
+	purePack.SetType(fltk.HORIZONTAL)
+	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
+	t.pure = fltk.NewCheckButton(0, 0, 200, 30, "Pure")
+	purePack.End()
+	mainPack.Add(purePack)
 
-	homogeneous.Resizable(t.portalList)
+	mainPack.Add(t.searchSaveCopyPack)
+	mainPack.Add(t.progress)
+	if t.portalList != nil {
+		mainPack.Add(t.portalList)
+		mainPack.Resizable(t.portalList)
+	}
+	mainPack.End()
+
 	return t
 }
 
-func (t *HomogeneousTab) OnSearchPressed() {
+func (t *homogeneousTab) onReset() {}
+func (t *homogeneousTab) onSearch() {
 	options := []lib.HomogeneousOption{
 		lib.HomogeneousMaxDepth(t.maxDepth.Value()),
 		lib.HomogeneousProgressFunc(func(val, max int) {
@@ -104,57 +109,36 @@ func (t *HomogeneousTab) OnSearchPressed() {
 		options = append(options, lib.HomogeneousRandom{Rand: rand})
 	}
 	go func() {
-		solution, depth := lib.DeepestHomogeneous(t.portals, options...)
+		t.solution, t.depth = lib.DeepestHomogeneous(t.portals, options...)
 		if t.mapWindow != nil {
-			t.mapWindow.SetPaths(lib.HomogeneousPolylines(depth, solution))
+			t.mapWindow.SetPaths(lib.HomogeneousPolylines(t.depth, t.solution))
 		}
+		fltk.Awake(func() {
+			var solutionText string
+			if t.depth > 0 {
+				solutionText = fmt.Sprintf("Solution depth: %d", t.depth)
+			} else {
+				solutionText = fmt.Sprintf("No solution found")
+			}
+			t.onSearchDone(solutionText)
+		})
 	}()
 }
 
-func (t *HomogeneousTab) OnAddPortalsPressed() {
-	filename, ok := fltk.ChooseFile(
-		"Select portals file",
-		"JSON files (*.json)\tCSV files (*.csv)", t.configuration.PortalsDirectory, false)
-	if !ok {
-		return
-	}
-	if t.mapWindow == nil {
-		t.mapWindow = NewMapWindow("Homogeneous")
-	} else {
-		t.mapWindow.Show()
-	}
-	portals, _ := lib.ParseFile(filename)
-	t.portals = portals
-	t.portalList.SetRowCount(len(t.portals))
-	t.portalList.SetColumnCount(2)
-	t.mapWindow.SetPortals(t.portals)
-	if len(t.portals) > 0 {
-		t.search.Activate()
-	} else {
-		t.search.Deactivate()
-	}
+func (t *homogeneousTab) portalLabel(guid string) string {
+	/*	if t.disabledPortals[guid] {
+			return "Disabled"
+		}
+		if t.anchorPortals[guid] {
+			return "Anchor"
+		}*/
+	return "Normal"
 }
 
-func (t *HomogeneousTab) PortalListDrawCallback(context fltk.TableContext, row, column, x, y, w, h int) {
-	switch context {
-	case fltk.ContextCell:
-		if row >= len(t.portals) {
-			return
-		}
-		fltk.DrawBox(fltk.THIN_UP_BOX, x, y, w, h, 0xffffffff)
-		fltk.Color(0x00000000)
-		if column == 0 {
-			fltk.Draw(t.portals[row].Name, x, y, w, h, fltk.ALIGN_LEFT)
-		} else if column == 1 {
-			fltk.Draw("-", x, y, w, h, fltk.ALIGN_CENTER)
-		}
-	case fltk.ContextColHeader:
-		fltk.DrawBox(fltk.UP_BOX, x, y, w, h, 0x8f8f8fff)
-		fltk.Color(0x00000000)
-		if column == 0 {
-			fltk.Draw("Name", x, y, w, h, fltk.ALIGN_CENTER)
-		} else if column == 1 {
-			fltk.Draw("State", x, y, w, h, fltk.ALIGN_CENTER)
-		}
-	}
+func (t *homogeneousTab) portalColor(guid string) string {
+	return ""
 }
+func (t *homogeneousTab) solutionString() string {
+	return lib.HomogeneousDrawToolsString(t.depth, t.solution)
+}
+func (t *homogeneousTab) onPortalContextMenu(guid string, x, y int) {}

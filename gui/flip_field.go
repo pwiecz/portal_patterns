@@ -1,71 +1,73 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
 	"github.com/pwiecz/portal_patterns/configuration"
+	"github.com/pwiecz/portal_patterns/gui/osm"
 	"github.com/pwiecz/portal_patterns/lib"
 )
 
-type FlipFieldTab struct {
-	configuration      *configuration.Configuration
+type flipFieldTab struct {
+	*baseTab
 	numBackbonePortals *fltk.Spinner
 	exactly            *fltk.CheckButton
 	maxFlipPortals     *fltk.Spinner
 	simpleBackbone     *fltk.CheckButton
-	search             *fltk.Button
-	addPortals         *fltk.Button
-	progress           *fltk.Progress
-	portalList         *fltk.TableRow
-	mapWindow          *MapWindow
-	portals            []lib.Portal
+	backbone           []lib.Portal
+	rest               []lib.Portal
 }
 
-func NewFlipFieldTab(configuration *configuration.Configuration) *FlipFieldTab {
-	t := &FlipFieldTab{
-		configuration: configuration,
-	}
-	flipField := fltk.NewGroup(20, 30, 760, 550, "Flip Field")
-	y := 40
-	t.numBackbonePortals = fltk.NewSpinner(200, y, 200, 30, "Num backbone portals:")
+func NewFlipFieldTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) fltk.Widget {
+	t := &flipFieldTab{}
+	mainPack := fltk.NewPack(20, 45, 760, 540, "Flip Field")
+	mainPack.SetType(fltk.VERTICAL)
+	mainPack.SetSpacing(5)
+	t.baseTab = newBaseTab("Flip Field", configuration, tileFetcher, t)
+
+	numBackbonePortalsPack := fltk.NewPack(0, 0, 760, 30)
+	numBackbonePortalsPack.SetType(fltk.HORIZONTAL)
+	numBackbonePortalsPack.SetSpacing(5)
+	fltk.NewBox(fltk.NO_BOX, 0, 0, 195, 30)
+	t.numBackbonePortals = fltk.NewSpinner(0, 0, 200, 30, "Num backbone portals:")
 	t.numBackbonePortals.SetType(fltk.SPINNER_INT_INPUT)
 	t.numBackbonePortals.SetValue(16)
-	t.exactly = fltk.NewCheckButton(440, y, 200, 30, "Exactly")
-	y += 35
-	t.maxFlipPortals = fltk.NewSpinner(200, y, 200, 30, "Max flip portals:")
+	t.exactly = fltk.NewCheckButton(0, 0, 200, 30, "Exactly")
+	numBackbonePortalsPack.End()
+	mainPack.Add(numBackbonePortalsPack)
+
+	maxFlipPortalsPack := fltk.NewPack(0, 0, 760, 30)
+	maxFlipPortalsPack.SetType(fltk.HORIZONTAL)
+	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
+	t.maxFlipPortals = fltk.NewSpinner(0, 0, 200, 30, "Max flip portals:")
 	t.maxFlipPortals.SetType(fltk.SPINNER_INT_INPUT)
 	t.maxFlipPortals.SetValue(9999)
-	y += 35
-	t.simpleBackbone = fltk.NewCheckButton(200, y, 200, 30, "Simple backbone")
+	maxFlipPortalsPack.End()
+	mainPack.Add(maxFlipPortalsPack)
+
+	simpleBackbonePack := fltk.NewPack(0, 0, 760, 30)
+	simpleBackbonePack.SetType(fltk.HORIZONTAL)
+	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
+	t.simpleBackbone = fltk.NewCheckButton(0, 0, 200, 30, "Simple backbone")
 	t.simpleBackbone.SetValue(false)
-	y += 35
-	buttonPack := fltk.NewPack(20, y, 200, 30)
-	buttonPack.SetType(fltk.HORIZONTAL)
-	buttonPack.SetSpacing(5)
-	t.search = fltk.NewButton(0, 0, 80, 30, "Search")
-	t.search.SetCallback(func() { t.OnSearchPressed() })
-	t.search.Deactivate()
-	t.addPortals = fltk.NewButton(0, 0, 100, 30, "Add portals")
-	buttonPack.End()
-	y += 35
-	t.addPortals.SetCallback(func() { t.OnAddPortalsPressed() })
-	t.progress = fltk.NewProgress(20, y, 740, 30, "")
-	t.progress.SetSelectionColor(0x0000ffff)
-	y += 35
-	t.portalList = fltk.NewTableRow(20, y, 740, 550-10-y, func(context fltk.TableContext, r, c, x, y, w, h int) {
-		t.PortalListDrawCallback(context, r, c, x, y, w, h)
-	})
-	t.portalList.EnableColumnHeaders()
-	t.portalList.AllowColumnResizing()
-	t.portalList.SetColumnWidth(0, 200)
+	simpleBackbonePack.End()
+	mainPack.Add(simpleBackbonePack)
 
-	flipField.End()
+	mainPack.Add(t.searchSaveCopyPack)
+	mainPack.Add(t.progress)
+	if t.portalList != nil {
+		mainPack.Add(t.portalList)
+		mainPack.Resizable(t.portalList)
+	}
+	mainPack.End()
 
-	flipField.Resizable(t.portalList)
-	return t
+	return mainPack
 }
 
-func (t *FlipFieldTab) OnSearchPressed() {
+func (t *flipFieldTab) onReset() {}
+func (t *flipFieldTab) onSearch() {
 	progressFunc := func(val, max int) {
 		fltk.Awake(func() {
 			t.progress.SetMaximum(float64(max))
@@ -83,12 +85,12 @@ func (t *FlipFieldTab) OnSearchPressed() {
 		lib.FlipFieldSimpleBackbone(t.simpleBackbone.Value()),
 	}
 	go func() {
-		backbone, rest := lib.LargestFlipField(t.portals, options...)
+		t.backbone, t.rest = lib.LargestFlipField(t.portals, options...)
 		if t.mapWindow != nil {
-			lines := [][]lib.Portal{backbone}
-			if len(rest) > 0 {
+			lines := [][]lib.Portal{t.backbone}
+			if len(t.rest) > 0 {
 				hull := s2.NewConvexHullQuery()
-				for _, p := range rest {
+				for _, p := range t.rest {
 					hull.AddPoint(s2.PointFromLatLng(p.LatLng))
 				}
 				hullPoints := hull.ConvexHull().Vertices()
@@ -99,53 +101,31 @@ func (t *FlipFieldTab) OnSearchPressed() {
 			}
 			t.mapWindow.SetPaths(lines)
 		}
+		fltk.Awake(func() {
+			solutionText := fmt.Sprintf("Num backbone portals: %d, num flip portals: %d", len(t.backbone), len(t.rest))
+			t.onSearchDone(solutionText)
+		})
 	}()
 }
 
-func (t *FlipFieldTab) OnAddPortalsPressed() {
-	filename, ok := fltk.ChooseFile(
-		"Select portals file",
-		"JSON files (*.json)\tCSV files (*.csv)", t.configuration.PortalsDirectory, false)
-	if !ok {
-		return
-	}
-	if t.mapWindow == nil {
-		t.mapWindow = NewMapWindow("Flip Field")
-	} else {
-		t.mapWindow.Show()
-	}
-	portals, _ := lib.ParseFile(filename)
-	t.portals = portals
-	t.portalList.SetRowCount(len(t.portals))
-	t.portalList.SetColumnCount(2)
-	t.mapWindow.SetPortals(t.portals)
-	if len(t.portals) > 0 {
-		t.search.Activate()
-	} else {
-		t.search.Deactivate()
-	}
+func (t *flipFieldTab) portalLabel(guid string) string {
+	/*	if t.disabledPortals[guid] {
+			return "Disabled"
+		}
+		if t.anchorPortals[guid] {
+			return "Anchor"
+		}*/
+	return "Normal"
 }
 
-func (t *FlipFieldTab) PortalListDrawCallback(context fltk.TableContext, row, column, x, y, w, h int) {
-	switch context {
-	case fltk.ContextCell:
-		if row >= len(t.portals) {
-			return
-		}
-		fltk.DrawBox(fltk.THIN_UP_BOX, x, y, w, h, 0xffffffff)
-		fltk.Color(0x00000000)
-		if column == 0 {
-			fltk.Draw(t.portals[row].Name, x, y, w, h, fltk.ALIGN_LEFT)
-		} else if column == 1 {
-			fltk.Draw("-", x, y, w, h, fltk.ALIGN_CENTER)
-		}
-	case fltk.ContextColHeader:
-		fltk.DrawBox(fltk.UP_BOX, x, y, w, h, 0x8f8f8fff)
-		fltk.Color(0x00000000)
-		if column == 0 {
-			fltk.Draw("Name", x, y, w, h, fltk.ALIGN_CENTER)
-		} else if column == 1 {
-			fltk.Draw("State", x, y, w, h, fltk.ALIGN_CENTER)
-		}
-	}
+func (t *flipFieldTab) portalColor(guid string) string {
+	return ""
 }
+func (t *flipFieldTab) solutionString() string {
+	s := fmt.Sprintf("[%s", lib.PolylineFromPortalList(t.backbone))
+	if len(t.rest) > 0 {
+		s += fmt.Sprintf(",%s", lib.MarkersFromPortalList(t.rest))
+	}
+	return s + "]"
+}
+func (t *flipFieldTab) onPortalContextMenu(guid string, x, y int) {}
