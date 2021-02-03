@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"image/color"
 	"log"
 
 	gogl "github.com/go-gl/gl/v2.1/gl"
@@ -21,8 +21,6 @@ type MapWindow struct {
 func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
 	w := &MapWindow{}
 	w.window = fltk.NewWindow(800, 600)
-	menu := fltk.NewMenuButton(0, 0, 800, 600)
-	menu.Add("Test", func() {fmt.Println("on test")})
 	w.window.SetLabel(title + " - © OpenStreetMap")
 	w.window.Begin()
 	w.mapDrawer = gl.NewMapDrawer(tileFetcher)
@@ -48,6 +46,9 @@ func (w *MapWindow) SetPortals(portals []lib.Portal) {
 }
 func (w *MapWindow) SetPaths(paths [][]lib.Portal) {
 	w.mapDrawer.SetPaths(paths)
+}
+func (w *MapWindow) SetPortalColor(guid string, color color.Color) {
+	w.mapDrawer.SetPortalColor(guid, color)
 }
 func (w *MapWindow) drawMap() {
 	if !w.glWindow.Valid() {

@@ -20,11 +20,8 @@ type flipFieldTab struct {
 	rest               []lib.Portal
 }
 
-func NewFlipFieldTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) fltk.Widget {
+func NewFlipFieldTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *flipFieldTab {
 	t := &flipFieldTab{}
-	mainPack := fltk.NewPack(20, 45, 760, 540, "Flip Field")
-	mainPack.SetType(fltk.VERTICAL)
-	mainPack.SetSpacing(5)
 	t.baseTab = newBaseTab("Flip Field", configuration, tileFetcher, t)
 
 	numBackbonePortalsPack := fltk.NewPack(0, 0, 760, 30)
@@ -36,7 +33,7 @@ func NewFlipFieldTab(configuration *configuration.Configuration, tileFetcher *os
 	t.numBackbonePortals.SetValue(16)
 	t.exactly = fltk.NewCheckButton(0, 0, 200, 30, "Exactly")
 	numBackbonePortalsPack.End()
-	mainPack.Add(numBackbonePortalsPack)
+	t.Add(numBackbonePortalsPack)
 
 	maxFlipPortalsPack := fltk.NewPack(0, 0, 760, 30)
 	maxFlipPortalsPack.SetType(fltk.HORIZONTAL)
@@ -45,7 +42,7 @@ func NewFlipFieldTab(configuration *configuration.Configuration, tileFetcher *os
 	t.maxFlipPortals.SetType(fltk.SPINNER_INT_INPUT)
 	t.maxFlipPortals.SetValue(9999)
 	maxFlipPortalsPack.End()
-	mainPack.Add(maxFlipPortalsPack)
+	t.Add(maxFlipPortalsPack)
 
 	simpleBackbonePack := fltk.NewPack(0, 0, 760, 30)
 	simpleBackbonePack.SetType(fltk.HORIZONTAL)
@@ -53,17 +50,16 @@ func NewFlipFieldTab(configuration *configuration.Configuration, tileFetcher *os
 	t.simpleBackbone = fltk.NewCheckButton(0, 0, 200, 30, "Simple backbone")
 	t.simpleBackbone.SetValue(false)
 	simpleBackbonePack.End()
-	mainPack.Add(simpleBackbonePack)
+	t.Add(simpleBackbonePack)
 
-	mainPack.Add(t.searchSaveCopyPack)
-	mainPack.Add(t.progress)
+	t.Add(t.searchSaveCopyPack)
+	t.Add(t.progress)
 	if t.portalList != nil {
-		mainPack.Add(t.portalList)
-		mainPack.Resizable(t.portalList)
+		t.Add(t.portalList)
 	}
-	mainPack.End()
+	t.End()
 
-	return mainPack
+	return t
 }
 
 func (t *flipFieldTab) onReset() {}
@@ -118,9 +114,7 @@ func (t *flipFieldTab) portalLabel(guid string) string {
 	return "Normal"
 }
 
-func (t *flipFieldTab) portalColor(guid string) string {
-	return ""
-}
+//func (t *flipFieldTab) portalColor(guid string) string { return "" }
 func (t *flipFieldTab) solutionString() string {
 	s := fmt.Sprintf("[%s", lib.PolylineFromPortalList(t.backbone))
 	if len(t.rest) > 0 {
@@ -128,4 +122,4 @@ func (t *flipFieldTab) solutionString() string {
 	}
 	return s + "]"
 }
-func (t *flipFieldTab) onPortalContextMenu(guid string, x, y int) {}
+func (t *flipFieldTab) onPortalContextMenu(x, y int) {}

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"image/color"
 	"path/filepath"
 
 	"github.com/golang/geo/s2"
@@ -13,14 +13,15 @@ import (
 
 type pattern interface {
 	onSearch()
-	portalColor(string) string
+	portalColor(string) color.Color
 	portalLabel(string) string
 	solutionString() string
 	onReset()
-	onPortalContextMenu(guid string, x, y int)
+	onPortalContextMenu(x, y int)
 }
 
 type baseTab struct {
+	*fltk.Pack
 	configuration      *configuration.Configuration
 	add                *fltk.Button
 	reset              *fltk.Button
@@ -30,10 +31,11 @@ type baseTab struct {
 	solutionLabel      *fltk.Box
 	searchSaveCopyPack *fltk.Pack
 	progress           *fltk.Progress
-	portalList         *fltk.TableRow
+	portalList         *portalList
 	tileFetcher        *osm.MapTiles
 	mapWindow          *MapWindow
 	portals            []lib.Portal
+	portalMap          map[string]lib.Portal
 	selectedPortals    map[string]struct{}
 	disabledPortals    map[string]struct{}
 	pattern            pattern
@@ -42,11 +44,16 @@ type baseTab struct {
 
 func newBaseTab(name string, configuration *configuration.Configuration, tileFetcher *osm.MapTiles, pattern pattern) *baseTab {
 	t := &baseTab{}
+	t.Pack = fltk.NewPack(20, 40, 760, 540, name)
+	t.SetType(fltk.VERTICAL)
+	t.SetSpacing(5)
+
 	t.name = name
 	t.configuration = configuration
 	t.tileFetcher = tileFetcher
 	t.pattern = pattern
 
+	fltk.NewBox(fltk.NO_BOX, 0, 0, 760, 5) // padding at the top
 	addResetPack := fltk.NewPack(0, 0, 200, 30)
 	addResetPack.SetType(fltk.HORIZONTAL)
 	addResetPack.SetSpacing(5)
@@ -75,19 +82,13 @@ func newBaseTab(name string, configuration *configuration.Configuration, tileFet
 	t.searchSaveCopyPack.Resizable(t.solutionLabel)
 	t.searchSaveCopyPack.End()
 
-	t.portalList = fltk.NewTableRow(0, 0, 100, 540)
-	t.portalList.SetDrawCellCallback(func(context fltk.TableContext, r, c, x, y, w, h int) {
-		t.PortalListDrawCallback(context, r, c, x, y, w, h)
-	})
 	t.progress = fltk.NewProgress(0, 0, 740, 30)
 	t.progress.SetSelectionColor(0x4444ff00)
-	t.portalList.EnableColumnHeaders()
-	t.portalList.AllowColumnResizing()
-	t.portalList.SetColumnWidth(0, 200)
-//	t.portalList.SetEventHandler(func(event fltk.Event) bool {
-//		return t.handlePortalListEvent(event)
-//	})
-	t.portalList.SetType(fltk.SelectMulti)
+
+	t.portalList = newPortalList(0, 0, 760, 540)
+	t.portalList.SetSelectionChangeCallback(func() { t.OnSelectionChanged(t.portalList.selectedPortals) })
+	t.portalList.SetContextMenuCallback(func(x, y int) { t.pattern.onPortalContextMenu(x, y) })
+	t.Resizable(t.portalList)
 
 	return t
 }
@@ -133,8 +134,7 @@ func (t *baseTab) onAddPortalsPressed() {
 	t.addPortals(portals)
 	t.portals = portals
 	if t.portalList != nil {
-		t.portalList.SetRowCount(len(t.portals))
-		t.portalList.SetColumnCount(2)
+		t.portalList.SetPortals(t.portals)
 	}
 	if t.mapWindow != nil {
 		t.mapWindow.SetPortals(t.portals)
@@ -159,7 +159,7 @@ func (t *baseTab) onResetPortalsPressed() {
 		t.mapWindow.Hide()
 	}
 	if t.portalList != nil {
-		t.portalList.SetRowCount(0)
+		t.portalList.SetPortals([]lib.Portal{})
 	}
 	t.solutionLabel.SetLabel("")
 	t.pattern.onReset()
@@ -220,7 +220,11 @@ func (t *baseTab) addPortals(portals []lib.Portal) {
 	}
 	t.mapWindow.SetPortals(t.portals)
 	if t.portalList != nil {
-		t.portalList.SetRowCount(len(t.portals))
+		t.portalList.SetPortals(t.portals)
+	}
+	t.portalMap = make(map[string]lib.Portal)
+	for _, portal := range portals {
+		t.portalMap[portal.Guid] = portal
 	}
 	//	for _, portal := range t.portals {
 	//		t.portalStateChanged(portal.Guid)
@@ -242,30 +246,40 @@ func stringSetsAreTheSame(map1 map[string]struct{}, map2 map[string]struct{}) bo
 	}
 	return true
 }
-
-func (t *baseTab) OnSelectionChanged(selection []string) {
-	selectionMap := make(map[string]struct{})
-	for _, guid := range selection {
-		selectionMap[guid] = struct{}{}
+func stringSetCopy(set map[string]struct{}) map[string]struct{} {
+	setCopy := make(map[string]struct{})
+	for s := range set {
+		setCopy[s] = struct{}{}
 	}
-	if stringSetsAreTheSame(selectionMap, t.selectedPortals) {
+	return setCopy
+}
+
+func (t *baseTab) portalColor(guid string) color.Color {
+	if _, ok := t.selectedPortals[guid]; ok {
+		return color.NRGBA{0, 128, 0, 128}
+	} else {
+		return color.NRGBA{255, 128, 0, 128}
+	}
+}
+
+func (t *baseTab) OnSelectionChanged(selectedPortals map[string]struct{}) {
+	if stringSetsAreTheSame(selectedPortals, t.selectedPortals) {
 		return
 	}
-	//	oldSelected := t.selectedPortals
-	t.selectedPortals = selectionMap
+	var selectedBefore map[string]struct{}
+	t.selectedPortals, selectedBefore = stringSetCopy(selectedPortals), t.selectedPortals
 	if t.portalList != nil {
 		//t.portalList.SetSelectedPortals(t.selectedPortals)
 	}
 	if t.mapWindow != nil {
-		//for guid := range oldSelected {
-		//t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
-		//}
-		//for _, guid := range selection {
-		//t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
-		//t.mapWindow.RaisePortal(guid)
-		//}
+		for guid := range selectedBefore {
+			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
+		}
+		for guid := range t.selectedPortals {
+			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
+		}
 	}
-	if len(selection) == 1 {
+	if len(t.selectedPortals) == 1 {
 		if t.mapWindow != nil {
 			//t.mapWindow.ScrollToPortal(selection[0])
 		}
@@ -275,7 +289,9 @@ func (t *baseTab) OnSelectionChanged(selection []string) {
 	}
 }
 func (t *baseTab) OnPortalSelected(guid string) {
-	t.OnSelectionChanged([]string{guid})
+	selection := make(map[string]struct{})
+	selection[guid] = struct{}{}
+	t.OnSelectionChanged(selection)
 	if t.portalList != nil {
 		//t.portalList.ScrollToPortal(guid)
 	}
@@ -290,37 +306,4 @@ func (t *baseTab) portalStateChanged(guid string) {
 	if t.mapWindow != nil {
 		//t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
 	}
-}
-
-func (t *baseTab) PortalListDrawCallback(context fltk.TableContext, row, column, x, y, w, h int) {
-	switch context {
-	case fltk.ContextCell:
-		if row >= len(t.portals) {
-			return
-		}
-		background := uint(0xffffffff)
-		if t.portalList.IsRowSelected(row) {
-			background = t.portalList.SelectionColor()
-		}
-		fltk.DrawBox(fltk.THIN_UP_BOX, x, y, w, h, background)
-		fltk.Color(0x00000000)
-		if column == 0 {
-			fltk.Draw(t.portals[row].Name, x, y, w, h, fltk.ALIGN_LEFT)
-		} else if column == 1 {
-			fltk.Draw(t.pattern.portalLabel(t.portals[row].Guid), x, y, w, h, fltk.ALIGN_CENTER)
-		}
-	case fltk.ContextColHeader:
-		fltk.DrawBox(fltk.UP_BOX, x, y, w, h, 0x8f8f8fff)
-		fltk.Color(0x00000000)
-		if column == 0 {
-			fltk.Draw("Name", x, y, w, h, fltk.ALIGN_CENTER)
-		} else if column == 1 {
-			fltk.Draw("State", x, y, w, h, fltk.ALIGN_CENTER)
-		}
-	}
-}
-
-func (t *baseTab) handlePortalListEvent(event fltk.Event) bool {
-	fmt.Println("portal list event", event)
-	return false
 }

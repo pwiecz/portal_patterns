@@ -18,21 +18,8 @@ type doubleHerringboneTab struct {
 
 func NewDoubleHerringboneTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *doubleHerringboneTab {
 	t := &doubleHerringboneTab{}
-	mainPack := fltk.NewPack(20, 40, 760, 540, "Double Herringbone")
-	mainPack.SetType(fltk.VERTICAL)
-	mainPack.SetSpacing(5)
 	t.baseTab = newBaseTab("Double Herringbone", configuration, tileFetcher, t)
-
-	mainPack.Add(t.searchSaveCopyPack)
-	mainPack.Add(t.progress)
-
-	mainPack.Add(t.searchSaveCopyPack)
-	mainPack.Add(t.progress)
-	if t.portalList != nil {
-		mainPack.Add(t.portalList)
-		mainPack.Resizable(t.portalList)
-	}
-	mainPack.End()
+	t.End()
 
 	return t
 }
@@ -69,10 +56,8 @@ func (t *doubleHerringboneTab) portalLabel(guid string) string {
 	return "Normal"
 }
 
-func (t *doubleHerringboneTab) portalColor(guid string) string {
-	return ""
-}
+//func (t *doubleHerringboneTab) portalColor(guid string) string { return "" }
 func (t *doubleHerringboneTab) solutionString() string {
 	return lib.DoubleHerringboneDrawToolsString(t.b0, t.b1, t.spine0, t.spine1)
 }
-func (t *doubleHerringboneTab) onPortalContextMenu(guid string, x, y int) {}
+func (t *doubleHerringboneTab) onPortalContextMenu(x, y int) {}

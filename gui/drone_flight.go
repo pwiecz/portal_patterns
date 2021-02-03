@@ -18,9 +18,6 @@ type droneFlightTab struct {
 
 func NewDroneFlightTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *droneFlightTab {
 	t := &droneFlightTab{}
-	mainPack := fltk.NewPack(20, 40, 760, 540, "Drone Flight")
-	mainPack.SetType(fltk.VERTICAL)
-	mainPack.SetSpacing(5)
 	t.baseTab = newBaseTab("Drone Flight", configuration, tileFetcher, t)
 
 	useLongJumpsPack := fltk.NewPack(0, 0, 760, 30)
@@ -29,7 +26,7 @@ func NewDroneFlightTab(configuration *configuration.Configuration, tileFetcher *
 	t.useLongJumps = fltk.NewCheckButton(200, 0, 200, 30, "Use long jumps (key needed)")
 	t.useLongJumps.SetValue(true)
 	useLongJumpsPack.End()
-	mainPack.Add(useLongJumpsPack)
+	t.Add(useLongJumpsPack)
 
 	optimizeForPack := fltk.NewPack(0, 0, 760, 30)
 	optimizeForPack.SetType(fltk.HORIZONTAL)
@@ -39,15 +36,15 @@ func NewDroneFlightTab(configuration *configuration.Configuration, tileFetcher *
 	t.optimizeFor.Add("Least jump", func() {})
 	t.optimizeFor.SetValue(0)
 	optimizeForPack.End()
-	mainPack.Add(optimizeForPack)
+	t.Add(optimizeForPack)
 
-	mainPack.Add(t.searchSaveCopyPack)
-	mainPack.Add(t.progress)
+	t.Add(t.searchSaveCopyPack)
+	t.Add(t.progress)
 	if t.portalList != nil {
-		mainPack.Add(t.portalList)
-		mainPack.Resizable(t.portalList)
+		t.Add(t.portalList)
 	}
-	mainPack.End()
+	t.End()
+
 	return t
 }
 func (t *droneFlightTab) onReset() {}
@@ -84,7 +81,7 @@ func (t *droneFlightTab) onSearch() {
 	}()
 }
 
-func (t *droneFlightTab) portalColor(guid string) string { return "" }
+//func (t *droneFlightTab) portalColor(guid string) string { return "" }
 func (t *droneFlightTab) portalLabel(guid string) string { return "Normal" }
 func (t *droneFlightTab) solutionString() string {
 	s := fmt.Sprintf("[%s", lib.PolylineFromPortalList(t.solution))
@@ -93,4 +90,4 @@ func (t *droneFlightTab) solutionString() string {
 	}
 	return s + "]"
 }
-func (t *droneFlightTab) onPortalContextMenu(guid string, x, y int) {}
+func (t *droneFlightTab) onPortalContextMenu(x, y int) {}

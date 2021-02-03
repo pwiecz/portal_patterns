@@ -18,18 +18,8 @@ type HerringboneTab struct {
 
 func NewHerringboneTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *HerringboneTab {
 	t := &HerringboneTab{}
-	mainPack := fltk.NewPack(20, 40, 760, 540, "Herringbone")
-	mainPack.SetType(fltk.VERTICAL)
-	mainPack.SetSpacing(5)
 	t.baseTab = newBaseTab("Herringbone", configuration, tileFetcher, t)
-
-	mainPack.Add(t.baseTab.searchSaveCopyPack)
-	mainPack.Add(t.progress)
-	if t.portalList != nil {
-		mainPack.Add(t.portalList)
-		mainPack.Resizable(t.portalList)
-	}
-	mainPack.End()
+	t.End()
 
 	return t
 }
@@ -80,9 +70,9 @@ p	t.portals = portals
 	}
 }*/
 
-func (t *HerringboneTab) portalColor(guid string) string { return "" }
+//func (t *HerringboneTab) portalColor(guid string) string { return "" }
 func (t *HerringboneTab) portalLabel(guid string) string { return "Normal" }
 func (t *HerringboneTab) solutionString() string {
 	return lib.HerringboneDrawToolsString(t.b0, t.b1, t.spine)
 }
-func (t *HerringboneTab) onPortalContextMenu(guid string, x, y int) {}
+func (t *HerringboneTab) onPortalContextMenu(x, y int) {}

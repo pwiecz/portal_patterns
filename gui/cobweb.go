@@ -16,18 +16,8 @@ type cobwebTab struct {
 
 func NewCobwebTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *cobwebTab {
 	t := &cobwebTab{}
-	mainPack := fltk.NewPack(20, 40, 760, 540, "Cobweb")
-	mainPack.SetType(fltk.VERTICAL)
-	mainPack.SetSpacing(5)
 	t.baseTab = newBaseTab("Cobweb", configuration, tileFetcher, t)
-
-	mainPack.Add(t.searchSaveCopyPack)
-	mainPack.Add(t.progress)
-	if t.portalList != nil {
-		mainPack.Add(t.portalList)
-		mainPack.Resizable(t.portalList)
-	}
-	mainPack.End()
+	t.End()
 
 	return t
 }
@@ -62,10 +52,8 @@ func (t *cobwebTab) portalLabel(guid string) string {
 	return "Normal"
 }
 
-func (t *cobwebTab) portalColor(guid string) string {
-	return ""
-}
+//func (t *cobwebTab) portalColor(guid string) string {return ""}
 func (t *cobwebTab) solutionString() string {
 	return lib.CobwebDrawToolsString(t.solution)
 }
-func (t *cobwebTab) onPortalContextMenu(guid string, x, y int) {}
+func (t *cobwebTab) onPortalContextMenu(x, y int) {}

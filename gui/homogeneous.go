@@ -23,10 +23,7 @@ type homogeneousTab struct {
 
 func NewHomogeneousTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *homogeneousTab {
 	t := &homogeneousTab{}
-	mainPack := fltk.NewPack(20, 40, 760, 540, "Homogeneous")
-	mainPack.SetType(fltk.VERTICAL)
-	mainPack.SetSpacing(5)
-	t.baseTab = newBaseTab("Drone Flight", configuration, tileFetcher, t)
+	t.baseTab = newBaseTab("Homogeneous", configuration, tileFetcher, t)
 
 	maxDepthPack := fltk.NewPack(0, 0, 760, 30)
 	maxDepthPack.SetType(fltk.HORIZONTAL)
@@ -37,7 +34,7 @@ func NewHomogeneousTab(configuration *configuration.Configuration, tileFetcher *
 	t.maxDepth.SetValue(6)
 	t.maxDepth.SetType(fltk.SPINNER_INT_INPUT)
 	maxDepthPack.End()
-	mainPack.Add(maxDepthPack)
+	t.Add(maxDepthPack)
 
 	innerPortalsPack := fltk.NewPack(0, 0, 760, 30)
 	innerPortalsPack.SetType(fltk.HORIZONTAL)
@@ -47,7 +44,7 @@ func NewHomogeneousTab(configuration *configuration.Configuration, tileFetcher *
 	t.innerPortals.Add("Spread around (slow)", func() {})
 	t.innerPortals.SetValue(0)
 	innerPortalsPack.End()
-	mainPack.Add(innerPortalsPack)
+	t.Add(innerPortalsPack)
 
 	topLevelPack := fltk.NewPack(0, 0, 760, 30)
 	topLevelPack.SetType(fltk.HORIZONTAL)
@@ -60,22 +57,21 @@ func NewHomogeneousTab(configuration *configuration.Configuration, tileFetcher *
 	t.topLevel.Add("Random", func() {})
 	t.topLevel.SetValue(0)
 	topLevelPack.End()
-	mainPack.Add(topLevelPack)
+	t.Add(topLevelPack)
 
 	purePack := fltk.NewPack(0, 0, 760, 30)
 	purePack.SetType(fltk.HORIZONTAL)
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.pure = fltk.NewCheckButton(0, 0, 200, 30, "Pure")
 	purePack.End()
-	mainPack.Add(purePack)
+	t.Add(purePack)
 
-	mainPack.Add(t.searchSaveCopyPack)
-	mainPack.Add(t.progress)
+	t.Add(t.searchSaveCopyPack)
+	t.Add(t.progress)
 	if t.portalList != nil {
-		mainPack.Add(t.portalList)
-		mainPack.Resizable(t.portalList)
+		t.Add(t.portalList)
 	}
-	mainPack.End()
+	t.End()
 
 	return t
 }
@@ -135,10 +131,46 @@ func (t *homogeneousTab) portalLabel(guid string) string {
 	return "Normal"
 }
 
-func (t *homogeneousTab) portalColor(guid string) string {
-	return ""
-}
+//func (t *homogeneousTab) portalColor(guid string) string { return "" }
 func (t *homogeneousTab) solutionString() string {
 	return lib.HomogeneousDrawToolsString(t.depth, t.solution)
 }
-func (t *homogeneousTab) onPortalContextMenu(guid string, x, y int) {}
+func (t *homogeneousTab) onPortalContextMenu(x, y int) {
+	var aSelectedGuid string
+	allSelectedEnabled := true
+	allSelectedDisabled := true
+	for guid := range t.selectedPortals {
+		aSelectedGuid = guid
+		if _, ok := t.disabledPortals[guid]; ok {
+			allSelectedEnabled = false
+		} else {
+			allSelectedDisabled = false
+		}
+	}
+	menuHeader := fmt.Sprintf("%d portals selected", len(t.selectedPortals))
+	if len(t.selectedPortals) == 1 {
+		menuHeader = t.portalMap[aSelectedGuid].Name
+	}
+	mb := fltk.NewMenuButton(x, y, 100, 100, menuHeader)
+	mb.SetCallback(func() { fmt.Println("menu Callback") })
+	mb.SetType(fltk.POPUP3)
+	if !allSelectedEnabled {
+		if len(t.selectedPortals) == 1 {
+			mb.Add("Enable", func() { t.enableSelectedPortals() })
+		} else {
+			mb.Add("Enable All", func() { t.enableSelectedPortals() })
+		}
+	}
+	if !allSelectedDisabled {
+		if len(t.selectedPortals) == 1 {
+			mb.Add("Disable", func() { t.disableSelectedPortals() })
+		} else {
+			mb.Add("Disable All", func() { t.disableSelectedPortals() })
+		}
+	}
+	mb.Popup()
+	mb.Destroy()
+}
+
+func (t *homogeneousTab) enableSelectedPortals()  {}
+func (t *homogeneousTab) disableSelectedPortals() {}
