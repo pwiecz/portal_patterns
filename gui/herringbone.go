@@ -35,7 +35,8 @@ func (t *HerringboneTab) onSearch() {
 		})
 	}
 	go func() {
-		t.b0, t.b1, t.spine = lib.LargestHerringbone(t.portals, []int{}, 8, progressFunc)
+		portals := t.enabledPortals()
+		t.b0, t.b1, t.spine = lib.LargestHerringbone(portals, []int{}, 8, progressFunc)
 		if t.mapWindow != nil {
 			t.mapWindow.SetPaths([][]lib.Portal{lib.HerringbonePolyline(t.b0, t.b1, t.spine)})
 		}
@@ -46,32 +47,6 @@ func (t *HerringboneTab) onSearch() {
 	}()
 }
 
-/*func (t *HerringboneTab) OnAddPortalsPressed() {
-	filename, ok := fltk.ChooseFile(
-		"Select portals file",
-		"JSON files (*.json)\tCSV files (*.csv)", t.configuration.PortalsDirectory, false)
-	if !ok {
-		return
-	}
-	if t.mapWindow == nil {
-		t.mapWindow = NewMapWindow("Herringbone", t.tileFetcher)
-	} else {
-		t.mapWindow.Show()
-	}
-	portals, _ := lib.ParseFile(filename)
-p	t.portals = portals
-	t.portalList.SetRowCount(len(t.portals))
-	t.portalList.SetColumnCount(2)
-	t.mapWindow.SetPortals(t.portals)
-	if len(t.portals) > 0 {
-		t.search.Activate()
-	} else {
-		t.search.Deactivate()
-	}
-}*/
-
-//func (t *HerringboneTab) portalColor(guid string) string { return "" }
-func (t *HerringboneTab) portalLabel(guid string) string { return "Normal" }
 func (t *HerringboneTab) solutionString() string {
 	return lib.HerringboneDrawToolsString(t.b0, t.b1, t.spine)
 }

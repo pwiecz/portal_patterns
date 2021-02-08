@@ -31,7 +31,8 @@ func (t *cobwebTab) onSearch() {
 		})
 	}
 	go func() {
-		t.solution = lib.LargestCobweb(t.portals, []int{}, progressFunc)
+		portals := t.enabledPortals()
+		t.solution = lib.LargestCobweb(portals, []int{}, progressFunc)
 		if t.mapWindow != nil {
 			t.mapWindow.SetPaths([][]lib.Portal{lib.CobwebPolyline(t.solution)})
 		}
@@ -42,17 +43,6 @@ func (t *cobwebTab) onSearch() {
 	}()
 }
 
-func (t *cobwebTab) portalLabel(guid string) string {
-	/*	if t.disabledPortals[guid] {
-			return "Disabled"
-		}
-		if t.anchorPortals[guid] {
-			return "Anchor"
-		}*/
-	return "Normal"
-}
-
-//func (t *cobwebTab) portalColor(guid string) string {return ""}
 func (t *cobwebTab) solutionString() string {
 	return lib.CobwebDrawToolsString(t.solution)
 }

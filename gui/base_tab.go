@@ -43,7 +43,10 @@ type baseTab struct {
 }
 
 func newBaseTab(name string, configuration *configuration.Configuration, tileFetcher *osm.MapTiles, pattern pattern) *baseTab {
-	t := &baseTab{}
+	t := &baseTab{
+		selectedPortals: make(map[string]struct{}),
+		disabledPortals: make(map[string]struct{}),
+	}
 	t.Pack = fltk.NewPack(20, 40, 760, 540, name)
 	t.SetType(fltk.VERTICAL)
 	t.SetSpacing(5)
@@ -267,11 +270,26 @@ func stringSetCopy(set map[string]struct{}) map[string]struct{} {
 }
 
 func (t *baseTab) portalColor(guid string) color.Color {
-	if _, ok := t.selectedPortals[guid]; ok {
-		return color.NRGBA{0, 128, 0, 128}
-	} else {
-		return color.NRGBA{255, 128, 0, 128}
+	_, isSelected := t.selectedPortals[guid]
+	_, isDisabled := t.disabledPortals[guid]
+	if isDisabled {
+		if isSelected {
+			return color.NRGBA{64, 64, 64, 128}
+		}
+		return color.NRGBA{128, 128, 128, 128}
 	}
+	if isSelected {
+		return color.NRGBA{0, 128, 0, 128}
+	}
+	return color.NRGBA{255, 128, 0, 128}
+}
+
+func (t *baseTab) portalLabel(guid string) string {
+	_, isDisabled := t.disabledPortals[guid]
+	if isDisabled {
+		return "Disabled"
+	}
+	return "Normal"
 }
 
 func (t *baseTab) OnSelectionChanged(selectedPortals map[string]struct{}) {
@@ -319,4 +337,44 @@ func (t *baseTab) portalStateChanged(guid string) {
 	if t.mapWindow != nil {
 		//t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
 	}
+}
+
+func (t *baseTab) enableSelectedPortals() {
+	for guid := range t.selectedPortals {
+		delete(t.disabledPortals, guid)
+		if t.mapWindow != nil {
+			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
+		}
+		if t.portalList != nil {
+			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
+		}
+	}
+	if t.portalList != nil {
+		t.portalList.Redraw()
+	}
+}
+func (t *baseTab) disableSelectedPortals() {
+	for guid := range t.selectedPortals {
+		t.disabledPortals[guid] = struct{}{}
+		if t.mapWindow != nil {
+			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
+			t.mapWindow.Lower(guid)
+		}
+		if t.portalList != nil {
+			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
+		}
+	}
+	if t.portalList != nil {
+		t.portalList.Redraw()
+	}
+}
+
+func (t *baseTab) enabledPortals() []lib.Portal {
+	portals := []lib.Portal{}
+	for _, portal := range t.portals {
+		if _, ok := t.disabledPortals[portal.Guid]; !ok {
+			portals = append(portals, portal)
+		}
+	}
+	return portals
 }

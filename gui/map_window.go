@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"image/color"
 	"log"
 
@@ -58,6 +57,9 @@ func (w *MapWindow) SetPaths(paths [][]lib.Portal) {
 func (w *MapWindow) Raise(guid string) {
 	w.mapDrawer.Raise(guid)
 }
+func (w *MapWindow) Lower(guid string) {
+	w.mapDrawer.Lower(guid)
+}
 func (w *MapWindow) SetPortalColor(guid string, color color.Color) {
 	w.mapDrawer.SetPortalColor(guid, color)
 }
@@ -105,7 +107,6 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 			return true
 		}
 	case fltk.DRAG:
-		fmt.Println("Is drag")
 		if fltk.EventButton1() {
 			currX, currY := fltk.EventX(), fltk.EventY()
 			w.mapDrawer.Drag(w.prevX-currX, w.prevY-currY)

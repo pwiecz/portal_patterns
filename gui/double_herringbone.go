@@ -35,7 +35,8 @@ func (t *doubleHerringboneTab) onSearch() {
 		})
 	}
 	go func() {
-		t.b0, t.b1, t.spine0, t.spine1 = lib.LargestDoubleHerringbone(t.portals, []int{}, 8, progressFunc)
+		portals := t.enabledPortals()
+		t.b0, t.b1, t.spine0, t.spine1 = lib.LargestDoubleHerringbone(portals, []int{}, 8, progressFunc)
 		if t.mapWindow != nil {
 			t.mapWindow.SetPaths([][]lib.Portal{lib.DoubleHerringbonePolyline(t.b0, t.b1, t.spine0, t.spine1)})
 		}
@@ -46,17 +47,6 @@ func (t *doubleHerringboneTab) onSearch() {
 	}()
 }
 
-func (t *doubleHerringboneTab) portalLabel(guid string) string {
-	/*	if t.disabledPortals[guid] {
-			return "Disabled"
-		}
-		if t.anchorPortals[guid] {
-			return "Anchor"
-		}*/
-	return "Normal"
-}
-
-//func (t *doubleHerringboneTab) portalColor(guid string) string { return "" }
 func (t *doubleHerringboneTab) solutionString() string {
 	return lib.DoubleHerringboneDrawToolsString(t.b0, t.b1, t.spine0, t.spine1)
 }

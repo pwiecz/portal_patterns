@@ -81,7 +81,8 @@ func (t *flipFieldTab) onSearch() {
 		lib.FlipFieldSimpleBackbone(t.simpleBackbone.Value()),
 	}
 	go func() {
-		t.backbone, t.rest = lib.LargestFlipField(t.portals, options...)
+		portals := t.enabledPortals()
+		t.backbone, t.rest = lib.LargestFlipField(portals, options...)
 		if t.mapWindow != nil {
 			lines := [][]lib.Portal{t.backbone}
 			if len(t.rest) > 0 {
@@ -104,17 +105,6 @@ func (t *flipFieldTab) onSearch() {
 	}()
 }
 
-func (t *flipFieldTab) portalLabel(guid string) string {
-	/*	if t.disabledPortals[guid] {
-			return "Disabled"
-		}
-		if t.anchorPortals[guid] {
-			return "Anchor"
-		}*/
-	return "Normal"
-}
-
-//func (t *flipFieldTab) portalColor(guid string) string { return "" }
 func (t *flipFieldTab) solutionString() string {
 	s := fmt.Sprintf("[%s", lib.PolylineFromPortalList(t.backbone))
 	if len(t.rest) > 0 {

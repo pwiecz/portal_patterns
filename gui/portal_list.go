@@ -8,7 +8,7 @@ import (
 type portalList struct {
 	*fltk.TableRow
 	portals                 []lib.Portal
-	portalIndices map[string]int
+	portalIndices           map[string]int
 	selectedPortals         map[string]struct{}
 	portalState             map[string]string
 	selectionChangeCallback func()
@@ -18,6 +18,7 @@ type portalList struct {
 func newPortalList(x, y, w, h int) *portalList {
 	l := &portalList{
 		selectedPortals: make(map[string]struct{}),
+		portalState:     make(map[string]string),
 	}
 	l.TableRow = fltk.NewTableRow(0, 0, 100, 540)
 
@@ -59,6 +60,9 @@ func (l *portalList) SetPortals(portals []lib.Portal) {
 		l.portalIndices[portal.Guid] = i
 	}
 	l.SetRowCount(len(portals))
+}
+func (l *portalList) SetPortalLabel(guid, label string) {
+	l.portalState[guid] = label
 }
 
 func (l *portalList) drawCallback(context fltk.TableContext, row, column, x, y, w, h int) {

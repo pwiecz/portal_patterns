@@ -105,7 +105,8 @@ func (t *homogeneousTab) onSearch() {
 		options = append(options, lib.HomogeneousRandom{Rand: rand})
 	}
 	go func() {
-		t.solution, t.depth = lib.DeepestHomogeneous(t.portals, options...)
+		portals := t.enabledPortals()
+		t.solution, t.depth = lib.DeepestHomogeneous(portals, options...)
 		if t.mapWindow != nil {
 			t.mapWindow.SetPaths(lib.HomogeneousPolylines(t.depth, t.solution))
 		}
@@ -121,17 +122,6 @@ func (t *homogeneousTab) onSearch() {
 	}()
 }
 
-func (t *homogeneousTab) portalLabel(guid string) string {
-	/*	if t.disabledPortals[guid] {
-			return "Disabled"
-		}
-		if t.anchorPortals[guid] {
-			return "Anchor"
-		}*/
-	return "Normal"
-}
-
-//func (t *homogeneousTab) portalColor(guid string) string { return "" }
 func (t *homogeneousTab) solutionString() string {
 	return lib.HomogeneousDrawToolsString(t.depth, t.solution)
 }
@@ -171,6 +161,3 @@ func (t *homogeneousTab) onPortalContextMenu(x, y int) {
 	mb.Popup()
 	mb.Destroy()
 }
-
-func (t *homogeneousTab) enableSelectedPortals()  {}
-func (t *homogeneousTab) disableSelectedPortals() {}

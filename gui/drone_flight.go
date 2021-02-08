@@ -69,7 +69,8 @@ func (t *droneFlightTab) onSearch() {
 		options = append(options, lib.DroneFlightLeastJumps{})
 	}
 	go func() {
-		t.solution, t.keys = lib.LongestDroneFlight(t.portals, options...)
+		portals := t.enabledPortals()
+		t.solution, t.keys = lib.LongestDroneFlight(portals, options...)
 		if t.mapWindow != nil {
 			t.mapWindow.SetPaths([][]lib.Portal{t.solution})
 		}
@@ -81,8 +82,6 @@ func (t *droneFlightTab) onSearch() {
 	}()
 }
 
-//func (t *droneFlightTab) portalColor(guid string) string { return "" }
-func (t *droneFlightTab) portalLabel(guid string) string { return "Normal" }
 func (t *droneFlightTab) solutionString() string {
 	s := fmt.Sprintf("[%s", lib.PolylineFromPortalList(t.solution))
 	if len(t.keys) > 0 {
