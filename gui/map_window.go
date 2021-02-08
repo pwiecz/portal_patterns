@@ -1,21 +1,23 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"log"
 
-	gogl "github.com/go-gl/gl/v2.1/gl"
+	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/pwiecz/go-fltk"
-	"github.com/pwiecz/portal_patterns/gui/gl"
 	"github.com/pwiecz/portal_patterns/gui/osm"
 	"github.com/pwiecz/portal_patterns/lib"
 )
 
 type MapWindow struct {
-	window       *fltk.Window
-	glWindow     *fltk.GlWindow
-	mapDrawer    *gl.MapDrawer
-	prevX, prevY int
+	window                   *fltk.Window
+	glWindow                 *fltk.GlWindow
+	mapDrawer                *MapDrawer
+	prevX, prevY             int
+	selectionChangedCallback func(map[string]struct{})
+	addedToSelectionCallback func(map[string]struct{})
 }
 
 func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
@@ -23,7 +25,7 @@ func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
 	w.window = fltk.NewWindow(800, 600)
 	w.window.SetLabel(title + " - © OpenStreetMap")
 	w.window.Begin()
-	w.mapDrawer = gl.NewMapDrawer(tileFetcher)
+	w.mapDrawer = NewMapDrawer(tileFetcher)
 	w.glWindow = fltk.NewGlWindow(0, 0, 800, 600, func() { w.drawMap() })
 	w.glWindow.SetEventHandler(func(event fltk.Event) bool { return w.handleEvent(event) })
 	w.window.End()
@@ -35,6 +37,12 @@ func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
 	return w
 }
 
+func (w *MapWindow) SetSelectionChangeCallback(callback func(map[string]struct{})) {
+	w.selectionChangedCallback = callback
+}
+func (w *MapWindow) SetAddedToSelectionCallback(callback func(map[string]struct{})) {
+	w.addedToSelectionCallback = callback
+}
 func (w *MapWindow) Hide() {
 	w.window.Hide()
 }
@@ -47,12 +55,15 @@ func (w *MapWindow) SetPortals(portals []lib.Portal) {
 func (w *MapWindow) SetPaths(paths [][]lib.Portal) {
 	w.mapDrawer.SetPaths(paths)
 }
+func (w *MapWindow) Raise(guid string) {
+	w.mapDrawer.Raise(guid)
+}
 func (w *MapWindow) SetPortalColor(guid string, color color.Color) {
 	w.mapDrawer.SetPortalColor(guid, color)
 }
 func (w *MapWindow) drawMap() {
 	if !w.glWindow.Valid() {
-		if err := gogl.Init(); err != nil {
+		if err := gl.Init(); err != nil {
 			log.Fatal("Cannot initialize OpenGL", err)
 		}
 	}
@@ -72,7 +83,29 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 	case fltk.FOCUS:
 		// return true to receive keyboard events
 		return true
+	case fltk.RELEASE:
+		if fltk.EventButton() == fltk.LeftMouse && fltk.EventIsClick() {
+			if w.mapDrawer.portalUnderMouse >= 0 {
+				selection := make(map[string]struct{})
+				selection[w.mapDrawer.portals[w.mapDrawer.portalUnderMouse].guid] = struct{}{}
+				if fltk.EventState()&fltk.CTRL != 0 {
+					if w.addedToSelectionCallback != nil {
+						w.addedToSelectionCallback(selection)
+					}
+				} else {
+					if w.selectionChangedCallback != nil {
+						w.selectionChangedCallback(selection)
+					}
+				}
+			} else {
+				if w.selectionChangedCallback != nil {
+					w.selectionChangedCallback(make(map[string]struct{}))
+				}
+			}
+			return true
+		}
 	case fltk.DRAG:
+		fmt.Println("Is drag")
 		if fltk.EventButton1() {
 			currX, currY := fltk.EventX(), fltk.EventY()
 			w.mapDrawer.Drag(w.prevX-currX, w.prevY-currY)

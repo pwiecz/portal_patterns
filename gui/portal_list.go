@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/pwiecz/go-fltk"
 	"github.com/pwiecz/portal_patterns/lib"
 )
@@ -9,6 +8,7 @@ import (
 type portalList struct {
 	*fltk.TableRow
 	portals                 []lib.Portal
+	portalIndices map[string]int
 	selectedPortals         map[string]struct{}
 	portalState             map[string]string
 	selectionChangeCallback func()
@@ -40,6 +40,12 @@ func newPortalList(x, y, w, h int) *portalList {
 	return l
 }
 
+func (l *portalList) SetSelectedPortals(selection map[string]struct{}) {
+	l.SelectAllRows(fltk.Deselect)
+	for guid := range selection {
+		l.SelectRow(l.portalIndices[guid], fltk.Select)
+	}
+}
 func (l *portalList) SetSelectionChangeCallback(callback func()) {
 	l.selectionChangeCallback = callback
 }
@@ -48,6 +54,10 @@ func (l *portalList) SetContextMenuCallback(callback func(int, int)) {
 }
 func (l *portalList) SetPortals(portals []lib.Portal) {
 	l.portals = portals
+	l.portalIndices = make(map[string]int)
+	for i, portal := range l.portals {
+		l.portalIndices[portal.Guid] = i
+	}
 	l.SetRowCount(len(portals))
 }
 
@@ -131,7 +141,6 @@ func (l *portalList) onSelectionMaybeChanged() {
 		}
 		for i := 0; i < len(l.portals); i++ {
 			if l.IsRowSelected(i) {
-				fmt.Println("selected:", l.portals[i].Name)
 				l.selectedPortals[l.portals[i].Guid] = struct{}{}
 			}
 		}

@@ -127,6 +127,18 @@ func (t *baseTab) onAddPortalsPressed() {
 	t.configuration.PortalsDirectory = portalsDir
 	if t.mapWindow == nil {
 		t.mapWindow = NewMapWindow("Homogeneous", t.tileFetcher)
+		t.mapWindow.SetSelectionChangeCallback(func(selection map[string]struct{}) { t.OnSelectionChanged(selection) })
+		t.mapWindow.SetAddedToSelectionCallback(func(selection map[string]struct{}) {
+			selectionCopy := make(map[string]struct{})
+			for guid := range t.selectedPortals {
+				selectionCopy[guid] = struct{}{}
+			}
+			for guid := range selection {
+				selectionCopy[guid] = struct{}{}
+			}
+			t.OnSelectionChanged(selectionCopy)
+		})
+
 	} else {
 		t.mapWindow.Show()
 	}
@@ -269,7 +281,7 @@ func (t *baseTab) OnSelectionChanged(selectedPortals map[string]struct{}) {
 	var selectedBefore map[string]struct{}
 	t.selectedPortals, selectedBefore = stringSetCopy(selectedPortals), t.selectedPortals
 	if t.portalList != nil {
-		//t.portalList.SetSelectedPortals(t.selectedPortals)
+		t.portalList.SetSelectedPortals(t.selectedPortals)
 	}
 	if t.mapWindow != nil {
 		for guid := range selectedBefore {
@@ -277,6 +289,7 @@ func (t *baseTab) OnSelectionChanged(selectedPortals map[string]struct{}) {
 		}
 		for guid := range t.selectedPortals {
 			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
+			t.mapWindow.Raise(guid)
 		}
 	}
 	if len(t.selectedPortals) == 1 {
