@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"math/rand"
 	"time"
 
@@ -13,16 +14,19 @@ import (
 
 type homogeneousTab struct {
 	*baseTab
-	maxDepth     *fltk.Spinner
-	innerPortals *fltk.Choice
-	topLevel     *fltk.Choice
-	pure         *fltk.CheckButton
-	depth        uint16
-	solution     []lib.Portal
+	maxDepth      *fltk.Spinner
+	innerPortals  *fltk.Choice
+	topLevel      *fltk.Choice
+	pure          *fltk.CheckButton
+	depth         uint16
+	solution      []lib.Portal
+	anchorPortals map[string]struct{}
 }
 
 func NewHomogeneousTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *homogeneousTab {
-	t := &homogeneousTab{}
+	t := &homogeneousTab{
+		anchorPortals: make(map[string]struct{}),
+	}
 	t.baseTab = newBaseTab("Homogeneous", configuration, tileFetcher, t)
 
 	maxDepthPack := fltk.NewPack(0, 0, 760, 30)
@@ -106,6 +110,13 @@ func (t *homogeneousTab) onSearch() {
 	}
 	go func() {
 		portals := t.enabledPortals()
+		anchors := []int{}
+		for i, portal := range portals {
+			if _, ok := t.anchorPortals[portal.Guid]; ok {
+				anchors = append(anchors, i)
+			}
+		}
+		options = append(options, lib.HomogeneousFixedCornerIndices(anchors))
 		t.solution, t.depth = lib.DeepestHomogeneous(portals, options...)
 		if t.mapWindow != nil {
 			t.mapWindow.SetPaths(lib.HomogeneousPolylines(t.depth, t.solution))
@@ -122,19 +133,77 @@ func (t *homogeneousTab) onSearch() {
 	}()
 }
 
+func (t *homogeneousTab) portalLabel(guid string) string {
+	if _, ok := t.anchorPortals[guid]; ok {
+		return "Anchor"
+	}
+	return t.baseTab.portalLabel(guid)
+}
+func (t *homogeneousTab) portalColor(guid string) color.Color {
+	if _, ok := t.anchorPortals[guid]; ok {
+		if _, ok := t.selectedPortals[guid]; ok {
+			return color.NRGBA{0, 255, 0, 128}
+		} else {
+			return color.NRGBA{0, 128, 0, 128}
+		}
+	}
+	return t.baseTab.portalColor(guid)
+}
+
+func (t *homogeneousTab) makeSelectedPortalsAnchors() {
+	for guid := range t.selectedPortals {
+		if _, ok := t.disabledPortals[guid]; ok {
+			continue
+		}
+		t.anchorPortals[guid] = struct{}{}
+		if t.mapWindow != nil {
+			t.mapWindow.SetPortalColor(guid, t.portalColor(guid))
+			t.mapWindow.Raise(guid)
+		}
+		if t.portalList != nil {
+			t.portalList.SetPortalLabel(guid, t.portalLabel(guid))
+		}
+	}
+	if t.portalList != nil {
+		t.portalList.Redraw()
+	}
+}
+func (t *homogeneousTab) unmakeSelectedPortalsAnchors() {
+	for guid := range t.selectedPortals {
+		delete(t.anchorPortals, guid)
+		if t.mapWindow != nil {
+			t.mapWindow.SetPortalColor(guid, t.portalColor(guid))
+			t.mapWindow.Raise(guid)
+		}
+		if t.portalList != nil {
+			t.portalList.SetPortalLabel(guid, t.portalLabel(guid))
+		}
+	}
+	if t.portalList != nil {
+		t.portalList.Redraw()
+	}
+}
+
 func (t *homogeneousTab) solutionString() string {
 	return lib.HomogeneousDrawToolsString(t.depth, t.solution)
 }
 func (t *homogeneousTab) onPortalContextMenu(x, y int) {
 	var aSelectedGuid string
-	allSelectedEnabled := true
-	allSelectedDisabled := true
+	numSelectedEnabled := 0
+	numSelectedDisabled := 0
+	numSelectedAnchor := 0
+	numSelectedNotAnchor := 0
 	for guid := range t.selectedPortals {
 		aSelectedGuid = guid
 		if _, ok := t.disabledPortals[guid]; ok {
-			allSelectedEnabled = false
+			numSelectedDisabled++
 		} else {
-			allSelectedDisabled = false
+			numSelectedEnabled++
+		}
+		if _, ok := t.anchorPortals[guid]; ok {
+			numSelectedAnchor++
+		} else {
+			numSelectedNotAnchor++
 		}
 	}
 	menuHeader := fmt.Sprintf("%d portals selected", len(t.selectedPortals))
@@ -144,18 +213,32 @@ func (t *homogeneousTab) onPortalContextMenu(x, y int) {
 	mb := fltk.NewMenuButton(x, y, 100, 100, menuHeader)
 	mb.SetCallback(func() { fmt.Println("menu Callback") })
 	mb.SetType(fltk.POPUP3)
-	if !allSelectedEnabled {
+	if numSelectedDisabled > 0 {
 		if len(t.selectedPortals) == 1 {
 			mb.Add("Enable", func() { t.enableSelectedPortals() })
 		} else {
 			mb.Add("Enable All", func() { t.enableSelectedPortals() })
 		}
 	}
-	if !allSelectedDisabled {
+	if numSelectedEnabled > 0 {
 		if len(t.selectedPortals) == 1 {
 			mb.Add("Disable", func() { t.disableSelectedPortals() })
 		} else {
 			mb.Add("Disable All", func() { t.disableSelectedPortals() })
+		}
+	}
+	if numSelectedAnchor > 0 {
+		if len(t.selectedPortals) == 1 {
+			mb.Add("Unmake anchor", func() { t.unmakeSelectedPortalsAnchors() })
+		} else {
+			mb.Add("Unmake all anchors", func() { t.unmakeSelectedPortalsAnchors() })
+		}
+	}
+	if numSelectedNotAnchor > 0 && numSelectedNotAnchor+len(t.anchorPortals) <= 3 {
+		if len(t.selectedPortals) == 1 {
+			mb.Add("Make anchor", func() { t.makeSelectedPortalsAnchors() })
+		} else {
+			mb.Add("Make all anchors", func() { t.makeSelectedPortalsAnchors() })
 		}
 	}
 	mb.Popup()

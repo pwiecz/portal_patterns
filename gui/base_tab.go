@@ -279,7 +279,7 @@ func (t *baseTab) portalColor(guid string) color.Color {
 		return color.NRGBA{128, 128, 128, 128}
 	}
 	if isSelected {
-		return color.NRGBA{0, 128, 0, 128}
+		return color.NRGBA{128, 0, 0, 128}
 	}
 	return color.NRGBA{255, 128, 0, 128}
 }
