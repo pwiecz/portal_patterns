@@ -14,7 +14,7 @@ import (
 	"github.com/golang/geo/r2"
 	"github.com/golang/geo/s2"
 	"github.com/golang/groupcache/lru"
-	"github.com/pwiecz/imgui-go"
+	"github.com/inkyblackness/imgui-go/v3"
 	guigl "github.com/pwiecz/portal_patterns/gui/gl"
 	"github.com/pwiecz/portal_patterns/gui/osm"
 	"github.com/pwiecz/portal_patterns/lib"
