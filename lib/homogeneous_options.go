@@ -147,9 +147,17 @@ func (h HomogeneousFixedCornerIndices) applyPure(params *homogeneousPureParams) 
 
 type HomogeneousPure bool
 
-func (h HomogeneousPure) requires2() bool                         { return false }
-func (h HomogeneousPure) apply(params *homogeneousParams)         { panic("unsupported") }
-func (h HomogeneousPure) apply2(params *homogeneous2Params)       { panic("unsupported") }
+func (h HomogeneousPure) requires2() bool { return false }
+func (h HomogeneousPure) apply(params *homogeneousParams) {
+	if h {
+		panic("unsupported")
+	}
+}
+func (h HomogeneousPure) apply2(params *homogeneous2Params) {
+	if h {
+		panic("unsupported")
+	}
+}
 func (h HomogeneousPure) applyPure(params *homogeneousPureParams) {}
 
 type homogeneousParams struct {
