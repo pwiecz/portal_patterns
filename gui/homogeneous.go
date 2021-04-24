@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
@@ -9,7 +10,7 @@ import (
 )
 
 type homogeneousTab struct {
-	//	*baseTab
+	*baseTab
 	//	maxDepth      *tk.Entry
 	//	innerPortals  *tk.ComboBox
 	//	pure          *tk.CheckButton
@@ -19,32 +20,32 @@ type homogeneousTab struct {
 	//	anchorPortals map[string]bool
 }
 
-func NewHomogeneousTab(conf *configuration.Configuration, tileFetcher *osm.MapTiles) *container.TabItem {
-	//	t := &homogeneousTab{}
-	//	t.baseTab = NewBaseTab(parent, "Homogeneous", conf, tileFetcher)
-	//	t.pattern = t
-	//	addResetBox := tk.NewHPackLayout(parent)
-	//	addResetBox.AddWidget(t.add)
-	//	addResetBox.AddWidget(t.reset)
-	//	t.AddWidget(addResetBox)
-	//	maxDepthBox := tk.NewHPackLayout(parent)
+func NewHomogeneousTab(parent fyne.Window, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *container.TabItem {
+	t := &homogeneousTab{}
+	t.baseTab = NewBaseTab(parent, "Homogeneous", conf, tileFetcher)
 	maxDepthLabel := widget.NewLabel("Max depth: ")
 	maxDepth := widget.NewEntry()
 	maxDepth.SetText("6")
 	innerPortalsLabel := widget.NewLabel("Inner portal positions: ")
 	innerPortals := widget.NewSelect([]string{"Arbitrary", "Spread around (slow)"}, func(string) {})
+	innerPortals.SetSelectedIndex(0)
 	topTriangleLabel := widget.NewLabel("Top triangle: ")
 	topTriangle := widget.NewSelect([]string{"Smallest Area", "Largest Area", "Most Equilateral", "Random"}, func(string) {})
+	topTriangle.SetSelectedIndex(0)
 	pureLabel := widget.NewLabel("Pure: ")
-	pure := widget.NewCheck("", func(bool){})
+	pure := widget.NewCheck("", func(bool) {})
 	content := container.New(
 		layout.NewGridLayout(2),
 		maxDepthLabel, maxDepth,
 		innerPortalsLabel, innerPortals,
 		topTriangleLabel, topTriangle,
-		pureLabel, pure,
-		layout.NewSpacer(), layout.NewSpacer())
-	return container.NewTabItem("Homogeneous", content)
+		pureLabel, pure)
+	return container.NewTabItem("Homogeneous",
+		container.NewVBox(
+			container.NewHBox(t.add, t.reset),
+			content,
+			widget.NewTable(tableSize, tableCreate, tableUpdate)))
+	//layout.NewSpacer()
 	// t.pure = tk.NewCheckButton(parent, "Pure")
 	// t.AddWidgetEx(t.pure, tk.FillNone, true, tk.AnchorWest)
 	// solutionBox := tk.NewHPackLayout(parent)
@@ -58,6 +59,18 @@ func NewHomogeneousTab(conf *configuration.Configuration, tileFetcher *osm.MapTi
 
 	// t.anchorPortals = make(map[string]bool)
 	// return t
+}
+
+func tableSize() (int, int) {
+	return 100, 2
+}
+func tableCreate() fyne.CanvasObject {
+	return widget.NewLabel("                    ")
+}
+func tableUpdate(id widget.TableCellID, canvasObject fyne.CanvasObject) {
+	if label, ok := canvasObject.(*widget.Label); ok {
+		label.SetText("labelka")
+	}
 }
 
 // func (t *homogeneousTab) onReset() {
