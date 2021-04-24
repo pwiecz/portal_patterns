@@ -30,7 +30,7 @@ func NewHomogeneousCmd() homogeneousCmd {
 		maxDepth:        flags.Int("max_depth", 6, "don't return homogenous fields with depth larger than max_depth"),
 		pretty:          flags.Bool("pretty", false, "try to split the top triangle into large regular web of triangles (slow)"),
 		largestArea:     flags.Bool("largest_area", false, "pick the top triangle having the largest possible area"),
-		smallestArea:    flags.Bool("smallest_area", false, "pick the top triangle having the smallest possible area"),
+		smallestArea:    flags.Bool("smallest_area", false, "pick the top triangle having the smallest possible area (default)"),
 		mostEquilateral: flags.Bool("most_equilateral", false, "pick the top triangle being the most equilateral"),
 		random:          flags.Bool("random", false, "pick a random top triangle"),
 		pure:            flags.Bool("pure", false, "consider only pure homogeneous fields (those that use all the portals inside the top level triangle)"),
@@ -41,7 +41,7 @@ func NewHomogeneousCmd() homogeneousCmd {
 }
 
 func (h *homogeneousCmd) Usage(fileBase string) {
-	fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [-max_depth=<n>] [-pretty] [-largest_area|-smallest_area] [-most_equilateral] [-corner_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
+	fmt.Fprintf(flag.CommandLine.Output(), "%s homogeneous [-max_depth=<n>] [-pretty] [-largest_area|-smallest_area|-most_equilateral|-random] [-pure] [-corner_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
 	h.flags.PrintDefaults()
 }
 
@@ -82,7 +82,7 @@ func (h *homogeneousCmd) Run(args []string, output io.Writer, numWorkers int, pr
 	// check for pretty before setting top level scorer, as pretty overwrites the top level scorer
 	if *h.pretty {
 		if !*h.pure && *h.maxDepth > 7 {
-			log.Fatalln("if -pretty is specified and -pure is not -max_depth must be at most 7")
+			log.Fatalln("if -pretty is specified and -pure is not then -max_depth must be at most 7")
 		}
 		options = append(options, lib.HomogeneousSpreadAround{})
 	}

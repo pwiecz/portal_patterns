@@ -170,7 +170,7 @@ type homogeneousParams struct {
 func defaultHomogeneousParams() homogeneousParams {
 	return homogeneousParams{
 		maxDepth:       6,
-		topLevelScorer: arbitraryScorer{},
+		topLevelScorer: smallestTriangleScorer{},
 		progressFunc:   func(int, int) {},
 	}
 }
@@ -206,7 +206,7 @@ type homogeneousPureParams struct {
 func defaultHomogeneousPureParams() homogeneousPureParams {
 	return homogeneousPureParams{
 		maxDepth:     6,
-		scorer:       arbitraryScorer{},
+		scorer:       smallestTriangleScorer{},
 		numWorkers:   runtime.GOMAXPROCS(0),
 		progressFunc: func(int, int) {},
 	}
