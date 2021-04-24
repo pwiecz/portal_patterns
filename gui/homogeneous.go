@@ -53,7 +53,7 @@ func NewHomogeneousTab(parent tk.Widget, conf *configuration.Configuration, tile
 	strategyLabel := tk.NewLabel(parent, "Top triangle: ")
 	strategyBox.AddWidget(strategyLabel)
 	t.strategy = tk.NewComboBox(parent, tk.ComboBoxAttrState(tk.StateReadOnly))
-	t.strategy.SetValues([]string{"Arbitrary", "Largest Area", "Smallest Area", "Most Equilateral", "Random"})
+	t.strategy.SetValues([]string{"Smallest Area", "Largest Area", "Most Equilateral", "Random"})
 	t.strategy.SetCurrentIndex(0)
 	t.strategy.OnSelected(func() { t.strategy.Entry().ClearSelection() })
 	strategyBox.AddWidget(t.strategy)
@@ -140,13 +140,13 @@ func (t *homogeneousTab) search() {
 		//	} else if t.innerPortals.CurrentIndex() == 2 {
 		//		options = append(options, lib.HomogeneousClumpTogether{})
 	}
-	if t.strategy.CurrentIndex() == 1 {
+	if t.strategy.CurrentIndex() == 0 {
+		options = append(options, lib.HomogeneousSmallestArea{})
+	} else if t.strategy.CurrentIndex() == 1 {
 		options = append(options, lib.HomogeneousLargestArea{})
 	} else if t.strategy.CurrentIndex() == 2 {
-		options = append(options, lib.HomogeneousSmallestArea{})
-	} else if t.strategy.CurrentIndex() == 3 {
 		options = append(options, lib.HomogeneousMostEquilateralTriangle{})
-	} else if t.strategy.CurrentIndex() == 4 {
+	} else if t.strategy.CurrentIndex() == 3 {
 		rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 		options = append(options, lib.HomogeneousRandom{Rand: rand})
 	}
