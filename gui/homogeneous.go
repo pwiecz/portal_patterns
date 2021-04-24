@@ -54,7 +54,6 @@ func NewHomogeneousTab(configuration *configuration.Configuration, tileFetcher *
 	topLevelPack.SetType(fltk.HORIZONTAL)
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.topLevel = fltk.NewChoice(0, 0, 200, 30, "Top level triangle:")
-	t.topLevel.Add("Arbitrary", func() {})
 	t.topLevel.Add("Smallest area", func() {})
 	t.topLevel.Add("Largest area", func() {})
 	t.topLevel.Add("Most Equilateral", func() {})
@@ -98,13 +97,13 @@ func (t *homogeneousTab) onSearch() {
 		options = append(options, lib.HomogeneousSpreadAround{})
 	}
 	switch t.topLevel.Value() {
-	case 1:
+	case 0:
 		options = append(options, lib.HomogeneousSmallestArea{})
-	case 2:
+	case 1:
 		options = append(options, lib.HomogeneousLargestArea{})
-	case 3:
+	case 2:
 		options = append(options, lib.HomogeneousMostEquilateralTriangle{})
-	case 4:
+	case 3:
 		rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 		options = append(options, lib.HomogeneousRandom{Rand: rand})
 	}
