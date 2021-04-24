@@ -1,20 +1,21 @@
 package main
 
-import "github.com/pwiecz/atk/tk"
-import "github.com/pwiecz/portal_patterns/gui/osm"
-import "github.com/pwiecz/portal_patterns/configuration"
+import (
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
+	"github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/portal_patterns/configuration"
+	"github.com/pwiecz/portal_patterns/gui/osm"
+)
 
 func main() {
+	a := app.New()
+	w := a.NewWindow("Portal Patterns")
 	conf := configuration.LoadConfiguration()
 	tileFetcher := osm.NewMapTiles()
-	tk.MainLoop(func() {
-		tk.SetMenuTearoff(false)
-		mw := NewWindow(conf, tileFetcher)
-		mw.SetTitle("Portal patterns")
-		mw.Center()
-		mw.ResizeN(640, 480)
-		mw.ShowNormal()
-	})
+	tabs := container.NewAppTabs(NewHomogeneousTab(conf, tileFetcher))
+	w.SetContent(tabs)
+	w.ShowAndRun()
 }
 
 type Window struct {
@@ -28,7 +29,7 @@ func NewWindow(conf *configuration.Configuration, tileFetcher *osm.MapTiles) *Wi
 	mw.Window = tk.RootWindow()
 	mw.tab = tk.NewNotebook(mw)
 
-	mw.tab.AddTab(NewHomogeneousTab(mw, conf, tileFetcher), "Homogeneous")
+	//	mw.tab.AddTab(NewHomogeneousTab(mw, conf, tileFetcher), "Homogeneous")
 	mw.tab.AddTab(NewHerringboneTab(mw, conf, tileFetcher), "Herringbone")
 	mw.tab.AddTab(NewDoubleHerringboneTab(mw, conf, tileFetcher), "Double herringbone")
 	mw.tab.AddTab(NewCobwebTab(mw, conf, tileFetcher), "Cobweb")
