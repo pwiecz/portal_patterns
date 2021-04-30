@@ -12,7 +12,7 @@ func main() {
 	w := a.NewWindow("Portal Patterns")
 	conf := configuration.LoadConfiguration()
 	tileFetcher := osm.NewMapTiles()
-	tabs := container.NewAppTabs(NewHomogeneousTab(w, conf, tileFetcher))
+	tabs := container.NewAppTabs(NewHomogeneousTab(a, w, conf, tileFetcher))
 	w.SetContent(tabs)
 	w.ShowAndRun()
 }

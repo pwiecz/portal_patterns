@@ -1,9 +1,14 @@
 package main
 
 import (
+	"fmt"
+	"path/filepath"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
+	"github.com/golang/geo/s2"
 	"github.com/pwiecz/portal_patterns/configuration"
 	"github.com/pwiecz/portal_patterns/gui/osm"
 	"github.com/pwiecz/portal_patterns/lib"
@@ -19,6 +24,7 @@ type pattern interface {
 }
 
 type baseTab struct {
+	app           fyne.App
 	parent        fyne.Window
 	configuration *configuration.Configuration
 	tileFetcher   *osm.MapTiles
@@ -31,7 +37,7 @@ type baseTab struct {
 	progress      *widget.ProgressBar
 	//	portalList      *PortalList
 	//	portalScrollBar *tk.ScrollBar
-	//	solutionMap     *SolutionMap
+	solutionMap     *SolutionMap
 	portals         []lib.Portal
 	selectedPortals map[string]bool
 	disabledPortals map[string]bool
@@ -39,8 +45,9 @@ type baseTab struct {
 	name            string
 }
 
-func NewBaseTab(parent fyne.Window, name string, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *baseTab {
+func NewBaseTab(app fyne.App, parent fyne.Window, name string, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *baseTab {
 	t := &baseTab{
+		app:           app,
 		parent:        parent,
 		name:          name,
 		configuration: conf,
@@ -49,22 +56,9 @@ func NewBaseTab(parent fyne.Window, name string, conf *configuration.Configurati
 	t.add = widget.NewButton("Add", func() { t.onAdd() })
 	t.reset = widget.NewButton("Reset", func() { t.onReset() })
 
-	//	t.PackLayout = tk.NewVPackLayout(parent)
-	//	t.add = tk.NewButton(parent, "Add Portals")
-	// t.add.OnCommand(func() {
-	// 	t.onAdd()
-	// })
-	// t.reset = tk.NewButton(parent, "Reset Portals")
-	// t.reset.OnCommand(func() {
-	// 	t.onReset()
-	// })
-	// t.reset.SetState(tk.StateDisable)
-	// t.find = tk.NewButton(parent, "Search")
-	// t.find.OnCommand(func() {
-	// 	t.pattern.search()
-	// })
-	// t.find.SetState(tk.StateDisable)
-	// t.save = tk.NewButton(parent, "Save Solution")
+	t.find = widget.NewButton("Search", func() { go t.pattern.search() })
+	t.find.Disable()
+	t.save = widget.NewButton("Save Solution", func() {})
 	// t.save.OnCommand(func() {
 	// 	filename, err := tk.GetSaveFile(parent, "Select file for solution", true, ".json",
 	// 		[]tk.FileType{{Info: "JSON file", Ext: ".json"}}, conf.PortalsDirectory, "")
@@ -78,16 +72,17 @@ func NewBaseTab(parent fyne.Window, name string, conf *configuration.Configurati
 	// 	defer file.Close()
 	// 	file.WriteString(t.pattern.solutionString())
 	// })
-	// t.save.SetState(tk.StateDisable)
-	// t.copy = tk.NewButton(parent, "Copy to Clipboard")
+	t.save.Disable()
+	t.copy = widget.NewButton("Copy to Clipboard", func() {})
 	// t.copy.OnCommand(func() {
 	// 	tk.ClearClipboard()
 	// 	tk.AppendToClipboard(t.pattern.solutionString())
 	// })
-	// t.copy.SetState(tk.StateDisable)
-	// t.solutionLabel = tk.NewLabel(parent, "")
-	// t.progress = tk.NewProgressBar(parent, tk.Horizontal, tk.ProgressBarAttrMaximum(1000))
-	// t.progress.SetDeterminateMode(true)
+	t.copy.Disable()
+	t.solutionLabel = widget.NewLabel("")
+	t.progress = widget.NewProgressBar()
+	t.progress.Min = 0
+	t.progress.Max = 1
 	// t.portalList = NewPortalList(parent)
 	// t.portalList.OnPortalRightClick(func(guid string, x, y int) {
 	// 	t.pattern.onPortalContextMenu(guid, x, y)
@@ -103,11 +98,38 @@ func NewBaseTab(parent fyne.Window, name string, conf *configuration.Configurati
 }
 
 func (t *baseTab) onAdd() {
-	dialog.ShowFileOpen(func(file fyne.URIReadCloser, err error) { t.onFileChosen(file, err) }, t.parent)
+	fileOpenDialog := dialog.NewFileOpen(func(file fyne.URIReadCloser, err error) { t.onFileChosen(file, err) }, t.parent)
+	lister, err := storage.ListerForURI(storage.NewFileURI(t.configuration.PortalsDirectory))
+	if err == nil {
+		fileOpenDialog.SetLocation(lister)
+	}
+	fileOpenDialog.Show()
 }
 
-func (t *baseTab) onFileChosen(file fyne.URIReadCloser, err error) {}
+func (t *baseTab) onFileChosen(file fyne.URIReadCloser, err error) {
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	filename := file.URI().Path()
+	portalsDir, _ := filepath.Split(filename)
+	t.configuration.PortalsDirectory = portalsDir
+	configuration.SaveConfiguration(t.configuration)
+	portals, err := lib.ParseFile(filename)
+	if err != nil {
+		dialog.ShowInformation("Could not read file", fmt.Sprintf("Error reading file:\n%v", err), t.parent)
+		return
+	}
+	t.addPortals(portals)
+}
+
 func (t *baseTab) onReset() {
+	t.portals = nil
+	t.selectedPortals = make(map[string]bool)
+	t.disabledPortals = make(map[string]bool)
+	if t.solutionMap != nil {
+		t.solutionMap.Clear()
+	}
 }
 
 // func (t *baseTab) onAdd() {
@@ -149,73 +171,75 @@ func (t *baseTab) onReset() {
 // 	t.solutionLabel.SetText("")
 // }
 
-// func (t *baseTab) onProgress(val int, max int) {
-// 	value := float64(val) * 1000. / float64(max)
-// 	t.progress.SetValue(value)
-// 	tk.Update()
-// }
+func (t *baseTab) onProgress(val int, max int) {
+	value := float64(val) / float64(max)
+	t.progress.SetValue(value)
+}
 
-// func (t *baseTab) addPortals(portals []lib.Portal) {
-// 	portalMap := make(map[string]lib.Portal)
-// 	for _, portal := range t.portals {
-// 		portalMap[portal.Guid] = portal
-// 	}
-// 	newPortals := ([]lib.Portal)(nil)
-// 	for _, portal := range portals {
-// 		if existing, ok := portalMap[portal.Guid]; ok {
-// 			if existing.LatLng.Lat != portal.LatLng.Lat ||
-// 				existing.LatLng.Lng != portal.LatLng.Lng {
-// 				if existing.Name == portal.Name {
-// 					tk.MessageBox(t, "Conflicting portals", "Portal with guid \""+portal.Guid+"\" already loaded with different location",
-// 						portal.Name+"\n"+portal.LatLng.String()+" vs "+existing.LatLng.String(), "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
-// 					return
-// 				}
-// 				tk.MessageBox(t, "Conflicting portals", "Portal with guid \""+portal.Guid+"\" already loaded with different name and location",
-// 					portal.Name+" vs "+existing.Name+"\n"+portal.LatLng.String()+" vs "+existing.LatLng.String(), "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
-// 				return
-// 			}
-// 		} else {
-// 			portalMap[portal.Guid] = portal
-// 			newPortals = append(newPortals, portal)
-// 		}
-// 	}
+func (t *baseTab) addPortals(portals []lib.Portal) {
+	portalMap := make(map[string]lib.Portal)
+	for _, portal := range t.portals {
+		portalMap[portal.Guid] = portal
+	}
+	newPortals := ([]lib.Portal)(nil)
+	for _, portal := range portals {
+		if existing, ok := portalMap[portal.Guid]; ok {
+			if existing.LatLng.Lat != portal.LatLng.Lat ||
+				existing.LatLng.Lng != portal.LatLng.Lng {
+				if existing.Name == portal.Name {
+					dialog.ShowInformation("Conflicting portals", "Portal with guid \""+portal.Guid+"\" already loaded with different location:\n"+
+						portal.Name+"\n"+portal.LatLng.String()+" vs "+existing.LatLng.String(), t.parent)
+					return
+				}
+				dialog.ShowInformation("Conflicting portals", "Portal with guid \""+portal.Guid+"\" already loaded with different name and location:\n"+
+					portal.Name+" vs "+existing.Name+"\n"+portal.LatLng.String()+" vs "+existing.LatLng.String(), t.parent)
+				return
+			}
+		} else {
+			portalMap[portal.Guid] = portal
+			newPortals = append(newPortals, portal)
+		}
+	}
 
-// 	hull := s2.NewConvexHullQuery()
-// 	for _, p := range portalMap {
-// 		hull.AddPoint(s2.PointFromLatLng(p.LatLng))
-// 	}
-// 	if hull.CapBound().Radius().Radians() >= 1. {
-// 		tk.MessageBox(t, "Too distant portals", "Distances between portals are too large", "", "", tk.MessageBoxIconWarning, tk.MessageBoxTypeOk)
-// 		return
-// 	}
-// 	t.portals = append(t.portals, newPortals...)
-// 	if len(t.portals) > 0 {
-// 		t.reset.SetState(tk.StateNormal)
-// 	}
-// 	if len(t.portals) >= 3 {
-// 		t.find.SetState(tk.StateNormal)
-// 	}
-// 	if t.solutionMap == nil {
-// 		t.solutionMap = NewSolutionMap(t.name, t.tileFetcher)
-// 		t.solutionMap.OnClose(func() bool {
-// 			t.solutionMap = nil
-// 			return true
-// 		})
-// 		t.solutionMap.OnPortalLeftClick(func(guid string) {
-// 			t.OnPortalSelected(guid)
-// 		})
-// 		t.solutionMap.OnPortalRightClick(func(guid string, x, y int) {
-// 			t.pattern.onPortalContextMenu(guid, x, y)
-// 		})
-// 		t.solutionMap.ShowNormal()
-// 		tk.Update()
-// 	}
-// 	t.solutionMap.SetPortals(t.portals)
-// 	t.portalList.SetPortals(t.portals)
-// 	for _, portal := range t.portals {
-// 		t.portalStateChanged(portal.Guid)
-// 	}
-// }
+	hull := s2.NewConvexHullQuery()
+	for _, p := range portalMap {
+		hull.AddPoint(s2.PointFromLatLng(p.LatLng))
+	}
+	if hull.CapBound().Radius().Radians() >= 1. {
+		dialog.ShowInformation("Too distant portals", "Distances between portals are too large", t.parent)
+		return
+	}
+	t.portals = append(t.portals, newPortals...)
+	if len(t.portals) > 0 {
+		t.reset.Enable()
+	}
+	if len(t.portals) >= 3 {
+		t.find.Enable()
+	}
+	if t.solutionMap == nil {
+		t.solutionMap = NewSolutionMap(t.tileFetcher)
+		solutionMapWin := t.app.NewWindow(t.name + " OpenStreetMap")
+		solutionMapWin.SetContent(t.solutionMap)
+		solutionMapWin.SetOnClosed(func() { t.solutionMap = nil })
+		solutionMapWin.Resize(fyne.Size{800, 600})
+		/*		t.solutionMap.OnPortalLeftClick(func(guid string) {
+				t.OnPortalSelected(guid)
+				})
+				t.solutionMap.OnPortalRightClick(func(guid string, x, y int) {
+					t.pattern.onPortalContextMenu(guid, x, y)
+				})
+				t.solutionMap.ShowNormal()
+				//tk.Update()
+			}*/
+		//t.portalList.SetPortals(t.portals)
+		solutionMapWin.Show()
+		t.solutionMap.Refresh()
+	}
+	t.solutionMap.SetPortals(t.portals)
+	for _, portal := range t.portals {
+		t.portalStateChanged(portal.Guid)
+	}
+}
 
 // func stringMapsAreTheSame(map1 map[string]bool, map2 map[string]bool) bool {
 // 	for s := range map1 {
@@ -272,11 +296,11 @@ func (t *baseTab) onReset() {
 // 	}
 // }
 
-// func (t *baseTab) portalStateChanged(guid string) {
-// 	if t.portalList != nil {
-// 		t.portalList.SetPortalState(guid, t.pattern.portalLabel(guid))
-// 	}
-// 	if t.solutionMap != nil {
-// 		t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
-// 	}
-// }
+func (t *baseTab) portalStateChanged(guid string) {
+	// 	if t.portalList != nil {
+	// 		t.portalList.SetPortalState(guid, t.pattern.portalLabel(guid))
+	// 	}
+	// 	if t.solutionMap != nil {
+	// 		t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
+	// 	}
+}
