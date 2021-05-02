@@ -1,11 +1,13 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
 
-import "github.com/pwiecz/portal_patterns/gui/osm"
-import "github.com/pwiecz/portal_patterns/configuration"
-import "github.com/pwiecz/portal_patterns/lib"
-import "github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/portal_patterns/configuration"
+	"github.com/pwiecz/portal_patterns/gui/osm"
+	"github.com/pwiecz/portal_patterns/lib"
+)
 
 type cobwebTab struct {
 	*baseTab

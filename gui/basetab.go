@@ -1,14 +1,16 @@
 package main
 
-import "fmt"
-import "os"
-import "path/filepath"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
 
-import "github.com/golang/geo/s2"
-import "github.com/pwiecz/atk/tk"
-import "github.com/pwiecz/portal_patterns/configuration"
-import "github.com/pwiecz/portal_patterns/gui/osm"
-import "github.com/pwiecz/portal_patterns/lib"
+	"github.com/golang/geo/s2"
+	"github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/portal_patterns/configuration"
+	"github.com/pwiecz/portal_patterns/gui/osm"
+	"github.com/pwiecz/portal_patterns/lib"
+)
 
 type pattern interface {
 	search()

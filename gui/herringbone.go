@@ -1,12 +1,14 @@
 package main
 
-import "fmt"
-import "runtime"
+import (
+	"fmt"
+	"runtime"
 
-import "github.com/pwiecz/portal_patterns/gui/osm"
-import "github.com/pwiecz/portal_patterns/configuration"
-import "github.com/pwiecz/portal_patterns/lib"
-import "github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/portal_patterns/configuration"
+	"github.com/pwiecz/portal_patterns/gui/osm"
+	"github.com/pwiecz/portal_patterns/lib"
+)
 
 type herringboneTab struct {
 	*baseTab
@@ -83,6 +85,7 @@ func (t *herringboneTab) search() {
 	t.reset.SetState(tk.StateDisable)
 	t.find.SetState(tk.StateDisable)
 	t.save.SetState(tk.StateDisable)
+	t.copy.SetState(tk.StateDisable)
 	tk.Update()
 	portals := []lib.Portal{}
 	base := []int{}
@@ -104,6 +107,7 @@ func (t *herringboneTab) search() {
 	t.reset.SetState(tk.StateNormal)
 	t.find.SetState(tk.StateNormal)
 	t.save.SetState(tk.StateNormal)
+	t.copy.SetState(tk.StateNormal)
 	tk.Update()
 }
 

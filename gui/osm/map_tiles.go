@@ -1,16 +1,18 @@
 package osm
 
-import "errors"
-import "fmt"
-import "image"
-import "image/png"
-import "io/ioutil"
-import "log"
-import "net/http"
-import "os"
-import "path/filepath"
-import "strconv"
-import "sync"
+import (
+	"errors"
+	"fmt"
+	"image"
+	"image/png"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"sync"
+)
 
 const (
 	MAX_DOWNLOAD_THREADS = 2

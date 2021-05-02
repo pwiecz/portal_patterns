@@ -1,8 +1,10 @@
 package main
 
-import "github.com/pwiecz/atk/tk"
-import "github.com/pwiecz/portal_patterns/gui/osm"
-import "github.com/pwiecz/portal_patterns/configuration"
+import (
+	"github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/portal_patterns/configuration"
+	"github.com/pwiecz/portal_patterns/gui/osm"
+)
 
 func main() {
 	conf := configuration.LoadConfiguration()

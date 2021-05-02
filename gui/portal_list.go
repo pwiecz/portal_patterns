@@ -1,9 +1,11 @@
 package main
 
-import "sort"
+import (
+	"sort"
 
-import "github.com/pwiecz/atk/tk"
-import "github.com/pwiecz/portal_patterns/lib"
+	"github.com/pwiecz/atk/tk"
+	"github.com/pwiecz/portal_patterns/lib"
+)
 
 type PortalList struct {
 	*tk.TreeViewEx
