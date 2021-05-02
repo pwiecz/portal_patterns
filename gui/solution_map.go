@@ -30,9 +30,10 @@ type tile struct {
 }
 
 type mapPortal struct {
-	Coords r2.Point
-	Name   string
-	Color  color.Color
+	Coords      r2.Point
+	Name        string
+	Color       color.Color
+	StrokeColor color.Color
 	//	Shape  *canvas.Circle
 }
 
@@ -179,11 +180,13 @@ func (r *solutionMapRenderer) Refresh() {
 		x, y := r.geoToScreenCoordinates(float32(portal.Coords.X), float32(portal.Coords.Y))
 		if circle, ok := r.circles[guid]; ok {
 			circle.FillColor = portal.Color
+			circle.StrokeColor = portal.StrokeColor
 			circle.Move(fyne.Position{x - 7, y - 7})
 		} else {
 			circle := canvas.NewCircle(portal.Color)
+			circle.StrokeColor = portal.StrokeColor
+			circle.StrokeWidth = 2
 			circle.Resize(fyne.Size{13, 13})
-			circle.StrokeColor = color.Black
 			circle.Move(fyne.Position{x - 7, y - 7})
 			r.circles[guid] = circle
 		}
@@ -200,40 +203,20 @@ func (r *solutionMapRenderer) Refresh() {
 				x1, y1 := r.geoToScreenCoordinates(float32(path[i].X), float32(path[i].Y))
 				line.Position1 = fyne.Position{x0, y0}
 				line.Position2 = fyne.Position{x1, y1}
-				if r.isLineVisible(x0, y0, x1, y1) {
-					if line.Hidden {
-						line.Show()
-					}
-				} else {
-					if !line.Hidden {
-						line.Hide()
-					}
-				}
 				r.lines = append(r.lines, line)
 			}
 		}
 	} else {
 		lineIx := 0
-		numVisibleLines := 0
 		for _, path := range *r.solutionMap.portalPaths {
 			for i := 1; i < len(path); i++ {
 				x0, y0 := r.geoToScreenCoordinates(float32(path[i-1].X), float32(path[i-1].Y))
 				x1, y1 := r.geoToScreenCoordinates(float32(path[i].X), float32(path[i].Y))
 				line := r.lines[lineIx]
-				if r.isLineVisible(x0, y0, x1, y1) {
-					numVisibleLines++
-					if line.Hidden {
-						line.Show()
-					}
-					line.Position1 = fyne.Position{x0, y0}
-					line.Position2 = fyne.Position{x1, y1}
-					if r.linesZoom != r.solutionMap.zoom {
-						line.Resize(fyne.Size{x1 - x0, y1 - y0})
-					}
-				} else {
-					if !line.Hidden {
-						line.Hide()
-					}
+				line.Position1 = fyne.Position{x0, y0}
+				line.Position2 = fyne.Position{x1, y1}
+				if r.linesZoom != r.solutionMap.zoom {
+					line.Resize(fyne.Size{x1 - x0, y1 - y0})
 				}
 				lineIx++
 			}
@@ -245,17 +228,6 @@ func (r *solutionMapRenderer) Refresh() {
 	// Don't call refresh on tiles, as this causes the GL texture to be recreated,
 	// which is costly. Refreshing background rectangle is enough to redraw the canvas.
 	r.background.Refresh()
-}
-
-func (r *solutionMapRenderer) isLineVisible(x0, y0, x1, y1 float32) bool {
-	if x0 >= 0 && x0 < r.solutionMap.width && y0 >= 0 && y0 < r.solutionMap.height {
-		return true
-	}
-	if x1 >= 0 && x1 < r.solutionMap.width && y1 >= 0 && y1 < r.solutionMap.height {
-		return true
-	}
-	// check if line intersects a side of the fieldview
-	return false
 }
 
 func (r *solutionMapRenderer) positionImageAtCoords(img *canvas.Image, coord osm.TileCoord) {
@@ -398,13 +370,11 @@ func (r *SolutionMap) addTile(coords osm.TileCoord, image image.Image, placehold
 			return
 		}
 		if _, ok := r.visiblePlaceholderTiles[coords]; ok {
-			panic(coords)
 			return
 		}
 		r.visiblePlaceholderTiles[coords] = image
 	} else {
 		if _, ok := r.visibleTiles[coords]; ok {
-			panic(coords)
 			return
 		}
 		r.visibleTiles[coords] = image
@@ -629,7 +599,7 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 		//		item.Move(fyne.Position{x - 7, y - 7}) //s.canvas.CreateOval(x-4, y-4, x+5, y+5, tk.CanvasItemAttrFill("orange"), tk.CanvasItemAttrTags([]string{"portal"}))
 		// 	item.Raise()
 		guid := portal.Guid // local copy to make closure captures work correctly
-		s.portals[guid] = mapPortal{Coords: mapCoords, Name: portal.Name /*Shape: item, */, Color: color.NRGBA{255, 170, 0, 128}}
+		s.portals[guid] = mapPortal{Coords: mapCoords, Name: portal.Name, Color: color.NRGBA{255, 170, 0, 128}, StrokeColor: color.NRGBA{255, 170, 0, 255}}
 		// 	item.BindEvent("<Button-1>", func(e *tk.Event) {
 		// 		if s.onPortalLeftClick != nil {
 		// 			s.onPortalLeftClick(guid)
