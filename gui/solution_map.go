@@ -22,19 +22,16 @@ import (
 	"github.com/pwiecz/portal_patterns/lib"
 )
 
+const portalCircleRadius = 13
+
 var projection = s2.NewMercatorProjection(180)
 
-type tile struct {
-	x, y, zoom int
-	image      image.Image
-}
-
 type mapPortal struct {
+	GUID        string
 	Coords      r2.Point
 	Name        string
-	Color       color.Color
-	StrokeColor color.Color
-	//	Shape  *canvas.Circle
+	Color       color.NRGBA
+	StrokeColor color.NRGBA
 }
 
 type SolutionMap struct {
@@ -53,6 +50,7 @@ type SolutionMap struct {
 	width, height float32
 	// workaround for Fyne not setting the Position in the ScrollEvent.
 	lastMousePosition fyne.Position
+	mouseDownPosition fyne.Position
 
 	portalPaths *[][]r2.Point
 	tileFetcher *osm.MapTiles
@@ -63,11 +61,26 @@ type SolutionMap struct {
 	visiblePlaceholderTiles map[osm.TileCoord]image.Image
 	tilesToFetch            map[osm.TileCoord]struct{}
 
-	portals map[string]mapPortal
+	portals       []mapPortal
+	portalIndices map[string]int
 	//	objects            []fyne.CanvasObject // cache for list of displayed canvas objects
-	//	onPortalLeftClick  func(string)
-	//	onPortalRightClick func(string, int, int)
+	portalShapeIndex       *s2.ShapeIndex
+	shapeIndexIdToPortalId map[int32]int
+	portalUnderMouse       int
+
+	// Left click not over a portal
+	OnSelectionCleared func()
+	// Left click over a portal (bool is true if Control was pressed)
+	OnPortalSelected func(string, bool)
+	// Right click
+	OnContextMenu func(float32, float32)
+	// Right click over a portal
+	OnPortalContextMenu func(string, float32, float32)
 }
+
+var _ fyne.Draggable = &SolutionMap{}
+var _ desktop.Hoverable = &SolutionMap{}
+var _ desktop.Mouseable = &SolutionMap{}
 
 func NewSolutionMap(tileFetcher *osm.MapTiles) *SolutionMap {
 	s := &SolutionMap{
@@ -76,68 +89,32 @@ func NewSolutionMap(tileFetcher *osm.MapTiles) *SolutionMap {
 		visibleTiles:            make(map[osm.TileCoord]image.Image),
 		visiblePlaceholderTiles: make(map[osm.TileCoord]image.Image),
 		tilesToFetch:            make(map[osm.TileCoord]struct{}),
-		portals:                 make(map[string]mapPortal),
+		portalIndices:           make(map[string]int),
+		portalUnderMouse:        -1,
 		portalPaths:             &[][]r2.Point{},
 	}
 	s.ExtendBaseWidget(s)
 	return s
-	//	s.Window = fyne.CurrentApp().NewWindow(name + " - © OpenStreetMap")
-	//	s.layout = tk.NewVPackLayout(s.Window)
-	//	s.canvas = tk.NewCanvas(s.Window, tk.CanvasAttrBackground("#C8C8C8"))
-	//	s.layout.AddWidgetEx(s.canvas, tk.FillBoth, true, tk.AnchorNorth)
-	//	s.Window.ResizeN(800, 600)
-	//	s.canvas.BindEvent("<Configure>", func(e *tk.Event) {
-	//		s.canvas.SetWidth(e.Width)
-	//		s.canvas.SetHeight(e.Height)
-	//		s.showTiles()
-	//	})
-	//	s.canvas.SetFocus()
-	//	s.canvas.BindEvent("<Button1-Motion>", func(e *tk.Event) { s.OnDrag(e) })
-	//s.canvas.BindEvent("<Control-Button-1>", func(e *tk.Event) { fmt.Println("Ctrl-Click") })
-	//	s.canvas.BindEvent("<ButtonPress-1>", func(e *tk.Event) { s.OnButtonPress(e) })
-	//	s.canvas.BindEvent("<ButtonPress-4>", func(e *tk.Event) { s.OnScrollUp(e) })
-	//	s.canvas.BindEvent("<ButtonPress-5>", func(e *tk.Event) { s.OnScrollDown(e) })
-	//	s.canvas.BindEvent("<MouseWheel>", func(e *tk.Event) {
-	//		if e.WheelDelta < 0 {
-	//			s.OnScrollDown(e)
-	//		} else {
-	//			s.OnScrollUp(e)
-	//		}
-	//	})
-	//	s.canvas.BindEvent("<KeyRelease-plus>", func(e *tk.Event) {
-	//		s.OnZoomIn(s.canvas.Width()/2, s.canvas.Height()/2)
-	//	})
-	//	s.canvas.BindEvent("<KeyRelease-minus>", func(e *tk.Event) {
-	//		s.OnZoomOut(s.canvas.Width()/2, s.canvas.Height()/2)
-	//	})
-	//	s.portals = make(map[string]mapPortal)
-	//	s.mapTiles = make(map[osm.TileCoord]*tk.CanvasImage)
-	//	s.missingTiles = make(map[osm.TileCoord]bool)
-	//	s.tileFetcher = tileFetcher
-	//	s.tileCache = lru.New(1000)
-	//	s.font = tk.LoadSysFont(tk.SysTextFont)
-	//	s.fontDescription = s.font.Description()
-	//	s.textAscent = s.font.Ascent()
-	//	s.textDescent = s.font.Descent()
-	//	s.layout.Repack()
 }
 
 type solutionMapRenderer struct {
-	background   *canvas.Rectangle
-	visibleTiles map[osm.TileCoord]*canvas.Image
-	circles      map[string]*canvas.Circle
-	paths        *[][]r2.Point // paths for which the lines were created
-	linesZoom    int           // zoom level at which lines were drawn
-	lines        []*canvas.Line
-	solutionMap  *SolutionMap
+	background       *canvas.Rectangle
+	visibleTiles     map[osm.TileCoord]*canvas.Image
+	circles          []*canvas.Circle
+	paths            *[][]r2.Point // paths for which the lines were created
+	linesZoom        int           // zoom level at which lines were drawn
+	lines            []*canvas.Line
+	labelText        *canvas.Text
+	portalUnderMouse int
+	solutionMap      *SolutionMap
 }
 
 func (m *SolutionMap) CreateRenderer() fyne.WidgetRenderer {
 	return &solutionMapRenderer{
-		solutionMap:  m,
-		visibleTiles: make(map[osm.TileCoord]*canvas.Image),
-		circles:      make(map[string]*canvas.Circle),
-		background:   canvas.NewRectangle(color.White),
+		solutionMap:      m,
+		visibleTiles:     make(map[osm.TileCoord]*canvas.Image),
+		background:       canvas.NewRectangle(color.White),
+		portalUnderMouse: -1,
 	}
 }
 
@@ -148,11 +125,11 @@ func (r *solutionMapRenderer) Layout(size fyne.Size) {
 	r.solutionMap.updateVisibleTiles()
 }
 func (r *solutionMapRenderer) MinSize() fyne.Size {
-	return fyne.Size{256, 256}
+	return fyne.NewSize(256, 256)
 }
 func (r *solutionMapRenderer) Refresh() {
 	r.solutionMap.mutex.Lock()
-	for coords, _ := range r.visibleTiles {
+	for coords := range r.visibleTiles {
 		if _, ok := r.solutionMap.visibleTiles[coords]; !ok {
 			if _, ok := r.solutionMap.visiblePlaceholderTiles[coords]; !ok {
 				delete(r.visibleTiles, coords)
@@ -171,26 +148,23 @@ func (r *solutionMapRenderer) Refresh() {
 		}
 		r.positionImageAtCoords(r.visibleTiles[coords], coords)
 	}
-	for guid, _ := range r.circles {
-		if _, ok := r.solutionMap.portals[guid]; !ok {
-			delete(r.circles, guid)
+	for i, portal := range r.solutionMap.portals {
+		if i >= len(r.circles) {
+			r.circles = append(r.circles, canvas.NewCircle(portal.Color))
+			r.circles[i].Resize(fyne.NewSize(portalCircleRadius, portalCircleRadius))
 		}
-	}
-	for guid, portal := range r.solutionMap.portals {
+		circle := r.circles[i]
 		x, y := r.geoToScreenCoordinates(float32(portal.Coords.X), float32(portal.Coords.Y))
-		if circle, ok := r.circles[guid]; ok {
-			circle.FillColor = portal.Color
-			circle.StrokeColor = portal.StrokeColor
-			circle.Move(fyne.Position{x - 7, y - 7})
-		} else {
-			circle := canvas.NewCircle(portal.Color)
-			circle.StrokeColor = portal.StrokeColor
-			circle.StrokeWidth = 2
-			circle.Resize(fyne.Size{13, 13})
-			circle.Move(fyne.Position{x - 7, y - 7})
-			r.circles[guid] = circle
+		colorChanged := circle.FillColor != portal.Color || circle.StrokeColor != portal.StrokeColor
+		circle.FillColor = portal.Color
+		circle.StrokeColor = portal.StrokeColor
+		circle.StrokeWidth = 2
+		circle.Move(fyne.NewPos(x-6, y-6))
+		if colorChanged {
+			circle.Refresh()
 		}
 	}
+	r.circles = r.circles[:len(r.solutionMap.portals)]
 	if r.paths != r.solutionMap.portalPaths {
 		r.lines = []*canvas.Line{}
 		r.paths = r.solutionMap.portalPaths
@@ -201,8 +175,8 @@ func (r *solutionMapRenderer) Refresh() {
 				line.StrokeWidth = 4
 				x0, y0 := r.geoToScreenCoordinates(float32(path[i-1].X), float32(path[i-1].Y))
 				x1, y1 := r.geoToScreenCoordinates(float32(path[i].X), float32(path[i].Y))
-				line.Position1 = fyne.Position{x0, y0}
-				line.Position2 = fyne.Position{x1, y1}
+				line.Position1 = fyne.NewPos(x0, y0)
+				line.Position2 = fyne.NewPos(x1, y1)
 				r.lines = append(r.lines, line)
 			}
 		}
@@ -213,15 +187,37 @@ func (r *solutionMapRenderer) Refresh() {
 				x0, y0 := r.geoToScreenCoordinates(float32(path[i-1].X), float32(path[i-1].Y))
 				x1, y1 := r.geoToScreenCoordinates(float32(path[i].X), float32(path[i].Y))
 				line := r.lines[lineIx]
-				line.Position1 = fyne.Position{x0, y0}
-				line.Position2 = fyne.Position{x1, y1}
+				line.Position1 = fyne.NewPos(x0, y0)
+				line.Position2 = fyne.NewPos(x1, y1)
 				if r.linesZoom != r.solutionMap.zoom {
-					line.Resize(fyne.Size{x1 - x0, y1 - y0})
+					line.Resize(fyne.NewSize(x1-x0, y1-y0))
 				}
 				lineIx++
 			}
 		}
 		r.linesZoom = r.solutionMap.zoom
+	}
+	if r.portalUnderMouse != r.solutionMap.portalUnderMouse {
+		if r.solutionMap.portalUnderMouse == -1 {
+			r.labelText = nil
+		} else {
+			portalUnderMouse := r.solutionMap.portals[r.solutionMap.portalUnderMouse]
+			r.labelText = canvas.NewText(portalUnderMouse.Name, color.Black)
+			x, y := r.geoToScreenCoordinates(float32(portalUnderMouse.Coords.X), float32(portalUnderMouse.Coords.Y))
+			textSize := r.labelText.MinSize()
+			labelPosX, labelPosY := x-textSize.Width/2, y+portalCircleRadius-2
+			if labelPosX < 0 {
+				labelPosX = 0
+			} else if labelPosX+textSize.Width >= r.solutionMap.width {
+				labelPosX = r.solutionMap.width - textSize.Width
+			}
+			if labelPosY-textSize.Height < 0 {
+				labelPosY = y + 5 + textSize.Height + 4
+			}
+			r.labelText.Move(fyne.NewPos(labelPosX, labelPosY))
+			r.labelText.Refresh()
+		}
+		r.portalUnderMouse = r.solutionMap.portalUnderMouse
 	}
 	r.solutionMap.mutex.Unlock()
 
@@ -237,13 +233,13 @@ func (r *solutionMapRenderer) positionImageAtCoords(img *canvas.Image, coord osm
 	if position.X == x && position.Y == y {
 		return
 	}
-	img.Move(fyne.Position{x, y})
+	img.Move(fyne.NewPos(x, y))
 }
 func (r *solutionMapRenderer) createImageFromImage(img image.Image) *canvas.Image {
 	cImg := canvas.NewImageFromImage(img)
 	cImg.FillMode = canvas.ImageFillOriginal
 	cImg.ScaleMode = canvas.ImageScaleFastest
-	cImg.Resize(fyne.Size{256, 256})
+	cImg.Resize(fyne.NewSize(256, 256))
 	return cImg
 }
 func (r *solutionMapRenderer) Objects() []fyne.CanvasObject {
@@ -259,19 +255,17 @@ func (r *solutionMapRenderer) Objects() []fyne.CanvasObject {
 	for _, line := range r.lines {
 		objects = append(objects, line)
 	}
+	if r.labelText != nil {
+		objects = append(objects, r.labelText)
+	}
 	return objects
 }
 func (r *solutionMapRenderer) Destroy() {}
-func (r *SolutionMap) isTileMissing(coords osm.TileCoord) bool {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	_, ok := r.tilesToFetch[coords]
+func (m *SolutionMap) isTileMissing(coords osm.TileCoord) bool {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	_, ok := m.tilesToFetch[coords]
 	return ok
-}
-func (r *SolutionMap) addMissingTile(coords osm.TileCoord) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	r.tilesToFetch[coords] = struct{}{}
 }
 func (r *SolutionMap) removeMissingTile(coords osm.TileCoord) bool {
 	wasTileMissing := false
@@ -298,12 +292,18 @@ func (r *SolutionMap) getFromCache(coords osm.TileCoord) (image.Image, bool) {
 	return nil, false
 }
 
-func (s *SolutionMap) SetPortalColor(guid string, color color.Color) {
+func (s *SolutionMap) SetPortalColor(guid string, color color.NRGBA) {
+	fillColor := color
+	fillColor.A = 128
+	strokeColor := color
+	strokeColor.A = 255
 	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	if portal, ok := s.portals[guid]; ok {
-		portal.Color = color
+	if portalIx, ok := s.portalIndices[guid]; ok {
+		s.portals[portalIx].Color = fillColor
+		s.portals[portalIx].StrokeColor = strokeColor
 	}
+	s.mutex.Unlock()
+	s.Refresh()
 }
 
 //func (s *SolutionMap) RaisePortal(guid string) {
@@ -320,7 +320,8 @@ func (s *SolutionMap) Clear() {
 	s.visibleTiles = make(map[osm.TileCoord]image.Image)
 	s.visiblePlaceholderTiles = make(map[osm.TileCoord]image.Image)
 	s.tilesToFetch = make(map[osm.TileCoord]struct{})
-	s.portals = make(map[string]mapPortal)
+	s.portals = nil
+	s.portalIndices = make(map[string]int)
 	s.mutex.Unlock()
 	s.Refresh()
 }
@@ -336,8 +337,76 @@ func (s *SolutionMap) DragEnd()                    {}
 func (s *SolutionMap) MouseIn(*desktop.MouseEvent) {}
 func (s *SolutionMap) MouseMoved(event *desktop.MouseEvent) {
 	s.lastMousePosition = event.Position
+	if len(s.portals) == 0 {
+		return
+	}
+	zoomPow := float64(math.Pow(2, float32(s.zoom)))
+	mapX := (float64(event.Position.X) + float64(s.x0)) / 256 / zoomPow
+	mapY := (float64(event.Position.Y) + float64(s.y0)) / 256 / zoomPow
+	projectedX := mapX*360 - 180
+	projectedY := 180 - mapY*360
+	point := projection.Unproject(r2.Point{X: projectedX, Y: projectedY})
+	opts := s2.NewClosestEdgeQueryOptions().MaxResults(1)
+	query := s2.NewClosestEdgeQuery(s.portalShapeIndex, opts)
+	target := s2.NewMinDistanceToPointTarget(point)
+	result := query.FindEdges(target)
+	if len(result) == 0 {
+		return
+	}
+	shapeId := result[0].ShapeID()
+	portalIx, ok := s.shapeIndexIdToPortalId[shapeId]
+	if !ok {
+		return
+	}
+	closestPortal := s.portals[portalIx]
+	dx, dy := mapX-closestPortal.Coords.X, mapY-closestPortal.Coords.Y
+	dx, dy = dx*256*zoomPow, dy*256*zoomPow
+	portalUnderMouse := -1
+	if dx*dx+dy*dy <= portalCircleRadius*portalCircleRadius {
+		portalUnderMouse = portalIx
+	}
+	if portalUnderMouse != s.portalUnderMouse {
+		s.portalUnderMouse = portalUnderMouse
+		s.Refresh()
+	}
 }
 func (s *SolutionMap) MouseOut() {}
+func (s *SolutionMap) MouseDown(event *desktop.MouseEvent) {
+	// Explicitely trigger MouseMove, because the mouse might have been moved without
+	// the move being registered. E.g. while the context menu was shown.
+	s.MouseMoved(event)
+	s.mouseDownPosition = event.Position
+}
+func (s *SolutionMap) MouseUp(event *desktop.MouseEvent) {
+	dx := s.mouseDownPosition.X - event.Position.X
+	dy := s.mouseDownPosition.Y - event.Position.Y
+	if dx*dx+dy*dy > 4 {
+		return
+	}
+	if event.Button == desktop.MouseButtonPrimary {
+		if s.portalUnderMouse == -1 {
+			if s.OnSelectionCleared != nil {
+				s.OnSelectionCleared()
+			}
+		} else {
+			if s.OnPortalSelected != nil {
+				s.OnPortalSelected(s.portals[s.portalUnderMouse].GUID,
+					(event.Modifier&desktop.ControlModifier) != 0)
+			}
+		}
+	} else if event.Button == desktop.MouseButtonSecondary {
+		if s.portalUnderMouse == -1 {
+			if s.OnContextMenu != nil {
+				s.OnContextMenu(event.Position.X, event.Position.Y)
+			}
+		} else {
+			if s.OnContextMenu != nil {
+				s.OnPortalContextMenu(s.portals[s.portalUnderMouse].GUID,
+					event.Position.X, event.Position.Y)
+			}
+		}
+	}
+}
 func (s *SolutionMap) Scrolled(event *fyne.ScrollEvent) {
 	if event.Scrolled.DY == 0 {
 		return
@@ -361,7 +430,6 @@ func (s *SolutionMap) Scrolled(event *fyne.ScrollEvent) {
 	s.updateVisibleTiles()
 	s.Refresh()
 }
-
 func (r *SolutionMap) addTile(coords osm.TileCoord, image image.Image, placeholder bool) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -419,27 +487,27 @@ func (r *SolutionMap) updateVisibleTiles() {
 		}
 	}
 	r.mutex.Lock()
-	for coords, _ := range r.visibleTiles {
+	for coords := range r.visibleTiles {
 		if _, ok := tileCoords[coords]; !ok {
 			delete(r.visibleTiles, coords)
 		} else {
 			delete(tileCoords, coords)
 		}
 	}
-	for coords, _ := range r.visiblePlaceholderTiles {
+	for coords := range r.visiblePlaceholderTiles {
 		if _, ok := tileCoords[coords]; !ok {
 			delete(r.visiblePlaceholderTiles, coords)
 		}
 	}
 	// in tileCoords leave only new tiles to fetch.
-	for coords, _ := range r.tilesToFetch {
+	for coords := range r.tilesToFetch {
 		if _, ok := tileCoords[coords]; !ok {
 			delete(r.tilesToFetch, coords)
 		} else {
 			delete(tileCoords, coords)
 		}
 	}
-	for coords, _ := range tileCoords {
+	for coords := range tileCoords {
 		r.tilesToFetch[coords] = struct{}{}
 	}
 	r.mutex.Unlock()
@@ -489,56 +557,25 @@ func (r *SolutionMap) fetchIfNotCached(coords osm.TileCoord) {
 	}
 }
 
-// func (s *SolutionMap) showSolution() {
-// 	for _, line := range s.lines {
-// 		s.canvas.DeleteLine(line)
-// 	}
-// 	s.lines = []*tk.CanvasLine{}
-// 	for _, path := range s.portalPaths {
-// 		coords := make([]tk.CanvasCoordinates, 0, len(path))
-// 		for _, point := range path {
-// 			x, y := s.GeoToScreenCoordinates(point.X, point.Y)
-// 			coords = append(coords, tk.CanvasPixelCoords(x, y))
-// 		}
-// 		line := s.canvas.CreateLine(coords, tk.CanvasItemAttrWidth(1), tk.CanvasItemAttrFill("blue"), tk.CanvasItemAttrTags([]string{"link"}))
-// 		s.lines = append(s.lines, line)
-// 	}
-
-// }
-func (s *SolutionMap) setItemCoords() {
-	// for _, portal := range s.portals {
-	// 	x, y := s.GeoToScreenCoordinates(portal.Coords.X, portal.Coords.Y)
-	// 	err := portal.shape.MoveTo(x-4, y-4)
-	// 	if err != nil {
-	// 		log.Println(err)
-	// 	}
-	// }
-}
-
 func (r *solutionMapRenderer) geoToScreenCoordinates(x, y float32) (float32, float32) {
 	zoomPow := math.Pow(2., float32(r.solutionMap.zoom))
 	return x*zoomPow*256.0 - r.solutionMap.x0, y*zoomPow*256.0 - r.solutionMap.y0
 }
 
-// func (s *SolutionMap) ScrollToPortal(guid string) {
-// 	portal, ok := s.portals[guid]
-// 	if !ok {
-// 		log.Println("Cannot locate portal", guid, "on the map")
-// 		return
-// 	}
-// 	x, y := s.GeoToScreenCoordinates(portal.coords.X, portal.coords.Y)
-// 	if x >= 0 && x < float64(s.canvas.Width()) &&
-// 		y >= 0 && y < float64(s.canvas.Height()) {
-// 		return
-// 	}
-// 	s.shiftMap(x-float64(s.canvas.Width())/2, y-float64(s.canvas.Height())/2)
-// }
-// func (s *SolutionMap) OnScrollUp(e *tk.Event) {
-// 	s.OnZoomIn(e.PosX, e.PosY)
-// }
-// func (s *SolutionMap) OnScrollDown(e *tk.Event) {
-// 	s.OnZoomOut(e.PosX, e.PosY)
-// }
+func (s *SolutionMap) ScrollToPortal(guid string) {
+	// 	portal, ok := s.portals[guid]
+	// 	if !ok {
+	// 		log.Println("Cannot locate portal", guid, "on the map")
+	// 		return
+	// 	}
+	// 	x, y := s.GeoToScreenCoordinates(portal.coords.X, portal.coords.Y)
+	// 	if x >= 0 && x < float64(s.canvas.Width()) &&
+	// 		y >= 0 && y < float64(s.canvas.Height()) {
+	// 		return
+	// 	}
+	// 	s.shiftMap(x-float64(s.canvas.Width())/2, y-float64(s.canvas.Height())/2)
+}
+
 // func (s *SolutionMap) OnPortalLeftClick(onPortalLeftClick func(string)) {
 // 	s.onPortalLeftClick = onPortalLeftClick
 // }
@@ -549,7 +586,8 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 	if len(portals) == 0 {
 		s.mutex.Lock()
 		defer s.mutex.Unlock()
-		s.portals = make(map[string]mapPortal)
+		s.portals = nil
+		s.portalIndices = make(map[string]int)
 		return
 	}
 	chQuery := s2.NewConvexHullQuery()
@@ -586,8 +624,11 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 	s.x0 = (maxX+minX)*zoomPow*0.5*256.0 - s.width*0.5
 	s.y0 = (maxY+minY)*zoomPow*0.5*256.0 - s.height*0.5
 	s.mutex.Lock()
-	s.portals = make(map[string]mapPortal)
-	for _, portal := range portals {
+	s.portals = []mapPortal{}
+	s.portalIndices = make(map[string]int)
+	s.portalShapeIndex = s2.NewShapeIndex()
+	s.shapeIndexIdToPortalId = make(map[int32]int)
+	for i, portal := range portals {
 		mapCoords := projection.FromLatLng(portal.LatLng)
 		mapCoords.X = (mapCoords.X + 180) / 360
 		mapCoords.Y = (180 - mapCoords.Y) / 360
@@ -599,7 +640,13 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 		//		item.Move(fyne.Position{x - 7, y - 7}) //s.canvas.CreateOval(x-4, y-4, x+5, y+5, tk.CanvasItemAttrFill("orange"), tk.CanvasItemAttrTags([]string{"portal"}))
 		// 	item.Raise()
 		guid := portal.Guid // local copy to make closure captures work correctly
-		s.portals[guid] = mapPortal{Coords: mapCoords, Name: portal.Name, Color: color.NRGBA{255, 170, 0, 128}, StrokeColor: color.NRGBA{255, 170, 0, 255}}
+		s.portals = append(s.portals, mapPortal{GUID: guid, Coords: mapCoords, Name: portal.Name, Color: color.NRGBA{255, 170, 0, 128}, StrokeColor: color.NRGBA{255, 170, 0, 255}})
+		s.portalIndices[guid] = len(s.portals) - 1
+		portalPoint := s2.PointFromLatLng(portal.LatLng)
+		portalCells := s2.SimpleRegionCovering(portalPoint, portalPoint, 30)
+		cell := s2.CellFromCellID(portalCells[0])
+		portalId := s.portalShapeIndex.Add(s2.PolygonFromCell(cell))
+		s.shapeIndexIdToPortalId[portalId] = i
 		// 	item.BindEvent("<Button-1>", func(e *tk.Event) {
 		// 		if s.onPortalLeftClick != nil {
 		// 			s.onPortalLeftClick(guid)
@@ -656,51 +703,4 @@ func (s *SolutionMap) setSolutionPoints(lines [][]s2.Point) {
 	// 	if len(s.lines) > 0 {
 	//		s.canvas.RaiseItemsAbove("portal", "link")
 	//	}
-}
-
-// func (s *SolutionMap) onPortalEntered(guid string) {
-// 	if s.nameLabel != nil {
-// 		s.canvas.DeleteText(s.nameLabel)
-// 		s.nameLabel = nil
-// 	}
-// 	if s.nameLabelBackgound != nil {
-// 		s.canvas.DeleteRectangle(s.nameLabelBackgound)
-// 		s.nameLabelBackgound = nil
-// 	}
-// 	portal, ok := s.portals[guid]
-// 	if !ok {
-// 		return
-// 	}
-// 	x, y := s.GeoToScreenCoordinates(portal.coords.X, portal.coords.Y)
-// 	backgroundWidth := float64(s.font.MeasureTextWidth(portal.name) + 6)
-// 	backgroundHeight := float64(s.textAscent + s.textDescent + 8)
-// 	backgroundX, backgroundY := x-backgroundWidth/2, y-9
-// 	if backgroundX < 0 {
-// 		backgroundX = 0
-// 	} else if backgroundX+backgroundWidth >= float64(s.canvas.Width()) {
-// 		backgroundX = float64(s.canvas.Width()) - backgroundWidth
-// 	}
-// 	if backgroundY-backgroundHeight < 0 {
-// 		backgroundY = y + 5 + backgroundHeight + 4
-// 	}
-// 	s.nameLabelBackgound = s.canvas.CreateRectangle(backgroundX, backgroundY, backgroundX+backgroundWidth, backgroundY-backgroundHeight, tk.CanvasItemAttrFill("white"))
-// 	s.nameLabel = s.canvas.CreateText(backgroundX+backgroundWidth/2, backgroundY-3, tk.CanvasItemAttrText(portal.name), tk.CanvasItemAttrFont(s.fontDescription), tk.CanvasItemAttrAnchor(tk.AnchorSouth))
-// }
-// func (s *SolutionMap) onPortalLeft(guid string) {
-// 	if s.nameLabel != nil {
-// 		s.canvas.DeleteText(s.nameLabel)
-// 		s.nameLabel = nil
-// 	}
-// 	if s.nameLabelBackgound != nil {
-// 		s.canvas.DeleteRectangle(s.nameLabelBackgound)
-// 		s.nameLabelBackgound = nil
-// 	}
-// }
-
-func portalsToPoints(portals []lib.Portal) []s2.Point {
-	points := make([]s2.Point, 0, len(portals))
-	for _, portal := range portals {
-		points = append(points, s2.PointFromLatLng(portal.LatLng))
-	}
-	return points
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"path/filepath"
 
 	"fyne.io/fyne/v2"
@@ -16,11 +17,11 @@ import (
 
 type pattern interface {
 	search()
-	portalColor(string) string
+	portalColor(string) color.NRGBA
 	portalLabel(string) string
 	solutionString() string
 	onReset()
-	onPortalContextMenu(guid string, x, y int)
+	onContextMenu(x, y float32)
 }
 
 type baseTab struct {
@@ -38,9 +39,10 @@ type baseTab struct {
 	//	portalList      *PortalList
 	//	portalScrollBar *tk.ScrollBar
 	solutionMap     *SolutionMap
+	portalList *widget.Table
 	portals         []lib.Portal
-	selectedPortals map[string]bool
-	disabledPortals map[string]bool
+	selectedPortals map[string]struct{}
+	disabledPortals map[string]struct{}
 	pattern         pattern
 	name            string
 }
@@ -53,8 +55,8 @@ func NewBaseTab(app fyne.App, parent fyne.Window, name string, conf *configurati
 		configuration: conf,
 		tileFetcher:   tileFetcher,
 	}
-	t.add = widget.NewButton("Add", func() { t.onAdd() })
-	t.reset = widget.NewButton("Reset", func() { t.onReset() })
+	t.add = widget.NewButton("Add", t.onAdd)
+	t.reset = widget.NewButton("Reset", t.onReset)
 
 	t.find = widget.NewButton("Search", func() { go t.pattern.search() })
 	t.find.Disable()
@@ -83,6 +85,8 @@ func NewBaseTab(app fyne.App, parent fyne.Window, name string, conf *configurati
 	t.progress = widget.NewProgressBar()
 	t.progress.Min = 0
 	t.progress.Max = 1
+	t.portalList = widget.NewTable(t.tableSize, t.tableCreate, t.tableUpdate)
+//	t.portalList.SetColumnWidth(0, t.portalList.
 	// t.portalList = NewPortalList(parent)
 	// t.portalList.OnPortalRightClick(func(guid string, x, y int) {
 	// 	t.pattern.onPortalContextMenu(guid, x, y)
@@ -92,23 +96,44 @@ func NewBaseTab(app fyne.App, parent fyne.Window, name string, conf *configurati
 	// 	t.OnSelectionChanged(selectedPortals)
 	// })
 
-	t.selectedPortals = make(map[string]bool)
-	t.disabledPortals = make(map[string]bool)
+	t.selectedPortals = make(map[string]struct{})
+	t.disabledPortals = make(map[string]struct{})
 	return t
 }
 
+func (t *baseTab) tableSize() (int, int) {
+	return len(t.portals), 2
+}
+func (t *baseTab) tableCreate() fyne.CanvasObject {
+	return widget.NewLabel("                    ")
+}
+func (t *baseTab) tableUpdate(id widget.TableCellID, canvasObject fyne.CanvasObject) {
+	if label, ok := canvasObject.(*widget.Label); ok {
+		if id.Col == 0 {
+			label.SetText(t.portals[id.Row].Name)
+		} else {
+			label.SetText(t.pattern.portalLabel(t.portals[id.Row].Guid))
+		}
+	}
+}
+
 func (t *baseTab) onAdd() {
-	fileOpenDialog := dialog.NewFileOpen(func(file fyne.URIReadCloser, err error) { t.onFileChosen(file, err) }, t.parent)
+	fileOpenDialog := dialog.NewFileOpen(t.onFileChosen, t.parent)
 	lister, err := storage.ListerForURI(storage.NewFileURI(t.configuration.PortalsDirectory))
 	if err == nil {
 		fileOpenDialog.SetLocation(lister)
 	}
+	fileOpenDialog.SetFilter(storage.NewExtensionFileFilter([]string{".json", ".csv"}))
+
 	fileOpenDialog.Show()
 }
 
 func (t *baseTab) onFileChosen(file fyne.URIReadCloser, err error) {
 	if err != nil {
 		fmt.Println(err)
+		return
+	}
+	if file == nil {
 		return
 	}
 	filename := file.URI().Path()
@@ -125,11 +150,12 @@ func (t *baseTab) onFileChosen(file fyne.URIReadCloser, err error) {
 
 func (t *baseTab) onReset() {
 	t.portals = nil
-	t.selectedPortals = make(map[string]bool)
-	t.disabledPortals = make(map[string]bool)
+	t.selectedPortals = make(map[string]struct{})
+	t.disabledPortals = make(map[string]struct{})
 	if t.solutionMap != nil {
 		t.solutionMap.Clear()
 	}
+	t.pattern.onReset()
 }
 
 // func (t *baseTab) onAdd() {
@@ -158,7 +184,7 @@ func (t *baseTab) onReset() {
 // func (t *baseTab) onReset() {
 // 	t.portals = ([]lib.Portal)(nil)
 // 	t.selectedPortals = make(map[string]bool)
-// 	t.disabledPortals = make(map[string]bool)
+// 	t.disabledPortalsn = make(map[string]bool)
 // 	t.reset.SetState(tk.StateDisable)
 // 	t.find.SetState(tk.StateDisable)
 // 	t.save.SetState(tk.StateDisable)
@@ -218,10 +244,14 @@ func (t *baseTab) addPortals(portals []lib.Portal) {
 	}
 	if t.solutionMap == nil {
 		t.solutionMap = NewSolutionMap(t.tileFetcher)
+		t.solutionMap.OnSelectionCleared = t.OnSelectionCleared
+		t.solutionMap.OnPortalSelected = t.OnPortalSelected
+		t.solutionMap.OnContextMenu = t.pattern.onContextMenu
+		t.solutionMap.OnPortalContextMenu = t.onPortalContextMenu
 		solutionMapWin := t.app.NewWindow(t.name + " OpenStreetMap")
 		solutionMapWin.SetContent(t.solutionMap)
 		solutionMapWin.SetOnClosed(func() { t.solutionMap = nil })
-		solutionMapWin.Resize(fyne.Size{800, 600})
+		solutionMapWin.Resize(fyne.NewSize(800, 600))
 		/*		t.solutionMap.OnPortalLeftClick(func(guid string) {
 				t.OnPortalSelected(guid)
 				})
@@ -239,62 +269,43 @@ func (t *baseTab) addPortals(portals []lib.Portal) {
 	for _, portal := range t.portals {
 		t.portalStateChanged(portal.Guid)
 	}
+	t.portalList.Refresh()
 }
 
-// func stringMapsAreTheSame(map1 map[string]bool, map2 map[string]bool) bool {
-// 	for s := range map1 {
-// 		if !map2[s] {
-// 			return false
-// 		}
-// 	}
-// 	for s := range map2 {
-// 		if !map1[s] {
-// 			return false
-// 		}
-// 	}
-// 	return true
-// }
+func (t *baseTab) onPortalContextMenu(guid string, x, y float32) {
+	if _, ok := t.selectedPortals[guid]; !ok {
+		t.OnPortalSelected(guid, false)
+	}
+	t.pattern.onContextMenu(x, y)
+}
 
-// func (t *baseTab) OnSelectionChanged(selection []string) {
-// 	selectionMap := make(map[string]bool)
-// 	for _, guid := range selection {
-// 		selectionMap[guid] = true
-// 	}
-// 	if stringMapsAreTheSame(selectionMap, t.selectedPortals) {
-// 		return
-// 	}
-// 	oldSelected := t.selectedPortals
-// 	t.selectedPortals = selectionMap
-// 	if t.portalList != nil {
-// 		t.portalList.SetSelectedPortals(t.selectedPortals)
-// 	}
-// 	if t.solutionMap != nil {
-// 		for guid := range oldSelected {
-// 			t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
-// 		}
-// 		for _, guid := range selection {
-// 			t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
-// 			t.solutionMap.RaisePortal(guid)
-// 		}
-// 	}
-// 	if len(selection) == 1 {
-// 		if t.portalList != nil {
-// 			t.portalList.ScrollToPortal(selection[0])
-// 		}
-// 		if t.solutionMap != nil {
-// 			t.solutionMap.ScrollToPortal(selection[0])
-// 		}
-// 	}
-// }
-// func (t *baseTab) OnPortalSelected(guid string) {
-// 	t.OnSelectionChanged([]string{guid})
-// 	if t.portalList != nil {
-// 		t.portalList.ScrollToPortal(guid)
-// 	}
-// 	if t.solutionMap != nil {
-// 		t.solutionMap.ScrollToPortal(guid)
-// 	}
-// }
+func (t *baseTab) OnSelectionCleared() {
+	oldSelection := t.selectedPortals
+	t.selectedPortals = make(map[string]struct{})
+	for guid := range oldSelection {
+		t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
+	}
+}
+func (t *baseTab) OnPortalSelected(guid string, addedToSelection bool) {
+	if _, ok := t.selectedPortals[guid]; ok {
+		if addedToSelection || len(t.selectedPortals) == 1 {
+			return
+		}
+	}
+	if !addedToSelection {
+		t.OnSelectionCleared()
+	}
+	t.selectedPortals[guid] = struct{}{}
+	t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
+
+	//	t.OnSelectionChanged([]string{guid})
+	//	if t.portalList != nil {
+	//		t.portalList.ScrollToPortal(guid)
+	//	}
+	if t.solutionMap != nil {
+		t.solutionMap.ScrollToPortal(guid)
+	}
+}
 
 func (t *baseTab) portalStateChanged(guid string) {
 	// 	if t.portalList != nil {
@@ -303,4 +314,14 @@ func (t *baseTab) portalStateChanged(guid string) {
 	// 	if t.solutionMap != nil {
 	// 		t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
 	// 	}
+}
+
+func (t *baseTab) enableSelectedPortals() {
+	for guid := range t.selectedPortals {
+		if _, ok := t.disabledPortals[guid]; !ok {
+			continue
+		}
+		delete(t.disabledPortals, guid)
+		t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
+	}
 }
