@@ -25,16 +25,15 @@ type homogeneousTab struct {
 	topTriangle   *widget.Select
 	solution      []lib.Portal
 	depth         uint16
-	anchorPortals map[string]struct{}
+	cornerPortals map[string]struct{}
 }
 
 var _ pattern = (*homogeneousTab)(nil)
 
 func NewHomogeneousTab(app fyne.App, parent fyne.Window, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *container.TabItem {
 	t := &homogeneousTab{}
-	t.baseTab = NewBaseTab(app, parent, "Homogeneous", conf, tileFetcher)
-	t.pattern = t
-	t.anchorPortals = make(map[string]struct{})
+	t.baseTab = NewBaseTab(app, parent, "Homogeneous", t, conf, tileFetcher)
+	t.cornerPortals = make(map[string]struct{})
 	maxDepthLabel := widget.NewLabel("Max depth: ")
 	t.maxDepth = widget.NewEntry()
 	t.maxDepth.SetText("6")
@@ -61,19 +60,19 @@ func NewHomogeneousTab(app fyne.App, parent fyne.Window, conf *configuration.Con
 	return container.NewTabItem("Homogeneous",
 		container.New(
 			layout.NewBorderLayout(topContent, nil, nil, nil),
-			topContent, t.portalList))
+			topContent))
 }
 
 func (t *homogeneousTab) onReset() {
-	t.anchorPortals = make(map[string]struct{})
+	t.cornerPortals = make(map[string]struct{})
 }
 
 func (t *homogeneousTab) portalLabel(guid string) string {
 	if _, ok := t.disabledPortals[guid]; ok {
 		return "Disabled"
 	}
-	if _, ok := t.anchorPortals[guid]; ok {
-		return "Anchor"
+	if _, ok := t.cornerPortals[guid]; ok {
+		return "Corner"
 	}
 	return "Normal"
 }
@@ -85,7 +84,7 @@ func (t *homogeneousTab) portalColor(guid string) color.NRGBA {
 		}
 		return color.NRGBA{64, 64, 64, 255}
 	}
-	if _, ok := t.anchorPortals[guid]; ok {
+	if _, ok := t.cornerPortals[guid]; ok {
 		if _, ok := t.selectedPortals[guid]; !ok {
 			return color.NRGBA{0, 255, 0, 255}
 		}
@@ -98,11 +97,40 @@ func (t *homogeneousTab) portalColor(guid string) color.NRGBA {
 }
 
 func (t *homogeneousTab) onContextMenu(x, y float32) {
-	menuItems := []*fyne.MenuItem{
-		fyne.NewMenuItem("Disable portals", t.disableSelectedPortals),
-		fyne.NewMenuItem("Enable portals", t.enableSelectedPortals),
-		fyne.NewMenuItem("Make anchors", t.makeSelectedPortalsAnchors),
-		fyne.NewMenuItem("Unmake anchors", t.unmakeSelectedPortalsAnchors)}
+	menuItems := []*fyne.MenuItem{}
+	var isDisabledSelected, isEnabledSelected, isCornerSelected bool
+	numNonCornerSelected := 0
+	for guid := range t.selectedPortals {
+		if _, ok := t.disabledPortals[guid]; ok {
+			isDisabledSelected = true
+		} else {
+			isEnabledSelected = true
+		}
+		if _, ok := t.cornerPortals[guid]; ok {
+			isCornerSelected = true
+		} else {
+			numNonCornerSelected++
+		}
+	}
+	if isDisabledSelected {
+		menuItems = append(menuItems,
+			fyne.NewMenuItem("Enable", t.enableSelectedPortals))
+	}
+	if isEnabledSelected {
+		menuItems = append(menuItems,
+			fyne.NewMenuItem("Disable", t.disableSelectedPortals))
+	}
+	if numNonCornerSelected > 0 && numNonCornerSelected+len(t.cornerPortals) <= 3 {
+		menuItems = append(menuItems,
+			fyne.NewMenuItem("Make corner", t.makeSelectedPortalsCorners))
+	}
+	if isCornerSelected {
+		menuItems = append(menuItems,
+			fyne.NewMenuItem("Unmake corner", t.unmakeSelectedPortalsCorners))
+	}
+	if len(menuItems) == 0 {
+		return
+	}
 	menu := fyne.NewMenu("", menuItems...)
 	menu.Items = menuItems
 	widget.ShowPopUpMenuAtPosition(menu, t.app.Driver().CanvasForObject(t.solutionMap),
@@ -114,12 +142,12 @@ func (t *homogeneousTab) search() {
 		return
 	}
 	portals := []lib.Portal{}
-	anchors := []int{}
+	corners := []int{}
 	for _, portal := range t.portals {
 		if _, ok := t.disabledPortals[portal.Guid]; !ok {
 			portals = append(portals, portal)
-			if _, ok := t.anchorPortals[portal.Guid]; ok {
-				anchors = append(anchors, len(portals)-1)
+			if _, ok := t.cornerPortals[portal.Guid]; ok {
+				corners = append(corners, len(portals)-1)
 			}
 		}
 	}
@@ -147,6 +175,10 @@ func (t *homogeneousTab) search() {
 		options = append(options, lib.HomogeneousRandom{Rand: rand})
 	}
 	options = append(options, lib.HomogeneousProgressFunc(t.onProgress))
+	options = append(options, lib.HomogeneousFixedCornerIndices(corners))
+
+	t.solutionLabel.SetText("")
+
 	t.add.Disable()
 	t.reset.Disable()
 	t.maxDepth.Disable()
@@ -156,9 +188,6 @@ func (t *homogeneousTab) search() {
 	t.find.Disable()
 	t.save.Disable()
 	t.copy.Disable()
-	options = append(options, lib.HomogeneousFixedCornerIndices(anchors))
-
-	t.solutionLabel.SetText("")
 	t.solution, t.depth = lib.DeepestHomogeneous(portals, options...)
 
 	if t.solutionMap != nil {
@@ -186,73 +215,32 @@ func (t *homogeneousTab) solutionString() string {
 	return lib.HomogeneousDrawToolsString(t.depth, t.solution)
 }
 
-// func (t *homogeneousTab) EnablePortal(guid string) {
-// 	delete(t.disabledPortals, guid)
-// 	t.portalStateChanged(guid)
-// }
-// func (t *homogeneousTab) DisablePortal(guid string) {
-// 	t.disabledPortals[guid] = true
-// 	delete(t.anchorPortals, guid)
-// 	t.portalStateChanged(guid)
-// }
 func (t *homogeneousTab) disableSelectedPortals() {
 	for guid := range t.selectedPortals {
 		if _, ok := t.disabledPortals[guid]; ok {
 			continue
 		}
 		t.disabledPortals[guid] = struct{}{}
-		delete(t.anchorPortals, guid)
+		delete(t.cornerPortals, guid)
 		t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
 	}
 }
-func (t *homogeneousTab) makeSelectedPortalsAnchors() {
+func (t *homogeneousTab) makeSelectedPortalsCorners() {
 	for guid := range t.selectedPortals {
-		if _, ok := t.anchorPortals[guid]; ok {
+		if _, ok := t.cornerPortals[guid]; ok {
 			continue
 		}
-		t.anchorPortals[guid] = struct{}{}
+		t.cornerPortals[guid] = struct{}{}
+		delete(t.disabledPortals, guid)
 		t.solutionMap.SetPortalColor(guid, t.portalColor(guid))
 	}
 }
-func (t *homogeneousTab) unmakeSelectedPortalsAnchors() {
+func (t *homogeneousTab) unmakeSelectedPortalsCorners() {
 	for guid := range t.selectedPortals {
-		if _, ok := t.anchorPortals[guid]; !ok {
+		if _, ok := t.cornerPortals[guid]; !ok {
 			continue
 		}
-		delete(t.anchorPortals, guid)
+		delete(t.cornerPortals, guid)
 		t.solutionMap.SetPortalColor(guid, t.portalColor(guid))
 	}
 }
-
-// func (t *homogeneousTab) UnmakeAnchor(guid string) {
-// 	delete(t.anchorPortals, guid)
-// 	t.portalStateChanged(guid)
-// }
-
-// type homogeneousPortalContextMenu struct {
-// 	*tk.Menu
-// }
-
-// func NewHomogeneousPortalContextMenu(parent tk.Widget, guid string, t *homogeneousTab) *homogeneousPortalContextMenu {
-// 	l := &homogeneousPortalContextMenu{}
-// 	l.Menu = tk.NewMenu(parent)
-// 	if t.disabledPortals[guid] {
-// 		enableAction := tk.NewAction("Enable")
-// 		enableAction.OnCommand(func() { t.EnablePortal(guid) })
-// 		l.AddAction(enableAction)
-// 	} else {
-// 		disableAction := tk.NewAction("Disable")
-// 		disableAction.OnCommand(func() { t.DisablePortal(guid) })
-// 		l.AddAction(disableAction)
-// 	}
-// 	if t.anchorPortals[guid] {
-// 		unanchorAction := tk.NewAction("Unmake anchor")
-// 		unanchorAction.OnCommand(func() { t.UnmakeAnchor(guid) })
-// 		l.AddAction(unanchorAction)
-// 	} else if !t.disabledPortals[guid] && len(t.anchorPortals) < 3 {
-// 		anchorAction := tk.NewAction("Make anchor")
-// 		anchorAction.OnCommand(func() { t.MakeAnchor(guid) })
-// 		l.AddAction(anchorAction)
-// 	}
-// 	return l
-// }

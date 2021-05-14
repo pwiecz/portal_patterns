@@ -25,8 +25,8 @@ var _ pattern = (*herringboneTab)(nil)
 
 func NewHerringboneTab(app fyne.App, parent fyne.Window, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *container.TabItem {
 	t := &herringboneTab{}
-	t.baseTab = NewBaseTab(app, parent, "Herringbone", conf, tileFetcher)
-	t.pattern = t
+	t.baseTab = NewBaseTab(app, parent, "Herringbone", t, conf, tileFetcher)
+	t.basePortals = make(map[string]struct{})
 	content := container.New(
 		layout.NewGridLayout(2))
 	topContent := container.NewVBox(
@@ -38,7 +38,7 @@ func NewHerringboneTab(app fyne.App, parent fyne.Window, conf *configuration.Con
 	return container.NewTabItem("Herringbone",
 		container.New(
 			layout.NewBorderLayout(topContent, nil, nil, nil),
-			topContent, t.portalList))
+			topContent))
 }
 
 func (t *herringboneTab) onReset() {
@@ -75,17 +75,44 @@ func (t *herringboneTab) portalColor(guid string) color.NRGBA {
 }
 
 func (t *herringboneTab) onContextMenu(x, y float32) {
-	menuItems := []*fyne.MenuItem{
-		fyne.NewMenuItem("Disable portals", t.disableSelectedPortals),
-		fyne.NewMenuItem("Enable portals", t.enableSelectedPortals),
-		fyne.NewMenuItem("Make base", t.makeSelectedPortalsBase),
-		fyne.NewMenuItem("Unmake base", t.unmakeSelectedPortalsBase)}
+	menuItems := []*fyne.MenuItem{}
+	var isDisabledSelected, isEnabledSelected, isBaseSelected bool
+	numNonBaseSelected := 0
+	for guid := range t.selectedPortals {
+		if _, ok := t.disabledPortals[guid]; ok {
+			isDisabledSelected = true
+		} else {
+			isEnabledSelected = true
+		}
+		if _, ok := t.basePortals[guid]; ok {
+			isBaseSelected = true
+		} else {
+			numNonBaseSelected++
+		}
+	}
+	if isDisabledSelected {
+		menuItems = append(menuItems,
+			fyne.NewMenuItem("Enable", t.enableSelectedPortals))
+	}
+	if isEnabledSelected {
+		menuItems = append(menuItems,
+			fyne.NewMenuItem("Disable", t.disableSelectedPortals))
+	}
+	if numNonBaseSelected > 0 && numNonBaseSelected+len(t.basePortals) <= 2 {
+		menuItems = append(menuItems,
+			fyne.NewMenuItem("Make base", t.makeSelectedPortalsBases))
+	}
+	if isBaseSelected {
+		menuItems = append(menuItems,
+			fyne.NewMenuItem("Unmake base", t.unmakeSelectedPortalsBases))
+	}
+	if len(menuItems) == 0 {
+		return
+	}
 	menu := fyne.NewMenu("", menuItems...)
 	menu.Items = menuItems
 	widget.ShowPopUpMenuAtPosition(menu, t.app.Driver().CanvasForObject(t.solutionMap),
 		fyne.NewPos(x, y))
-	// 	menu := NewHerringbonePortalContextMenu(tk.RootWindow(), guid, t)
-	// 	tk.PopupMenu(menu.Menu, x, y)
 }
 
 func (t *herringboneTab) search() {
@@ -129,15 +156,6 @@ func (t *herringboneTab) solutionString() string {
 	return lib.HerringboneDrawToolsString(t.b0, t.b1, t.solution)
 }
 
-// func (t *herringboneTab) EnablePortal(guid string) {
-// 	delete(t.disabledPortals, guid)
-// 	t.portalStateChanged(guid)
-// }
-// func (t *herringboneTab) DisablePortal(guid string) {
-// 	t.disabledPortals[guid] = true
-// 	delete(t.anchorPortals, guid)
-// 	t.portalStateChanged(guid)
-// }
 func (t *herringboneTab) disableSelectedPortals() {
 	for guid := range t.selectedPortals {
 		if _, ok := t.disabledPortals[guid]; ok {
@@ -148,16 +166,17 @@ func (t *herringboneTab) disableSelectedPortals() {
 		t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
 	}
 }
-func (t *herringboneTab) makeSelectedPortalsBase() {
+func (t *herringboneTab) makeSelectedPortalsBases() {
 	for guid := range t.selectedPortals {
 		if _, ok := t.basePortals[guid]; ok {
 			continue
 		}
 		t.basePortals[guid] = struct{}{}
+		delete(t.disabledPortals, guid)
 		t.solutionMap.SetPortalColor(guid, t.portalColor(guid))
 	}
 }
-func (t *herringboneTab) unmakeSelectedPortalsBase() {
+func (t *herringboneTab) unmakeSelectedPortalsBases() {
 	for guid := range t.selectedPortals {
 		if _, ok := t.basePortals[guid]; !ok {
 			continue
@@ -166,151 +185,3 @@ func (t *herringboneTab) unmakeSelectedPortalsBase() {
 		t.solutionMap.SetPortalColor(guid, t.portalColor(guid))
 	}
 }
-
-// type herringboneTab struct {
-// 	*baseTab
-// 	b0, b1      lib.Portal
-// 	solution    []lib.Portal
-// 	basePortals map[string]bool
-// }
-
-// func NewHerringboneTab(parent tk.Widget, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *herringboneTab {
-// 	t := &herringboneTab{}
-// 	t.baseTab = NewBaseTab(parent, "Herringbone", conf, tileFetcher)
-// 	t.pattern = t
-// 	addResetBox := tk.NewHPackLayout(parent)
-// 	addResetBox.AddWidget(t.add)
-// 	addResetBox.AddWidget(t.reset)
-// 	t.AddWidget(addResetBox)
-// 	solutionBox := tk.NewHPackLayout(parent)
-// 	solutionBox.AddWidget(t.find)
-// 	solutionBox.AddWidget(t.save)
-// 	solutionBox.AddWidget(t.copy)
-// 	solutionBox.AddWidget(t.solutionLabel)
-// 	t.AddWidget(solutionBox)
-// 	t.AddWidgetEx(t.progress, tk.FillBoth, true, tk.AnchorWest)
-// 	t.AddWidgetEx(t.portalList, tk.FillBoth, true, tk.AnchorWest)
-
-// 	t.basePortals = make(map[string]bool)
-// 	return t
-// }
-
-// func (t *herringboneTab) onReset() {
-// 	t.basePortals = make(map[string]bool)
-// }
-
-// func (t *herringboneTab) portalLabel(guid string) string {
-// 	if t.disabledPortals[guid] {
-// 		return "Disabled"
-// 	}
-// 	if t.basePortals[guid] {
-// 		return "Base"
-// 	}
-// 	return "Normal"
-// }
-
-// func (t *herringboneTab) portalColor(guid string) string {
-// 	if t.disabledPortals[guid] {
-// 		if !t.selectedPortals[guid] {
-// 			return "gray"
-// 		}
-// 		return "dark gray"
-// 	}
-// 	if t.basePortals[guid] {
-// 		if !t.selectedPortals[guid] {
-// 			return "green"
-// 		}
-// 		return "dark green"
-// 	}
-// 	if !t.selectedPortals[guid] {
-// 		return "orange"
-// 	}
-// 	return "red"
-// }
-
-// func (t *herringboneTab) onPortalContextMenu(guid string, x, y int) {
-// 	menu := NewHerringbonePortalContextMenu(tk.RootWindow(), guid, t)
-// 	tk.PopupMenu(menu.Menu, x, y)
-// }
-
-// func (t *herringboneTab) search() {
-// 	if len(t.portals) < 3 {
-// 		return
-// 	}
-
-// 	t.add.SetState(tk.StateDisable)
-// 	t.reset.SetState(tk.StateDisable)
-// 	t.find.SetState(tk.StateDisable)
-// 	t.save.SetState(tk.StateDisable)
-// 	tk.Update()
-// 	portals := []lib.Portal{}
-// 	base := []int{}
-// 	for _, portal := range t.portals {
-// 		if !t.disabledPortals[portal.Guid] {
-// 			portals = append(portals, portal)
-// 			if t.basePortals[portal.Guid] {
-// 				base = append(base, len(portals)-1)
-// 			}
-// 		}
-// 	}
-// 	t.b0, t.b1, t.solution = lib.LargestHerringbone(portals, base, runtime.GOMAXPROCS(0), func(val int, max int) { t.onProgress(val, max) })
-// 	if t.solutionMap != nil {
-// 		t.solutionMap.SetSolution([][]lib.Portal{lib.HerringbonePolyline(t.b0, t.b1, t.solution)})
-// 	}
-// 	solutionText := fmt.Sprintf("Solution length: %d", len(t.solution))
-// 	t.solutionLabel.SetText(solutionText)
-// 	t.add.SetState(tk.StateNormal)
-// 	t.reset.SetState(tk.StateNormal)
-// 	t.find.SetState(tk.StateNormal)
-// 	t.save.SetState(tk.StateNormal)
-// 	tk.Update()
-// }
-
-// func (t *herringboneTab) solutionString() string {
-// 	return lib.HerringboneDrawToolsString(t.b0, t.b1, t.solution)
-// }
-// func (t *herringboneTab) EnablePortal(guid string) {
-// 	delete(t.disabledPortals, guid)
-// 	t.portalStateChanged(guid)
-// }
-// func (t *herringboneTab) DisablePortal(guid string) {
-// 	t.disabledPortals[guid] = true
-// 	delete(t.basePortals, guid)
-// 	t.portalStateChanged(guid)
-// }
-// func (t *herringboneTab) MakeBase(guid string) {
-// 	t.basePortals[guid] = true
-// 	t.portalStateChanged(guid)
-// }
-// func (t *herringboneTab) UnmakeBase(guid string) {
-// 	delete(t.basePortals, guid)
-// 	t.portalStateChanged(guid)
-// }
-
-// type herringbonePortalContextMenu struct {
-// 	*tk.Menu
-// }
-
-// func NewHerringbonePortalContextMenu(parent tk.Widget, guid string, t *herringboneTab) *herringbonePortalContextMenu {
-// 	l := &herringbonePortalContextMenu{}
-// 	l.Menu = tk.NewMenu(parent)
-// 	if t.disabledPortals[guid] {
-// 		enableAction := tk.NewAction("Enable")
-// 		enableAction.OnCommand(func() { t.EnablePortal(guid) })
-// 		l.AddAction(enableAction)
-// 	} else {
-// 		disableAction := tk.NewAction("Disable")
-// 		disableAction.OnCommand(func() { t.DisablePortal(guid) })
-// 		l.AddAction(disableAction)
-// 	}
-// 	if t.basePortals[guid] {
-// 		unbaseAction := tk.NewAction("Unmake base portal")
-// 		unbaseAction.OnCommand(func() { t.UnmakeBase(guid) })
-// 		l.AddAction(unbaseAction)
-// 	} else if !t.disabledPortals[guid] && len(t.basePortals) < 2 {
-// 		baseAction := tk.NewAction("Make base portal")
-// 		baseAction.OnCommand(func() { t.MakeBase(guid) })
-// 		l.AddAction(baseAction)
-// 	}
-// 	return l
-// }

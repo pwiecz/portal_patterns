@@ -78,9 +78,9 @@ type SolutionMap struct {
 	OnPortalContextMenu func(string, float32, float32)
 }
 
-var _ fyne.Draggable = &SolutionMap{}
-var _ desktop.Hoverable = &SolutionMap{}
-var _ desktop.Mouseable = &SolutionMap{}
+var _ fyne.Draggable = (*SolutionMap)(nil)
+var _ desktop.Hoverable = (*SolutionMap)(nil)
+var _ desktop.Mouseable = (*SolutionMap)(nil)
 
 func NewSolutionMap(tileFetcher *osm.MapTiles) *SolutionMap {
 	s := &SolutionMap{
@@ -576,12 +576,6 @@ func (s *SolutionMap) ScrollToPortal(guid string) {
 	// 	s.shiftMap(x-float64(s.canvas.Width())/2, y-float64(s.canvas.Height())/2)
 }
 
-// func (s *SolutionMap) OnPortalLeftClick(onPortalLeftClick func(string)) {
-// 	s.onPortalLeftClick = onPortalLeftClick
-// }
-// func (s *SolutionMap) OnPortalRightClick(onPortalRightClick func(string, int, int)) {
-// 	s.onPortalRightClick = onPortalRightClick
-// }
 func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 	if len(portals) == 0 {
 		s.mutex.Lock()
@@ -633,36 +627,13 @@ func (s *SolutionMap) SetPortals(portals []lib.Portal) {
 		mapCoords.X = (mapCoords.X + 180) / 360
 		mapCoords.Y = (180 - mapCoords.Y) / 360
 
-		//		x, y := s.GeoToScreenCoordinates(float32(mapCoords.X), float32(mapCoords.Y))
-		//		item := canvas.NewCircle(color.NRGBA{255, 170, 0, 128})
-		//		item.Resize(fyne.Size{13, 13})
-		//		item.StrokeColor = color.Black
-		//		item.Move(fyne.Position{x - 7, y - 7}) //s.canvas.CreateOval(x-4, y-4, x+5, y+5, tk.CanvasItemAttrFill("orange"), tk.CanvasItemAttrTags([]string{"portal"}))
-		// 	item.Raise()
-		guid := portal.Guid // local copy to make closure captures work correctly
-		s.portals = append(s.portals, mapPortal{GUID: guid, Coords: mapCoords, Name: portal.Name, Color: color.NRGBA{255, 170, 0, 128}, StrokeColor: color.NRGBA{255, 170, 0, 255}})
-		s.portalIndices[guid] = len(s.portals) - 1
+		s.portals = append(s.portals, mapPortal{GUID: portal.Guid, Coords: mapCoords, Name: portal.Name, Color: color.NRGBA{255, 170, 0, 128}, StrokeColor: color.NRGBA{255, 170, 0, 255}})
+		s.portalIndices[portal.Guid] = len(s.portals) - 1
 		portalPoint := s2.PointFromLatLng(portal.LatLng)
 		portalCells := s2.SimpleRegionCovering(portalPoint, portalPoint, 30)
 		cell := s2.CellFromCellID(portalCells[0])
 		portalId := s.portalShapeIndex.Add(s2.PolygonFromCell(cell))
 		s.shapeIndexIdToPortalId[portalId] = i
-		// 	item.BindEvent("<Button-1>", func(e *tk.Event) {
-		// 		if s.onPortalLeftClick != nil {
-		// 			s.onPortalLeftClick(guid)
-		// 		}
-		// 	})
-		// 	item.BindEvent("<Button-3>", func(e *tk.Event) {
-		// 		if s.onPortalRightClick != nil {
-		// 			s.onPortalRightClick(guid, e.GlobalPosX, e.GlobalPosY)
-		// 		}
-		// 	})
-		// 	item.BindEvent("<Enter>", func(e *tk.Event) {
-		// 		s.onPortalEntered(guid)
-		// 	})
-		// 	item.BindEvent("<Leave>", func(e *tk.Event) {
-		// 		s.onPortalLeft(guid)
-		// 	})
 	}
 	s.mutex.Unlock()
 	s.updateVisibleTiles()
@@ -703,4 +674,12 @@ func (s *SolutionMap) setSolutionPoints(lines [][]s2.Point) {
 	// 	if len(s.lines) > 0 {
 	//		s.canvas.RaiseItemsAbove("portal", "link")
 	//	}
+}
+
+func portalsToPoints(portals []lib.Portal) []s2.Point {
+	points := make([]s2.Point, 0, len(portals))
+	for _, portal := range portals {
+		points = append(points, s2.PointFromLatLng(portal.LatLng))
+	}
+	return points
 }

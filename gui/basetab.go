@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image/color"
+	"os"
 	"path/filepath"
 
 	"fyne.io/fyne/v2"
@@ -25,21 +26,18 @@ type pattern interface {
 }
 
 type baseTab struct {
-	app           fyne.App
-	parent        fyne.Window
-	configuration *configuration.Configuration
-	tileFetcher   *osm.MapTiles
-	add           *widget.Button
-	reset         *widget.Button
-	find          *widget.Button
-	save          *widget.Button
-	copy          *widget.Button
-	solutionLabel *widget.Label
-	progress      *widget.ProgressBar
-	//	portalList      *PortalList
-	//	portalScrollBar *tk.ScrollBar
+	app             fyne.App
+	parent          fyne.Window
+	configuration   *configuration.Configuration
+	tileFetcher     *osm.MapTiles
+	add             *widget.Button
+	reset           *widget.Button
+	find            *widget.Button
+	save            *widget.Button
+	copy            *widget.Button
+	solutionLabel   *widget.Label
+	progress        *widget.ProgressBar
 	solutionMap     *SolutionMap
-	portalList *widget.Table
 	portals         []lib.Portal
 	selectedPortals map[string]struct{}
 	disabledPortals map[string]struct{}
@@ -47,46 +45,32 @@ type baseTab struct {
 	name            string
 }
 
-func NewBaseTab(app fyne.App, parent fyne.Window, name string, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *baseTab {
+func NewBaseTab(app fyne.App, parent fyne.Window, name string, pattern pattern, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *baseTab {
 	t := &baseTab{
 		app:           app,
 		parent:        parent,
 		name:          name,
+		pattern:       pattern,
 		configuration: conf,
 		tileFetcher:   tileFetcher,
 	}
 	t.add = widget.NewButton("Add", t.onAdd)
 	t.reset = widget.NewButton("Reset", t.onReset)
+	t.reset.Disable()
 
 	t.find = widget.NewButton("Search", func() { go t.pattern.search() })
 	t.find.Disable()
-	t.save = widget.NewButton("Save Solution", func() {})
-	// t.save.OnCommand(func() {
-	// 	filename, err := tk.GetSaveFile(parent, "Select file for solution", true, ".json",
-	// 		[]tk.FileType{{Info: "JSON file", Ext: ".json"}}, conf.PortalsDirectory, "")
-	// 	if err != nil || filename == "" {
-	// 		return
-	// 	}
-	// 	file, err := os.Create(filename)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	defer file.Close()
-	// 	file.WriteString(t.pattern.solutionString())
-	// })
+	t.save = widget.NewButton("Save Solution", t.onSaveSolution)
 	t.save.Disable()
-	t.copy = widget.NewButton("Copy to Clipboard", func() {})
-	// t.copy.OnCommand(func() {
-	// 	tk.ClearClipboard()
-	// 	tk.AppendToClipboard(t.pattern.solutionString())
-	// })
+	t.copy = widget.NewButton("Copy to Clipboard", func() {
+		parent.Clipboard().SetContent(t.pattern.solutionString())
+	})
 	t.copy.Disable()
 	t.solutionLabel = widget.NewLabel("")
 	t.progress = widget.NewProgressBar()
 	t.progress.Min = 0
 	t.progress.Max = 1
-	t.portalList = widget.NewTable(t.tableSize, t.tableCreate, t.tableUpdate)
-//	t.portalList.SetColumnWidth(0, t.portalList.
+	//	t.portalList.SetColumnWidth(0, t.portalList.
 	// t.portalList = NewPortalList(parent)
 	// t.portalList.OnPortalRightClick(func(guid string, x, y int) {
 	// 	t.pattern.onPortalContextMenu(guid, x, y)
@@ -101,22 +85,35 @@ func NewBaseTab(app fyne.App, parent fyne.Window, name string, conf *configurati
 	return t
 }
 
-func (t *baseTab) tableSize() (int, int) {
-	return len(t.portals), 2
+func (t *baseTab) onSaveSolution() {
+	fileSaveDialog := dialog.NewFileSave(t.onSaveFileChosen, t.parent)
+	lister, err := storage.ListerForURI(storage.NewFileURI(t.configuration.PortalsDirectory))
+	if err == nil {
+		fileSaveDialog.SetLocation(lister)
+	}
+	fileSaveDialog.SetFilter(storage.NewExtensionFileFilter([]string{".json"}))
+
+	fileSaveDialog.Show()
 }
-func (t *baseTab) tableCreate() fyne.CanvasObject {
-	return widget.NewLabel("                    ")
-}
-func (t *baseTab) tableUpdate(id widget.TableCellID, canvasObject fyne.CanvasObject) {
-	if label, ok := canvasObject.(*widget.Label); ok {
-		if id.Col == 0 {
-			label.SetText(t.portals[id.Row].Name)
-		} else {
-			label.SetText(t.pattern.portalLabel(t.portals[id.Row].Guid))
-		}
+func (t *baseTab) onSaveFileChosen(fileUri fyne.URIWriteCloser, err error) {
+	if err != nil || fileUri == nil {
+		return
+	}
+	filename := fileUri.URI().Path()
+	file, err := os.Create(filename)
+	if err != nil {
+		dialog.ShowInformation("Error", "Cannot create file", t.parent)
+		return
+	}
+	if _, err := file.WriteString(t.pattern.solutionString()); err != nil {
+		dialog.ShowInformation("Error", "Error writing to file", t.parent)
+		file.Close()
+		return
+	}
+	if err := file.Close(); err != nil {
+		dialog.ShowInformation("Error", "Error writing to file", t.parent)
 	}
 }
-
 func (t *baseTab) onAdd() {
 	fileOpenDialog := dialog.NewFileOpen(t.onFileChosen, t.parent)
 	lister, err := storage.ListerForURI(storage.NewFileURI(t.configuration.PortalsDirectory))
@@ -156,46 +153,13 @@ func (t *baseTab) onReset() {
 		t.solutionMap.Clear()
 	}
 	t.pattern.onReset()
+	t.solutionLabel.SetText("")
+	t.progress.SetValue(0)
+	t.reset.Disable()
+	t.find.Disable()
+	t.save.Disable()
+	t.copy.Disable()
 }
-
-// func (t *baseTab) onAdd() {
-// 	filenames, err := tk.GetOpenMultipleFile(t, "Choose portals file",
-// 		[]tk.FileType{
-// 			{Info: "JSON file", Ext: ".json"},
-// 			{Info: "CSV file", Ext: ".csv"},
-// 		}, t.configuration.PortalsDirectory, "")
-// 	if err != nil || len(filenames) == 0 {
-// 		return
-// 	}
-// 	portalsDir, _ := filepath.Split(filenames[0])
-// 	t.configuration.PortalsDirectory = portalsDir
-// 	configuration.SaveConfiguration(t.configuration)
-// 	for _, filename := range filenames {
-// 		portals, err := lib.ParseFile(filename)
-// 		if err != nil {
-// 			tk.MessageBox(t, "Could not read file", fmt.Sprintf("Error reading file:\n%v", err),
-// 				"", "", tk.MessageBoxIconError, tk.MessageBoxTypeOk)
-// 			return
-// 		}
-// 		t.addPortals(portals)
-// 	}
-// }
-
-// func (t *baseTab) onReset() {
-// 	t.portals = ([]lib.Portal)(nil)
-// 	t.selectedPortals = make(map[string]bool)
-// 	t.disabledPortalsn = make(map[string]bool)
-// 	t.reset.SetState(tk.StateDisable)
-// 	t.find.SetState(tk.StateDisable)
-// 	t.save.SetState(tk.StateDisable)
-// 	if t.solutionMap != nil {
-// 		t.solutionMap.Clear()
-// 	}
-// 	if t.portalList != nil {
-// 		t.portalList.Clear()
-// 	}
-// 	t.solutionLabel.SetText("")
-// }
 
 func (t *baseTab) onProgress(val int, max int) {
 	value := float64(val) / float64(max)
@@ -261,7 +225,6 @@ func (t *baseTab) addPortals(portals []lib.Portal) {
 				t.solutionMap.ShowNormal()
 				//tk.Update()
 			}*/
-		//t.portalList.SetPortals(t.portals)
 		solutionMapWin.Show()
 		t.solutionMap.Refresh()
 	}
@@ -269,7 +232,6 @@ func (t *baseTab) addPortals(portals []lib.Portal) {
 	for _, portal := range t.portals {
 		t.portalStateChanged(portal.Guid)
 	}
-	t.portalList.Refresh()
 }
 
 func (t *baseTab) onPortalContextMenu(guid string, x, y float32) {

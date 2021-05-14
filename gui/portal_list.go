@@ -1,45 +1,82 @@
 package main
 
-import "sort"
+import (
+	"fmt"
 
-import "github.com/pwiecz/atk/tk"
-import "github.com/pwiecz/portal_patterns/lib"
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/widget"
+	"github.com/pwiecz/portal_patterns/lib"
+)
 
 type PortalList struct {
-	*tk.TreeViewEx
+	widget.Table
+
 	// portal guid to item
-	items map[string]*tk.TreeItem
-	// item id to portal guid
-	guids              map[string]string
-	onPortalRightClick func(string, int, int)
+	portals             []lib.Portal
+	OnPortalSelected    func(string, bool)
+	OnPortalContextMenu func(string, float32, float32)
+	OnContextMenu       func(float32, float32)
+	portalLabel         func(string) string
 }
 
-func NewPortalList(parent tk.Widget) *PortalList {
+var _ desktop.Mouseable = (*PortalList)(nil)
+
+func NewPortalList(portalLabel func(string) string) *PortalList {
 	l := &PortalList{}
-	l.TreeViewEx = tk.NewTreeViewEx(parent)
-	l.items = make(map[string]*tk.TreeItem)
-	l.guids = make(map[string]string)
-	l.SetColumnCount(2)
-	l.SetHeaderLabels([]string{"Title", "State"})
-	l.BindEvent("<Button-3>", func(e *tk.Event) {
-		clickedItem := l.ItemAt(e.PosX, e.PosY)
-		l.SetSelections(clickedItem)
-		if guid, ok := l.guids[clickedItem.Id()]; ok {
-			if l.onPortalRightClick != nil {
-				l.onPortalRightClick(guid, e.GlobalPosX, e.GlobalPosY)
-			}
-		}
-	})
+	l.portalLabel = portalLabel
+	l.Length = l.tableSize
+	l.CreateCell = l.tableCreate
+	l.UpdateCell = l.tableUpdate
+	l.ExtendBaseWidget(l)
 	return l
 }
 
+func (l *PortalList) tableSize() (int, int) {
+	return len(l.portals), 2
+}
+func (t *PortalList) tableCreate() fyne.CanvasObject {
+	return widget.NewLabel("                    ")
+}
+func (t *PortalList) tableUpdate(id widget.TableCellID, canvasObject fyne.CanvasObject) {
+	if label, ok := canvasObject.(*widget.Label); ok {
+		if id.Col == 0 {
+			label.SetText(t.portals[id.Row].Name)
+		} else {
+			label.SetText(t.portalLabel(t.portals[id.Row].Guid))
+		}
+	}
+}
+func (l *PortalList) onTableCellSelected(id widget.TableCellID) {
+	fmt.Println("Selected", id.Row, id.Col)
+}
+func (l *PortalList) onTableCellUnselected(id widget.TableCellID) {
+	fmt.Println("Unselected", id.Row, id.Col)
+}
 func (l *PortalList) Clear() {
-	l.DeleteAllItems()
-	l.items = make(map[string]*tk.TreeItem)
-	l.guids = make(map[string]string)
+	l.portals = nil
+	l.Refresh()
 }
 
-func (l *PortalList) ScrollToPortal(guid string) {
+func (l *PortalList) SetPortals(portals []lib.Portal) {
+	l.portals = nil
+	l.portals = append(l.portals, portals...)
+	l.Refresh()
+}
+
+func (l *PortalList) MouseDown(event *desktop.MouseEvent) {
+}
+func (l *PortalList) MouseUp(event *desktop.MouseEvent) {
+	fmt.Println("mouseup")
+	if event.Button == desktop.MouseButtonSecondary {
+		if l.OnContextMenu != nil {
+			fmt.Println("oncontextmenu", event.Position.X, event.Position.Y)
+			l.OnContextMenu(event.Position.X, event.Position.Y)
+		}
+	}
+}
+
+/*func (l *PortalList) ScrollToPortal(guid string) {
 	if item, ok := l.items[guid]; ok {
 		l.ScrollTo(item)
 	}
@@ -88,3 +125,4 @@ func (l *PortalList) SetPortalState(guid, state string) {
 		item.SetColumnText(1, state)
 	}
 }
+*/
