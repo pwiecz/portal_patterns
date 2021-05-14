@@ -5,11 +5,6 @@ import (
 	"sync"
 )
 
-type longestDroneFlightMtQuery struct {
-	neighbours     [][]droneFlightNeighbour
-	portalDistance func(portalIndex, portalIndex) float64
-}
-
 type droneFlightResponse struct {
 	start, end portalIndex
 	distance   float64
