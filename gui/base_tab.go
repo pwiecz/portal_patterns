@@ -112,12 +112,23 @@ func (t *baseTab) onSearchDone(solutionText string) {
 }
 
 func (t *baseTab) onAddPortalsPressed() {
-	filename, ok := fltk.ChooseFile(
-		"Select portals file",
-		"JSON files (*.json)\tCSV files (*.csv)", t.configuration.PortalsDirectory, false)
-	if !ok {
+	fileChooser := fltk.NewFileChooser(t.configuration.PortalsDirectory, "JSON files (*.json)\tCSV files (*.csv)", fltk.SINGLE, "Select portals file")
+	fileChooser.SetCallback(
+		func() { 
+			if !fileChooser.Shown() { 
+				t.onPortalsFileSelected(fileChooser)
+			}
+		})
+	fileChooser.Show()
+}
+
+func (t *baseTab) onPortalsFileSelected(fileChooser *fltk.FileChooser) {
+	selection := fileChooser.Selection()
+	fileChooser.Destroy()
+	if len(selection) != 1 {
 		return
 	}
+	filename := selection[0]
 	portalsDir, _ := filepath.Split(filename)
 	t.configuration.PortalsDirectory = portalsDir
 	if t.mapWindow == nil {
@@ -143,6 +154,7 @@ func (t *baseTab) onAddPortalsPressed() {
 			}
 			t.onContextMenu(x, y)
 		})
+		t.mapWindow.SetWindowClosedCallback(t.onMapWindowClosed)
 	} else {
 		t.mapWindow.Show()
 	}
@@ -363,4 +375,8 @@ func (t *baseTab) onContextMenu(x, y int) {
 	}
 	mb.Popup()
 	mb.Destroy()
+}
+func (t *baseTab) onMapWindowClosed() {
+	t.mapWindow.Destroy()
+	t.mapWindow = nil
 }

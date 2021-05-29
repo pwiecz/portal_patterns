@@ -17,6 +17,7 @@ type MapWindow struct {
 	prevX, prevY             int
 	selectionChangedCallback func(map[string]struct{})
 	addedToSelectionCallback func(map[string]struct{})
+	windowClosedCallback     func()
 	rightClickCallback       func(string, int, int)
 }
 
@@ -25,18 +26,23 @@ func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
 	w.window = fltk.NewWindow(800, 600)
 	w.window.SetLabel(title + " - © OpenStreetMap")
 	w.window.Begin()
+	w.window.SetCallback(w.onWindowClosed)
 	w.mapDrawer = NewMapDrawer(tileFetcher)
-	w.glWindow = fltk.NewGlWindow(0, 0, 800, 600, func() { w.drawMap() })
-	w.glWindow.SetEventHandler(func(event fltk.Event) bool { return w.handleEvent(event) })
+	w.glWindow = fltk.NewGlWindow(0, 0, 800, 600, w.drawMap)
+	w.glWindow.SetEventHandler(w.handleEvent)
 	w.window.End()
 	w.mapDrawer.OnMapChanged(
 		func() {
-			fltk.Awake(func() { w.glWindow.Redraw() })
+			fltk.Awake(w.glWindow.Redraw)
 		})
 	w.window.Show()
 	return w
 }
 
+func (w *MapWindow) Destroy() {
+	w.glWindow.Destroy()
+	w.window.Destroy()
+}
 func (w *MapWindow) SetSelectionChangeCallback(callback func(map[string]struct{})) {
 	w.selectionChangedCallback = callback
 }
@@ -45,6 +51,9 @@ func (w *MapWindow) SetAddedToSelectionCallback(callback func(map[string]struct{
 }
 func (w *MapWindow) SetRightClickCallback(callback func(string, int, int)) {
 	w.rightClickCallback = callback
+}
+func (w *MapWindow) SetWindowClosedCallback(callback func()) {
+	w.windowClosedCallback = callback
 }
 func (w *MapWindow) Hide() {
 	w.window.Hide()
@@ -155,4 +164,10 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 		w.mapDrawer.Leave()
 	}
 	return false
+}
+
+func (w *MapWindow) onWindowClosed() {
+	if w.windowClosedCallback != nil {
+		w.windowClosedCallback()
+	}
 }
