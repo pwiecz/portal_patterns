@@ -18,5 +18,5 @@ type pattern interface {
 	portalLabel(string) string
 	solutionString() string
 	onReset()
-	contextMenu() *menu//x, y int)
+	contextMenu() *menu
 }
