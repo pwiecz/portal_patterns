@@ -113,7 +113,7 @@ type MapDrawer struct {
 	defaultPortalColor    imgui.PackedColor
 	showTileChannel       chan showTileRequest
 	setPortalsChannel     chan []lib.Portal
-	setPathsChannel       chan [][]lib.Portal
+	setPathsChannel       chan [][]s2.Point
 	tileFetcher           *osm.MapTiles
 	zoom                  int
 	zoomPow               float64
@@ -131,7 +131,7 @@ func NewMapDrawer(tileFetcher *osm.MapTiles) *MapDrawer {
 		showTileChannel:    make(chan showTileRequest),
 		setPortalsChannel:  make(chan []lib.Portal),
 		defaultPortalColor: imgui.Packed(color.NRGBA{255, 127, 0, 127}),
-		setPathsChannel:    make(chan [][]lib.Portal),
+		setPathsChannel:    make(chan [][]s2.Point),
 		tileFetcher:        tileFetcher,
 		portalUnderMouse:   -1,
 		portalIndices:      make(map[string]int),
@@ -277,10 +277,7 @@ func (w *MapDrawer) Update() {
 		for _, path := range paths {
 			mapPath := []r2.Point{}
 			for i := 1; i < len(path); i++ {
-				mapPath = tesselator.AppendProjected(
-					s2.PointFromLatLng(path[i-1].LatLng),
-					s2.PointFromLatLng(path[i].LatLng),
-					mapPath)
+				mapPath = tesselator.AppendProjected(path[i-1], path[i], mapPath)
 			}
 			for i := range mapPath {
 				mapPath[i].X = (mapPath[i].X + 180) / 360
@@ -443,7 +440,7 @@ func (w *MapDrawer) SetPortals(portals []lib.Portal) {
 		w.setPortalsChannel <- portals
 	}()
 }
-func (w *MapDrawer) SetPaths(paths [][]lib.Portal) {
+func (w *MapDrawer) SetPaths(paths [][]s2.Point) {
 	go func() {
 		for _, callback := range w.onMapChangedCallbacks {
 			callback()

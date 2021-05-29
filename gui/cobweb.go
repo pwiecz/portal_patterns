@@ -27,7 +27,10 @@ func NewCobwebTab(configuration *configuration.Configuration, tileFetcher *osm.M
 	return t
 }
 
-func (t *cobwebTab) onReset() {}
+func (t *cobwebTab) onReset() {
+	t.cornerPortals = make(map[string]struct{})
+	t.solution = nil
+}
 func (t *cobwebTab) onSearch() {
 	progressFunc := func(val, max int) {
 		fltk.Awake(func() {
@@ -45,7 +48,7 @@ func (t *cobwebTab) onSearch() {
 		}
 		t.solution = lib.LargestCobweb(portals, corners, progressFunc)
 		if t.mapWindow != nil {
-			t.mapWindow.SetPaths([][]lib.Portal{lib.CobwebPolyline(t.solution)})
+			t.mapWindow.SetPortalPaths([][]lib.Portal{lib.CobwebPolyline(t.solution)})
 		}
 		fltk.Awake(func() {
 			solutionText := fmt.Sprintf("Solution length: %d", len(t.solution))

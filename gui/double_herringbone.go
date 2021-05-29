@@ -28,6 +28,8 @@ func NewDoubleHerringboneTab(configuration *configuration.Configuration, tileFet
 
 func (t *doubleHerringboneTab) onReset() {
 	t.basePortals = make(map[string]struct{})
+	t.spine0 = nil
+	t.spine1 = nil
 }
 func (t *doubleHerringboneTab) onSearch() {
 	progressFunc := func(val, max int) {
@@ -40,7 +42,7 @@ func (t *doubleHerringboneTab) onSearch() {
 		portals := t.enabledPortals()
 		t.b0, t.b1, t.spine0, t.spine1 = lib.LargestDoubleHerringbone(portals, []int{}, 8, progressFunc)
 		if t.mapWindow != nil {
-			t.mapWindow.SetPaths([][]lib.Portal{lib.DoubleHerringbonePolyline(t.b0, t.b1, t.spine0, t.spine1)})
+			t.mapWindow.SetPortalPaths([][]lib.Portal{lib.DoubleHerringbonePolyline(t.b0, t.b1, t.spine0, t.spine1)})
 		}
 		fltk.Awake(func() {
 			solutionText := fmt.Sprintf("Solution length: %d + %d", len(t.spine0), len(t.spine1))

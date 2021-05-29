@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 
-//	"github.com/golang/geo/s2"
+	//	"github.com/golang/geo/s2"
+	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
 	"github.com/pwiecz/portal_patterns/configuration"
 	"github.com/pwiecz/portal_patterns/gui/osm"
@@ -64,7 +65,10 @@ func NewFlipFieldTab(configuration *configuration.Configuration, tileFetcher *os
 	return t
 }
 
-func (t *flipFieldTab) onReset() {}
+func (t *flipFieldTab) onReset() {
+	t.backbone = nil
+	t.rest = nil
+}
 func (t *flipFieldTab) onSearch() {
 	progressFunc := func(val, max int) {
 		fltk.Awake(func() {
@@ -86,18 +90,18 @@ func (t *flipFieldTab) onSearch() {
 		portals := t.enabledPortals()
 		t.backbone, t.rest = lib.LargestFlipField(portals, options...)
 		if t.mapWindow != nil {
-			lines := [][]lib.Portal{t.backbone}
-//			if len(t.rest) > 0 {
-//				hull := s2.NewConvexHullQuery()
-//				for _, p := range t.rest {
-//					hull.AddPoint(s2.PointFromLatLng(p.LatLng))
-//				}
-//				hullPoints := hull.ConvexHull().Vertices()
-//				if len(hullPoints) > 0 {
-//					hullPoints = append(hullPoints, hullPoints[0])
-//				}
-//				lines = append(lines, hullPoints)
-//			}
+			lines := [][]s2.Point{portalsToPoints(t.backbone)}
+			if len(t.rest) > 0 {
+				hull := s2.NewConvexHullQuery()
+				for _, p := range t.rest {
+					hull.AddPoint(s2.PointFromLatLng(p.LatLng))
+				}
+				hullPoints := hull.ConvexHull().Vertices()
+				if len(hullPoints) > 0 {
+					hullPoints = append(hullPoints, hullPoints[0])
+				}
+				lines = append(lines, hullPoints)
+			}
 			t.mapWindow.SetPaths(lines)
 		}
 		fltk.Awake(func() {

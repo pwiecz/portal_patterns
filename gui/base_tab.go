@@ -183,8 +183,8 @@ func (t *baseTab) onResetPortalsPressed() {
 	t.save.Deactivate()
 	t.copy.Deactivate()
 	if t.mapWindow != nil {
-		//t.mapWindow.Clear()
-		t.mapWindow.Hide()
+		t.mapWindow.Destroy()
+		t.mapWindow = nil
 	}
 	if t.portalList != nil {
 		t.portalList.SetPortals([]lib.Portal{})

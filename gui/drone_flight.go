@@ -52,7 +52,12 @@ func NewDroneFlightTab(configuration *configuration.Configuration, tileFetcher *
 
 	return t
 }
-func (t *droneFlightTab) onReset() {}
+func (t *droneFlightTab) onReset() {
+	t.solution = nil
+	t.keys = nil
+	t.startPortal = ""
+	t.endPortal = ""
+}
 func (t *droneFlightTab) onSearch() {
 	if len(t.portals) < 3 {
 		return
@@ -85,7 +90,7 @@ func (t *droneFlightTab) onSearch() {
 		}
 		t.solution, t.keys = lib.LongestDroneFlight(portals, options...)
 		if t.mapWindow != nil {
-			t.mapWindow.SetPaths([][]lib.Portal{t.solution})
+			t.mapWindow.SetPortalPaths([][]lib.Portal{t.solution})
 		}
 		fltk.Awake(func() {
 			if len(t.solution) == 0 {

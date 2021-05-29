@@ -79,7 +79,11 @@ func NewHomogeneousTab(configuration *configuration.Configuration, tileFetcher *
 	return t
 }
 
-func (t *homogeneousTab) onReset() {}
+func (t *homogeneousTab) onReset() {
+	t.anchorPortals = make(map[string]struct{})
+	t.depth = 0
+	t.solution = nil
+}
 func (t *homogeneousTab) onSearch() {
 	options := []lib.HomogeneousOption{
 		lib.HomogeneousMaxDepth(t.maxDepth.Value()),
@@ -118,7 +122,7 @@ func (t *homogeneousTab) onSearch() {
 		options = append(options, lib.HomogeneousFixedCornerIndices(anchors))
 		t.solution, t.depth = lib.DeepestHomogeneous(portals, options...)
 		if t.mapWindow != nil {
-			t.mapWindow.SetPaths(lib.HomogeneousPolylines(t.depth, t.solution))
+			t.mapWindow.SetPortalPaths(lib.HomogeneousPolylines(t.depth, t.solution))
 		}
 		fltk.Awake(func() {
 			var solutionText string

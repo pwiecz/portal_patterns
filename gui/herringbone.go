@@ -31,6 +31,7 @@ func NewHerringboneTab(configuration *configuration.Configuration, tileFetcher *
 
 func (t *herringboneTab) onReset() {
 	t.basePortals = make(map[string]struct{})
+	t.spine = nil
 }
 func (t *herringboneTab) onSearch() {
 	progressFunc := func(val, max int) {
@@ -49,7 +50,7 @@ func (t *herringboneTab) onSearch() {
 		}
 		t.b0, t.b1, t.spine = lib.LargestHerringbone(portals, base, 8, progressFunc)
 		if t.mapWindow != nil {
-			t.mapWindow.SetPaths([][]lib.Portal{lib.HerringbonePolyline(t.b0, t.b1, t.spine)})
+			t.mapWindow.SetPortalPaths([][]lib.Portal{lib.HerringbonePolyline(t.b0, t.b1, t.spine)})
 		}
 		fltk.Awake(func() {
 			solutionText := fmt.Sprintf("Solution length: %d", len(t.spine))

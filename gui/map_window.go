@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/go-gl/gl/v2.1/gl"
+	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
 	"github.com/pwiecz/portal_patterns/gui/osm"
 	"github.com/pwiecz/portal_patterns/lib"
@@ -64,7 +65,22 @@ func (w *MapWindow) Show() {
 func (w *MapWindow) SetPortals(portals []lib.Portal) {
 	w.mapDrawer.SetPortals(portals)
 }
-func (w *MapWindow) SetPaths(paths [][]lib.Portal) {
+func portalsToPoints(portals []lib.Portal) []s2.Point {
+	points := make([]s2.Point, 0, len(portals))
+	for _, portal := range portals {
+		points = append(points, s2.PointFromLatLng(portal.LatLng))
+	}
+	return points
+
+}
+func (w *MapWindow) SetPortalPaths(portalPaths [][]lib.Portal) {
+	paths := make([][]s2.Point, 0, len(portalPaths))
+	for _, portalPath := range portalPaths {
+		paths = append(paths, portalsToPoints(portalPath))
+	}
+	w.SetPaths(paths)
+}
+func (w *MapWindow) SetPaths(paths [][]s2.Point) {
 	w.mapDrawer.SetPaths(paths)
 }
 func (w *MapWindow) Raise(guid string) {
