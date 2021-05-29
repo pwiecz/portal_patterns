@@ -17,6 +17,8 @@ type herringboneTab struct {
 	basePortals map[string]struct{}
 }
 
+var _ = (*herringboneTab)(nil)
+
 func NewHerringboneTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *herringboneTab {
 	t := &herringboneTab{
 		basePortals: make(map[string]struct{}),
@@ -70,17 +72,47 @@ func (t *herringboneTab) portalColor(guid string) color.Color {
 	if _, ok := t.basePortals[guid]; ok {
 		if _, ok := t.selectedPortals[guid]; ok {
 			return color.NRGBA{0, 255, 0, 128}
-		} else {
-			return color.NRGBA{0, 128, 0, 128}
 		}
+		return color.NRGBA{0, 128, 0, 128}
 	}
 	return t.baseTab.portalColor(guid)
 }
+
+func (t *herringboneTab) enableSelectedPortals() {
+	for guid := range t.selectedPortals {
+		delete(t.basePortals, guid)
+		if t.mapWindow != nil {
+			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
+		}
+		if t.portalList != nil {
+			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
+		}
+	}
+	if t.portalList != nil {
+		t.portalList.Redraw()
+	}
+}
+
+func (t *herringboneTab) disableSelectedPortals() {
+	for guid := range t.selectedPortals {
+		t.disabledPortals[guid] = struct{}{}
+		delete(t.basePortals, guid)
+		if t.mapWindow != nil {
+			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
+			t.mapWindow.Lower(guid)
+		}
+		if t.portalList != nil {
+			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
+		}
+	}
+	if t.portalList != nil {
+		t.portalList.Redraw()
+	}
+}
+
 func (t *herringboneTab) makeSelectedPortalsBase() {
 	for guid := range t.selectedPortals {
-		if _, ok := t.disabledPortals[guid]; ok {
-			continue
-		}
+		delete(t.disabledPortals, guid)
 		t.basePortals[guid] = struct{}{}
 		if t.mapWindow != nil {
 			t.mapWindow.SetPortalColor(guid, t.portalColor(guid))
@@ -110,7 +142,7 @@ func (t *herringboneTab) unmakeSelectedPortalsBase() {
 	}
 }
 
-func (t *herringboneTab) onPortalContextMenu(x, y int) {
+func (t *herringboneTab) contextMenu() *menu {
 	var aSelectedGuid string
 	numSelectedEnabled := 0
 	numSelectedDisabled := 0
@@ -129,41 +161,39 @@ func (t *herringboneTab) onPortalContextMenu(x, y int) {
 			numSelectedNotBase++
 		}
 	}
-	menuHeader := fmt.Sprintf("%d portals selected", len(t.selectedPortals))
-	if len(t.selectedPortals) == 1 {
-		menuHeader = t.portalMap[aSelectedGuid].Name
+	menu := &menu{}
+	if len(t.selectedPortals) > 1 {
+		menu.header = fmt.Sprintf("%d portals selected", len(t.selectedPortals))
+	} else if len(t.selectedPortals) == 1 {
+		menu.header = t.portalMap[aSelectedGuid].Name
 	}
-	mb := fltk.NewMenuButton(x, y, 100, 100, menuHeader)
-	mb.SetCallback(func() { fmt.Println("menu Callback") })
-	mb.SetType(fltk.POPUP3)
 	if numSelectedDisabled > 0 {
 		if len(t.selectedPortals) == 1 {
-			mb.Add("Enable", func() { t.enableSelectedPortals() })
+			menu.items = append(menu.items, menuItem{"Enable", t.enableSelectedPortals})
 		} else {
-			mb.Add("Enable All", func() { t.enableSelectedPortals() })
+			menu.items = append(menu.items, menuItem{"Enable All", t.enableSelectedPortals})
 		}
 	}
 	if numSelectedEnabled > 0 {
 		if len(t.selectedPortals) == 1 {
-			mb.Add("Disable", func() { t.disableSelectedPortals() })
+			menu.items = append(menu.items, menuItem{"Disable", t.disableSelectedPortals})
 		} else {
-			mb.Add("Disable All", func() { t.disableSelectedPortals() })
+			menu.items = append(menu.items, menuItem{"Disable All", t.disableSelectedPortals})
 		}
 	}
 	if numSelectedBase > 0 {
 		if len(t.selectedPortals) == 1 {
-			mb.Add("Unmake base", func() { t.unmakeSelectedPortalsBase() })
+			menu.items = append(menu.items, menuItem{"Unmake base", t.unmakeSelectedPortalsBase})
 		} else {
-			mb.Add("Unmake all base", func() { t.unmakeSelectedPortalsBase() })
+			menu.items = append(menu.items, menuItem{"Unmake all base", t.unmakeSelectedPortalsBase})
 		}
 	}
 	if numSelectedNotBase > 0 && numSelectedNotBase+len(t.basePortals) <= 2 {
 		if len(t.selectedPortals) == 1 {
-			mb.Add("Make base", func() { t.makeSelectedPortalsBase() })
+			menu.items = append(menu.items, menuItem{"Make base", t.makeSelectedPortalsBase})
 		} else {
-			mb.Add("Make all base", func() { t.makeSelectedPortalsBase() })
+			menu.items = append(menu.items, menuItem{"Make all base", t.makeSelectedPortalsBase})
 		}
 	}
-	mb.Popup()
-	mb.Destroy()
+	return menu
 }

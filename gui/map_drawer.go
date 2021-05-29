@@ -123,8 +123,6 @@ type MapDrawer struct {
 	onMapChangedCallbacks []func()
 }
 
-var initGLOnce sync.Once
-
 func NewMapDrawer(tileFetcher *osm.MapTiles) *MapDrawer {
 	w := &MapDrawer{
 		tileCache:          newLockedTileCache(1000),
@@ -362,6 +360,8 @@ func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
 	w.MapChanged()
 }
 
+const LABEL_X_MARGIN = 10
+
 func (w *MapDrawer) DrawPortalLabelImgui() {
 	if w.portalUnderMouse < 0 || w.portalUnderMouse >= len(w.portals) {
 		return
@@ -372,20 +372,20 @@ func (w *MapDrawer) DrawPortalLabelImgui() {
 	x := float32(portal.coords.X*w.zoomPow*256 - w.x0)
 	y := float32(portal.coords.Y*w.zoomPow*256 - w.y0)
 	textSize := imgui.CalcTextSize(portal.name, false, 0)
-	labelPosX, labelPosY := x-textSize.X/2, y-PORTAL_CIRCLE_RADIUS-2
+	labelPosX, labelPosY := x-textSize.X/2-LABEL_X_MARGIN, y-PORTAL_CIRCLE_RADIUS-2
 	if labelPosX < 0 {
 		labelPosX = 0
 	} else if labelPosX+textSize.X >= 800 {
-		labelPosX = 800 - textSize.X
+		labelPosX = 800 - textSize.X - LABEL_X_MARGIN*2
 	}
 	if labelPosY-textSize.Y < 0 {
 		labelPosY = y + 5 + textSize.Y + 4
 	}
-	labelPos := imgui.Vec2{labelPosX - 10, labelPosY - 20}
+	labelPos := imgui.Vec2{labelPosX, labelPosY - 20}
 	white := imgui.Packed(color.NRGBA{255, 255, 255, 255})
-	drawList.AddRectFilled(labelPos, labelPos.Plus(imgui.Vec2{textSize.X + 10, textSize.Y}), white)
+	drawList.AddRectFilled(labelPos, labelPos.Plus(imgui.Vec2{textSize.X + 2*LABEL_X_MARGIN, textSize.Y}), white)
 	black := imgui.Packed(color.NRGBA{0, 0, 0, 255})
-	textPos := labelPos.Plus(imgui.Vec2{10, 0})
+	textPos := labelPos.Plus(imgui.Vec2{LABEL_X_MARGIN, 0})
 	drawList.AddText(textPos, black, portal.name)
 	imgui.Render()
 	w.imguiRenderer.Render([2]float32{800, 600}, [2]float32{800, 600}, imgui.RenderedDrawData())
@@ -606,14 +606,4 @@ func newTexture(img image.Image) uint32 {
 	}
 
 	return texture
-}
-
-var texCoords = []float32{
-	0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0,
-}
-var tileVertices = []float32{
-	0.0, 0.0, 0.0,
-	0.0, 256.0, 0.0,
-	256.0, 256.0, 0.0,
-	256.0, 0.0, 0.0,
 }

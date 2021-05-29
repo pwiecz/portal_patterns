@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"path/filepath"
 
@@ -10,15 +11,6 @@ import (
 	"github.com/pwiecz/portal_patterns/gui/osm"
 	"github.com/pwiecz/portal_patterns/lib"
 )
-
-type pattern interface {
-	onSearch()
-	portalColor(string) color.Color
-	portalLabel(string) string
-	solutionString() string
-	onReset()
-	onPortalContextMenu(x, y int)
-}
 
 type baseTab struct {
 	*fltk.Pack
@@ -90,7 +82,7 @@ func newBaseTab(name string, configuration *configuration.Configuration, tileFet
 
 	t.portalList = newPortalList(0, 0, 760, 540)
 	t.portalList.SetSelectionChangeCallback(func() { t.OnSelectionChanged(t.portalList.selectedPortals) })
-	t.portalList.SetContextMenuCallback(func(x, y int) { t.pattern.onPortalContextMenu(x, y) })
+	t.portalList.SetContextMenuCallback(t.onContextMenu)
 	t.Resizable(t.portalList)
 
 	return t
@@ -130,7 +122,7 @@ func (t *baseTab) onAddPortalsPressed() {
 	t.configuration.PortalsDirectory = portalsDir
 	if t.mapWindow == nil {
 		t.mapWindow = NewMapWindow("Homogeneous", t.tileFetcher)
-		t.mapWindow.SetSelectionChangeCallback(func(selection map[string]struct{}) { t.OnSelectionChanged(selection) })
+		t.mapWindow.SetSelectionChangeCallback(t.OnSelectionChanged)
 		t.mapWindow.SetAddedToSelectionCallback(func(selection map[string]struct{}) {
 			selectionCopy := make(map[string]struct{})
 			for guid := range t.selectedPortals {
@@ -141,7 +133,16 @@ func (t *baseTab) onAddPortalsPressed() {
 			}
 			t.OnSelectionChanged(selectionCopy)
 		})
-
+		t.mapWindow.SetRightClickCallback(func(guid string, x, y int) {
+			if guid != "" {
+				if _, ok := t.selectedPortals[guid]; !ok {
+					selection := make(map[string]struct{})
+					selection[guid] = struct{}{}
+					t.OnSelectionChanged(selection)
+				}
+			}
+			t.onContextMenu(x, y)
+		})
 	} else {
 		t.mapWindow.Show()
 	}
@@ -339,36 +340,6 @@ func (t *baseTab) portalStateChanged(guid string) {
 	}
 }
 
-func (t *baseTab) enableSelectedPortals() {
-	for guid := range t.selectedPortals {
-		delete(t.disabledPortals, guid)
-		if t.mapWindow != nil {
-			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
-		}
-		if t.portalList != nil {
-			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
-		}
-	}
-	if t.portalList != nil {
-		t.portalList.Redraw()
-	}
-}
-func (t *baseTab) disableSelectedPortals() {
-	for guid := range t.selectedPortals {
-		t.disabledPortals[guid] = struct{}{}
-		if t.mapWindow != nil {
-			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
-			t.mapWindow.Lower(guid)
-		}
-		if t.portalList != nil {
-			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
-		}
-	}
-	if t.portalList != nil {
-		t.portalList.Redraw()
-	}
-}
-
 func (t *baseTab) enabledPortals() []lib.Portal {
 	portals := []lib.Portal{}
 	for _, portal := range t.portals {
@@ -377,4 +348,19 @@ func (t *baseTab) enabledPortals() []lib.Portal {
 		}
 	}
 	return portals
+}
+
+func (t *baseTab) onContextMenu(x, y int) {
+	menu := t.pattern.contextMenu()
+	if menu == nil || len(menu.items) == 0 {
+		return
+	}
+	mb := fltk.NewMenuButton(x, y, 100, 100, menu.header)
+	mb.SetCallback(func() { fmt.Println("menu callback") })
+	mb.SetType(fltk.POPUP3)
+	for _, item := range menu.items {
+		mb.Add(item.label, item.callback)
+	}
+	mb.Popup()
+	mb.Destroy()
 }

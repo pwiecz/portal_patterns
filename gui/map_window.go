@@ -17,6 +17,7 @@ type MapWindow struct {
 	prevX, prevY             int
 	selectionChangedCallback func(map[string]struct{})
 	addedToSelectionCallback func(map[string]struct{})
+	rightClickCallback       func(string, int, int)
 }
 
 func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
@@ -41,6 +42,9 @@ func (w *MapWindow) SetSelectionChangeCallback(callback func(map[string]struct{}
 }
 func (w *MapWindow) SetAddedToSelectionCallback(callback func(map[string]struct{})) {
 	w.addedToSelectionCallback = callback
+}
+func (w *MapWindow) SetRightClickCallback(callback func(string, int, int)) {
+	w.rightClickCallback = callback
 }
 func (w *MapWindow) Hide() {
 	w.window.Hide()
@@ -105,6 +109,15 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 				}
 			}
 			return true
+		} else if fltk.EventButton() == fltk.RightMouse && fltk.EventIsClick() {
+			if w.rightClickCallback != nil {
+				if w.mapDrawer.portalUnderMouse >= 0 {
+					portalUnderMouse := w.mapDrawer.portals[w.mapDrawer.portalUnderMouse].guid
+					w.rightClickCallback(portalUnderMouse, fltk.EventX(), fltk.EventY())
+				} else {
+					w.rightClickCallback("", fltk.EventX(), fltk.EventY())
+				}
+			}
 		}
 	case fltk.DRAG:
 		if fltk.EventButton1() {

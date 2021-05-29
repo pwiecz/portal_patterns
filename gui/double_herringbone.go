@@ -16,6 +16,8 @@ type doubleHerringboneTab struct {
 	basePortals    map[string]struct{}
 }
 
+var _ = (*doubleHerringboneTab)(nil)
+
 func NewDoubleHerringboneTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *doubleHerringboneTab {
 	t := &doubleHerringboneTab{}
 	t.baseTab = newBaseTab("Double Herringbone", configuration, tileFetcher, t)
@@ -50,4 +52,123 @@ func (t *doubleHerringboneTab) onSearch() {
 func (t *doubleHerringboneTab) solutionString() string {
 	return lib.DoubleHerringboneDrawToolsString(t.b0, t.b1, t.spine0, t.spine1)
 }
-func (t *doubleHerringboneTab) onPortalContextMenu(x, y int) {}
+
+func (t *doubleHerringboneTab) enableSelectedPortals() {
+	for guid := range t.selectedPortals {
+		delete(t.basePortals, guid)
+		if t.mapWindow != nil {
+			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
+		}
+		if t.portalList != nil {
+			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
+		}
+	}
+	if t.portalList != nil {
+		t.portalList.Redraw()
+	}
+}
+
+func (t *doubleHerringboneTab) disableSelectedPortals() {
+	for guid := range t.selectedPortals {
+		t.disabledPortals[guid] = struct{}{}
+		delete(t.basePortals, guid)
+		if t.mapWindow != nil {
+			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
+			t.mapWindow.Lower(guid)
+		}
+		if t.portalList != nil {
+			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
+		}
+	}
+	if t.portalList != nil {
+		t.portalList.Redraw()
+	}
+}
+
+func (t *doubleHerringboneTab) makeSelectedPortalsBase() {
+	for guid := range t.selectedPortals {
+		delete(t.disabledPortals, guid)
+		t.basePortals[guid] = struct{}{}
+		if t.mapWindow != nil {
+			t.mapWindow.SetPortalColor(guid, t.portalColor(guid))
+			t.mapWindow.Raise(guid)
+		}
+		if t.portalList != nil {
+			t.portalList.SetPortalLabel(guid, t.portalLabel(guid))
+		}
+	}
+	if t.portalList != nil {
+		t.portalList.Redraw()
+	}
+}
+func (t *doubleHerringboneTab) unmakeSelectedPortalsBase() {
+	for guid := range t.selectedPortals {
+		delete(t.basePortals, guid)
+		if t.mapWindow != nil {
+			t.mapWindow.SetPortalColor(guid, t.portalColor(guid))
+			t.mapWindow.Raise(guid)
+		}
+		if t.portalList != nil {
+			t.portalList.SetPortalLabel(guid, t.portalLabel(guid))
+		}
+	}
+	if t.portalList != nil {
+		t.portalList.Redraw()
+	}
+}
+
+func (t *doubleHerringboneTab) contextMenu() *menu {
+	var aSelectedGuid string
+	numSelectedEnabled := 0
+	numSelectedDisabled := 0
+	numSelectedBase := 0
+	numSelectedNotBase := 0
+	for guid := range t.selectedPortals {
+		aSelectedGuid = guid
+		if _, ok := t.disabledPortals[guid]; ok {
+			numSelectedDisabled++
+		} else {
+			numSelectedEnabled++
+		}
+		if _, ok := t.basePortals[guid]; ok {
+			numSelectedBase++
+		} else {
+			numSelectedNotBase++
+		}
+	}
+	menu := &menu{}
+	if len(t.selectedPortals) > 1 {
+		menu.header = fmt.Sprintf("%d portals selected", len(t.selectedPortals))
+	} else if len(t.selectedPortals) == 1 {
+		menu.header = t.portalMap[aSelectedGuid].Name
+	}
+	if numSelectedDisabled > 0 {
+		if len(t.selectedPortals) == 1 {
+			menu.items = append(menu.items, menuItem{"Enable", t.enableSelectedPortals})
+		} else {
+			menu.items = append(menu.items, menuItem{"Enable All", t.enableSelectedPortals})
+		}
+	}
+	if numSelectedEnabled > 0 {
+		if len(t.selectedPortals) == 1 {
+			menu.items = append(menu.items, menuItem{"Disable", t.disableSelectedPortals})
+		} else {
+			menu.items = append(menu.items, menuItem{"Disable All", t.disableSelectedPortals})
+		}
+	}
+	if numSelectedBase > 0 {
+		if len(t.selectedPortals) == 1 {
+			menu.items = append(menu.items, menuItem{"Unmake base", t.unmakeSelectedPortalsBase})
+		} else {
+			menu.items = append(menu.items, menuItem{"Unmake all base", t.unmakeSelectedPortalsBase})
+		}
+	}
+	if numSelectedNotBase > 0 && numSelectedNotBase+len(t.basePortals) <= 2 {
+		if len(t.selectedPortals) == 1 {
+			menu.items = append(menu.items, menuItem{"Make base", t.makeSelectedPortalsBase})
+		} else {
+			menu.items = append(menu.items, menuItem{"Make all base", t.makeSelectedPortalsBase})
+		}
+	}
+	return menu
+}

@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/golang/geo/s2"
+//	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
 	"github.com/pwiecz/portal_patterns/configuration"
 	"github.com/pwiecz/portal_patterns/gui/osm"
@@ -19,6 +19,8 @@ type flipFieldTab struct {
 	backbone           []lib.Portal
 	rest               []lib.Portal
 }
+
+var _ = (*flipFieldTab)(nil)
 
 func NewFlipFieldTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *flipFieldTab {
 	t := &flipFieldTab{}
@@ -85,17 +87,17 @@ func (t *flipFieldTab) onSearch() {
 		t.backbone, t.rest = lib.LargestFlipField(portals, options...)
 		if t.mapWindow != nil {
 			lines := [][]lib.Portal{t.backbone}
-			if len(t.rest) > 0 {
-				hull := s2.NewConvexHullQuery()
-				for _, p := range t.rest {
-					hull.AddPoint(s2.PointFromLatLng(p.LatLng))
-				}
-				hullPoints := hull.ConvexHull().Vertices()
-				if len(hullPoints) > 0 {
-					hullPoints = append(hullPoints, hullPoints[0])
-				}
-				//				lines = append(lines, hullPoints)
-			}
+//			if len(t.rest) > 0 {
+//				hull := s2.NewConvexHullQuery()
+//				for _, p := range t.rest {
+//					hull.AddPoint(s2.PointFromLatLng(p.LatLng))
+//				}
+//				hullPoints := hull.ConvexHull().Vertices()
+//				if len(hullPoints) > 0 {
+//					hullPoints = append(hullPoints, hullPoints[0])
+//				}
+//				lines = append(lines, hullPoints)
+//			}
 			t.mapWindow.SetPaths(lines)
 		}
 		fltk.Awake(func() {
@@ -112,4 +114,69 @@ func (t *flipFieldTab) solutionString() string {
 	}
 	return s + "]"
 }
-func (t *flipFieldTab) onPortalContextMenu(x, y int) {}
+
+func (t *flipFieldTab) enableSelectedPortals() {
+	for guid := range t.selectedPortals {
+		delete(t.disabledPortals, guid)
+		if t.mapWindow != nil {
+			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
+		}
+		if t.portalList != nil {
+			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
+		}
+	}
+	if t.portalList != nil {
+		t.portalList.Redraw()
+	}
+}
+
+func (t *flipFieldTab) disableSelectedPortals() {
+	for guid := range t.selectedPortals {
+		t.disabledPortals[guid] = struct{}{}
+		if t.mapWindow != nil {
+			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
+			t.mapWindow.Lower(guid)
+		}
+		if t.portalList != nil {
+			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
+		}
+	}
+	if t.portalList != nil {
+		t.portalList.Redraw()
+	}
+}
+
+func (t *flipFieldTab) contextMenu() *menu {
+	var aSelectedGuid string
+	numSelectedEnabled := 0
+	numSelectedDisabled := 0
+	for guid := range t.selectedPortals {
+		aSelectedGuid = guid
+		if _, ok := t.disabledPortals[guid]; ok {
+			numSelectedDisabled++
+		} else {
+			numSelectedEnabled++
+		}
+	}
+	menu := &menu{}
+	if len(t.selectedPortals) > 1 {
+		menu.header = fmt.Sprintf("%d portals selected", len(t.selectedPortals))
+	} else if len(t.selectedPortals) == 1 {
+		menu.header = t.portalMap[aSelectedGuid].Name
+	}
+	if numSelectedDisabled > 0 {
+		if len(t.selectedPortals) == 1 {
+			menu.items = append(menu.items, menuItem{"Enable", t.enableSelectedPortals})
+		} else {
+			menu.items = append(menu.items, menuItem{"Enable All", t.enableSelectedPortals})
+		}
+	}
+	if numSelectedEnabled > 0 {
+		if len(t.selectedPortals) == 1 {
+			menu.items = append(menu.items, menuItem{"Disable", t.disableSelectedPortals})
+		} else {
+			menu.items = append(menu.items, menuItem{"Disable All", t.disableSelectedPortals})
+		}
+	}
+	return menu
+}
