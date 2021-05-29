@@ -21,7 +21,7 @@ type droneFlightTab struct {
 
 var _ = (*droneFlightTab)(nil)
 
-func NewDroneFlightTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *droneFlightTab {
+func newDroneFlightTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *droneFlightTab {
 	t := &droneFlightTab{}
 	t.baseTab = newBaseTab("Drone Flight", configuration, tileFetcher, t)
 
@@ -238,12 +238,12 @@ func (t *droneFlightTab) unmakeSelectedPortalEnd() {
 }
 
 func (t *droneFlightTab) contextMenu() *menu {
-	var aSelectedGuid string
+	var aSelectedGUID string
 	var isDisabledSelected, isEnabledSelected, isStartSelected, isEndSelected bool
 	numNonStartSelected := 0
 	numNonEndSelected := 0
 	for guid := range t.selectedPortals {
-		aSelectedGuid = guid
+		aSelectedGUID = guid
 		if _, ok := t.disabledPortals[guid]; ok {
 			isDisabledSelected = true
 		} else {
@@ -264,7 +264,7 @@ func (t *droneFlightTab) contextMenu() *menu {
 	if len(t.selectedPortals) > 1 {
 		menu.header = fmt.Sprintf("%d portals selected", len(t.selectedPortals))
 	} else if len(t.selectedPortals) == 1 {
-		menu.header = t.portalMap[aSelectedGuid].Name
+		menu.header = t.portalMap[aSelectedGUID].Name
 	}
 	if isDisabledSelected {
 		menu.items = append(menu.items, menuItem{"Enable", t.enableSelectedPortals})

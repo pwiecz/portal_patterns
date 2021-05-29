@@ -30,10 +30,10 @@ func longestDroneFlightWorker(
 
 func longestDroneFlightMT(portals []Portal, params droneFlightParams) ([]Portal, []Portal) {
 	if params.numWorkers < 1 {
-		panic(fmt.Errorf("Too few workers: %d", params.numWorkers))
+		panic(fmt.Errorf("too few workers: %d", params.numWorkers))
 	}
 	if len(portals) < 2 {
-		panic(fmt.Errorf("Too short portal list: %d", len(portals)))
+		panic(fmt.Errorf("too short portal list: %d", len(portals)))
 	}
 	portalsData := portalsToPortalData(portals)
 

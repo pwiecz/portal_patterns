@@ -18,7 +18,7 @@ type cobwebTab struct {
 
 var _ = (*cobwebTab)(nil)
 
-func NewCobwebTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *cobwebTab {
+func newCobwebTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *cobwebTab {
 	t := &cobwebTab{}
 	t.baseTab = newBaseTab("Cobweb", configuration, tileFetcher, t)
 	t.cornerPortals = make(map[string]struct{})
@@ -141,13 +141,13 @@ func (t *cobwebTab) unmakeSelectedPortalsCorners() {
 	}
 }
 func (t *cobwebTab) contextMenu() *menu {
-	var aSelectedGuid string
+	var aSelectedGUID string
 	numSelectedEnabled := 0
 	numSelectedDisabled := 0
 	numSelectedCorner := 0
 	numSelectedNotCorner := 0
 	for guid := range t.selectedPortals {
-		aSelectedGuid = guid
+		aSelectedGUID = guid
 		if _, ok := t.disabledPortals[guid]; ok {
 			numSelectedDisabled++
 		} else {
@@ -163,7 +163,7 @@ func (t *cobwebTab) contextMenu() *menu {
 	if len(t.selectedPortals) > 1 {
 		menu.header = fmt.Sprintf("%d portals selected", len(t.selectedPortals))
 	} else if len(t.selectedPortals) == 1 {
-		menu.header = t.portalMap[aSelectedGuid].Name
+		menu.header = t.portalMap[aSelectedGUID].Name
 	}
 	if numSelectedDisabled > 0 {
 		if len(t.selectedPortals) == 1 {

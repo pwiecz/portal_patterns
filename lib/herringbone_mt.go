@@ -65,10 +65,10 @@ func bestHerringboneWorker(
 // LargestHerringboneMT - Find largest possible multilayer of portals to be made, parallel version
 func LargestHerringboneMT(portals []Portal, fixedBaseIndices []int, numWorkers int, progressFunc func(int, int)) (Portal, Portal, []Portal) {
 	if numWorkers < 1 {
-		panic(fmt.Errorf("Too few workers: %d", numWorkers))
+		panic(fmt.Errorf("too few workers: %d", numWorkers))
 	}
 	if len(portals) < 3 {
-		panic(fmt.Errorf("Too short portal list: %d", len(portals)))
+		panic(fmt.Errorf("too short portal list: %d", len(portals)))
 	}
 	portalsData := portalsToPortalData(portals)
 

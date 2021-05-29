@@ -19,7 +19,7 @@ type herringboneTab struct {
 
 var _ = (*herringboneTab)(nil)
 
-func NewHerringboneTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *herringboneTab {
+func newHerringboneTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *herringboneTab {
 	t := &herringboneTab{
 		basePortals: make(map[string]struct{}),
 	}
@@ -144,13 +144,13 @@ func (t *herringboneTab) unmakeSelectedPortalsBase() {
 }
 
 func (t *herringboneTab) contextMenu() *menu {
-	var aSelectedGuid string
+	var aSelectedGUID string
 	numSelectedEnabled := 0
 	numSelectedDisabled := 0
 	numSelectedBase := 0
 	numSelectedNotBase := 0
 	for guid := range t.selectedPortals {
-		aSelectedGuid = guid
+		aSelectedGUID = guid
 		if _, ok := t.disabledPortals[guid]; ok {
 			numSelectedDisabled++
 		} else {
@@ -166,7 +166,7 @@ func (t *herringboneTab) contextMenu() *menu {
 	if len(t.selectedPortals) > 1 {
 		menu.header = fmt.Sprintf("%d portals selected", len(t.selectedPortals))
 	} else if len(t.selectedPortals) == 1 {
-		menu.header = t.portalMap[aSelectedGuid].Name
+		menu.header = t.portalMap[aSelectedGUID].Name
 	}
 	if numSelectedDisabled > 0 {
 		if len(t.selectedPortals) == 1 {

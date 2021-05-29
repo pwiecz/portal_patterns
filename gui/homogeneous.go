@@ -23,7 +23,7 @@ type homogeneousTab struct {
 	anchorPortals map[string]struct{}
 }
 
-func NewHomogeneousTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *homogeneousTab {
+func newHomogeneousTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *homogeneousTab {
 	t := &homogeneousTab{
 		anchorPortals: make(map[string]struct{}),
 	}
@@ -221,13 +221,13 @@ func (t *homogeneousTab) unmakeSelectedPortalsAnchors() {
 }
 
 func (t *homogeneousTab) contextMenu() *menu {
-	var aSelectedGuid string
+	var aSelectedGUID string
 	numSelectedEnabled := 0
 	numSelectedDisabled := 0
 	numSelectedAnchor := 0
 	numSelectedNotAnchor := 0
 	for guid := range t.selectedPortals {
-		aSelectedGuid = guid
+		aSelectedGUID = guid
 		if _, ok := t.disabledPortals[guid]; ok {
 			numSelectedDisabled++
 		} else {
@@ -243,7 +243,7 @@ func (t *homogeneousTab) contextMenu() *menu {
 	if len(t.selectedPortals) > 1 {
 		menu.header = fmt.Sprintf("%d portals selected", len(t.selectedPortals))
 	} else if len(t.selectedPortals) == 1 {
-		menu.header = t.portalMap[aSelectedGuid].Name
+		menu.header = t.portalMap[aSelectedGUID].Name
 	}
 	if numSelectedDisabled > 0 {
 		if len(t.selectedPortals) == 1 {

@@ -16,7 +16,7 @@ type portalValue struct {
 func (p *portalValue) Set(latLngStr string) error {
 	parts := strings.Split(latLngStr, ",")
 	if len(parts) != 2 {
-		return fmt.Errorf("Cannot parse \"%s\" as lat,lng", latLngStr)
+		return fmt.Errorf("cannot parse \"%s\" as lat,lng", latLngStr)
 	}
 	lat, err := strconv.ParseFloat(parts[0], 64)
 	if err != nil {
@@ -92,7 +92,7 @@ func (n *numberLimitValue) Set(numLimitStr string) error {
 	numStr := strings.TrimPrefix(numLimitStr, "<=")
 	num, err := strconv.ParseUint(numStr, 10, 16)
 	if err != nil {
-		return fmt.Errorf("Cannot parse \"%s\" as a 16bit unsigned int", numStr)
+		return fmt.Errorf("cannot parse \"%s\" as a 16bit unsigned int", numStr)
 	}
 	n.Value = int(num)
 	n.Exactly = len(numStr) == len(numLimitStr)

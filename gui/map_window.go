@@ -28,15 +28,17 @@ func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
 	w.window.SetLabel(title + " - © OpenStreetMap")
 	w.window.Begin()
 	w.window.SetCallback(w.onWindowClosed)
-	w.mapDrawer = NewMapDrawer(tileFetcher)
 	w.glWindow = fltk.NewGlWindow(0, 0, 800, 600, w.drawMap)
 	w.glWindow.SetEventHandler(w.handleEvent)
+	w.glWindow.SetResizeHandler(w.onGlWindowResized)
 	w.window.End()
+	w.window.Resizable(w.glWindow)
+	w.window.Show()
+	w.mapDrawer = NewMapDrawer(800, 600, tileFetcher)
 	w.mapDrawer.OnMapChanged(
 		func() {
 			fltk.Awake(w.glWindow.Redraw)
 		})
-	w.window.Show()
 	return w
 }
 
@@ -99,7 +101,8 @@ func (w *MapWindow) drawMap() {
 		}
 	}
 	if !w.glWindow.ContextValid() {
-		w.mapDrawer.Init()
+		_, _, width, height := fltk.ScreenWorkArea(0 /* main screen */)
+		w.mapDrawer.Init(width, height)
 	}
 
 	w.mapDrawer.Update()
@@ -185,5 +188,10 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 func (w *MapWindow) onWindowClosed() {
 	if w.windowClosedCallback != nil {
 		w.windowClosedCallback()
+	}
+}
+func (w *MapWindow) onGlWindowResized() {
+	if w.mapDrawer != nil {
+		w.mapDrawer.Resize(w.glWindow.W(), w.glWindow.H())
 	}
 }

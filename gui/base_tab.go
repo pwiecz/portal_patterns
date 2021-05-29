@@ -114,8 +114,8 @@ func (t *baseTab) onSearchDone(solutionText string) {
 func (t *baseTab) onAddPortalsPressed() {
 	fileChooser := fltk.NewFileChooser(t.configuration.PortalsDirectory, "JSON files (*.json)\tCSV files (*.csv)", fltk.SINGLE, "Select portals file")
 	fileChooser.SetCallback(
-		func() { 
-			if !fileChooser.Shown() { 
+		func() {
+			if !fileChooser.Shown() {
 				t.onPortalsFileSelected(fileChooser)
 			}
 		})
@@ -160,17 +160,19 @@ func (t *baseTab) onPortalsFileSelected(fileChooser *fltk.FileChooser) {
 	}
 	portals, _ := lib.ParseFile(filename)
 	t.addPortals(portals)
-	t.portals = portals
 	if t.portalList != nil {
 		t.portalList.SetPortals(t.portals)
 	}
 	if t.mapWindow != nil {
 		t.mapWindow.SetPortals(t.portals)
 	}
-	if len(t.portals) > 0 {
+	if len(t.portals) >= 3 {
 		t.search.Activate()
 	} else {
 		t.search.Deactivate()
+	}
+	if len(t.portals) > 0 {
+		t.reset.Activate()
 	}
 }
 
@@ -227,36 +229,10 @@ func (t *baseTab) addPortals(portals []lib.Portal) {
 		return
 	}
 	t.portals = append(t.portals, newPortals...)
-	if len(t.portals) > 0 {
-		t.reset.Activate()
-	}
-	if len(t.portals) >= 3 {
-		t.search.Activate()
-	}
-	if t.mapWindow == nil {
-		t.mapWindow = NewMapWindow(t.name, t.tileFetcher)
-		//		t.solutionMap.OnPortalLeftClick(func(guid string) {
-		//			t.OnPortalSelected(guid)
-		//		})
-		//		t.solutionMap.OnPortalRightClick(func(guid string, x, y int) {
-		//			t.pattern.onPortalContextMenu(guid, x, y)
-		//		})
-		//		t.solutionMap.ShowNormal()
-		//		tk.Update()
-	} else {
-		t.mapWindow.Show()
-	}
-	t.mapWindow.SetPortals(t.portals)
-	if t.portalList != nil {
-		t.portalList.SetPortals(t.portals)
-	}
 	t.portalMap = make(map[string]lib.Portal)
-	for _, portal := range portals {
+	for _, portal := range newPortals {
 		t.portalMap[portal.Guid] = portal
 	}
-	//	for _, portal := range t.portals {
-	//		t.portalStateChanged(portal.Guid)
-	//	}
 }
 
 func (t *baseTab) onSavePressed() {}
@@ -341,14 +317,6 @@ func (t *baseTab) OnPortalSelected(guid string) {
 	}
 	if t.mapWindow != nil {
 		//t.solutionMap.ScrollToPortal(guid)
-	}
-}
-func (t *baseTab) portalStateChanged(guid string) {
-	if t.portalList != nil {
-		//t.portalList.SetPortalState(guid, t.pattern.portalLabel(guid))
-	}
-	if t.mapWindow != nil {
-		//t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
 	}
 }
 

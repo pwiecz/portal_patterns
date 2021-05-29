@@ -1,16 +1,18 @@
 package osm
 
-import "errors"
-import "fmt"
-import "image"
-import "image/png"
-import "io/ioutil"
-import "log"
-import "net/http"
-import "os"
-import "path/filepath"
-import "strconv"
-import "sync"
+import (
+	"errors"
+	"fmt"
+	"image"
+	"image/png"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"sync"
+)
 
 const (
 	MAX_DOWNLOAD_THREADS = 2
@@ -18,6 +20,7 @@ const (
 )
 
 var ErrBusy = errors.New("Too many simultaneous requests")
+var ErrAlreadyRequested = errors.New("Tile already requested")
 
 type TileCoord struct {
 	X, Y, Zoom int
@@ -63,24 +66,24 @@ func (m *MapTiles) GetTile(coord TileCoord) (image.Image, error) {
 	if coord.Y >= maxCoord {
 		return nil, fmt.Errorf("Invalid x,y coords %v", coord)
 	}
-	wrappedCoord := coord
-	for wrappedCoord.X < 0 {
-		wrappedCoord.X += maxCoord
+
+	for coord.X < 0 {
+		coord.X += maxCoord
 	}
-	wrappedCoord.X %= maxCoord
+	coord.X %= maxCoord
 
 	m.requestsInFlightMutex.Lock()
-	if _, ok := m.requestsInFlight[wrappedCoord]; ok {
+	if _, ok := m.requestsInFlight[coord]; ok {
 		m.requestsInFlightMutex.Unlock()
-		return nil, fmt.Errorf("Coords already requested %v", wrappedCoord)
+		return nil, ErrAlreadyRequested
 	}
-	m.requestsInFlight[wrappedCoord] = empty{}
+	m.requestsInFlight[coord] = empty{}
 	m.requestsInFlightMutex.Unlock()
 
-	img, err := m.getTileSlow(wrappedCoord)
+	img, err := m.getTileSlow(coord)
 
 	m.requestsInFlightMutex.Lock()
-	delete(m.requestsInFlight, wrappedCoord)
+	delete(m.requestsInFlight, coord)
 	m.requestsInFlightMutex.Unlock()
 
 	if err != nil {

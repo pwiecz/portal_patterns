@@ -201,7 +201,7 @@ func prepareDroneGraph(portalsData []portalData, useLongJumps bool, reverseRoute
 	for _, p := range portalsData {
 		cellId := s2.CellFromPoint(p.LatLng).ID()
 		if cellId.Level() < 16 {
-			panic(fmt.Errorf("Got cell level: %d", cellId.Level()))
+			panic(fmt.Errorf("got cell level: %d", cellId.Level()))
 		}
 		cellId = cellId.Parent(16)
 		cellPortals[cellId] = append(cellPortals[cellId], p)
