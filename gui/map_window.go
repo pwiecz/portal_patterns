@@ -152,29 +152,29 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 			currX, currY := fltk.EventX(), fltk.EventY()
 			w.mapDrawer.Drag(w.prevX-currX, w.prevY-currY)
 			w.prevX, w.prevY = currX, currY
-			fltk.Awake(func() { w.glWindow.Redraw() })
+			fltk.Awake(w.glWindow.Redraw)
 			return true
 		}
 	case fltk.MOUSEWHEEL:
 		dy := fltk.EventDY()
 		if dy < 0 {
 			w.mapDrawer.ZoomIn(fltk.EventX(), fltk.EventY())
-			fltk.Awake(func() { w.glWindow.Redraw() })
+			fltk.Awake(w.glWindow.Redraw)
 			return true
 		} else if dy > 0 {
 			w.mapDrawer.ZoomOut(fltk.EventX(), fltk.EventY())
-			fltk.Awake(func() { w.glWindow.Redraw() })
+			fltk.Awake(w.glWindow.Redraw)
 			return true
 		}
 	case fltk.KEY:
 		if (fltk.EventState()&fltk.CTRL) != 0 &&
 			(fltk.EventKey() == '+' || fltk.EventKey() == '=') {
 			w.mapDrawer.ZoomIn(w.glWindow.W()/2, w.glWindow.H()/2)
-			fltk.Awake(func() { w.glWindow.Redraw() })
+			fltk.Awake(w.glWindow.Redraw)
 			return true
 		} else if fltk.EventKey() == '-' && (fltk.EventState()&fltk.CTRL) != 0 {
 			w.mapDrawer.ZoomOut(w.glWindow.W()/2, w.glWindow.H()/2)
-			fltk.Awake(func() { w.glWindow.Redraw() })
+			fltk.Awake(w.glWindow.Redraw)
 			return true
 		}
 	case fltk.MOVE:

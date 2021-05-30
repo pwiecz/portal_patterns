@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"image/color"
 	"path/filepath"
 
@@ -53,10 +52,10 @@ func newBaseTab(name string, configuration *configuration.Configuration, tileFet
 	addResetPack.SetType(fltk.HORIZONTAL)
 	addResetPack.SetSpacing(5)
 	t.add = fltk.NewButton(0, 0, 101, 30, "Add portals")
-	t.add.SetCallback(func() { t.onAddPortalsPressed() })
+	t.add.SetCallback(t.onAddPortalsPressed)
 	t.reset = fltk.NewButton(0, 0, 113, 30, "Reset portals")
 	t.reset.Deactivate()
-	t.reset.SetCallback(func() { t.onResetPortalsPressed() })
+	t.reset.SetCallback(t.onResetPortalsPressed)
 	addResetPack.End()
 
 	t.searchSaveCopyPack = fltk.NewPack(0, 0, 740, 30)
@@ -64,13 +63,13 @@ func newBaseTab(name string, configuration *configuration.Configuration, tileFet
 	t.searchSaveCopyPack.SetSpacing(5)
 	t.search = fltk.NewButton(0, 0, 70, 30, "Search")
 	t.search.Deactivate()
-	t.search.SetCallback(func() { t.onSearchPressed() })
+	t.search.SetCallback(t.onSearchPressed)
 	t.save = fltk.NewButton(0, 0, 117, 30, "Save Solution")
 	t.save.Deactivate()
-	t.save.SetCallback(func() { t.onSavePressed() })
+	t.save.SetCallback(t.onSavePressed)
 	t.copy = fltk.NewButton(0, 0, 147, 30, "Copy to Clipboard")
 	t.copy.Deactivate()
-	t.copy.SetCallback(func() { t.onCopyPressed() })
+	t.copy.SetCallback(t.onCopyPressed)
 	t.solutionLabel = fltk.NewBox(fltk.NO_BOX, 0, 0, 300, 30)
 	t.solutionLabel.SetAlign(fltk.ALIGN_INSIDE)
 	t.searchSaveCopyPack.Add(t.solutionLabel)
@@ -336,7 +335,7 @@ func (t *baseTab) onContextMenu(x, y int) {
 		return
 	}
 	mb := fltk.NewMenuButton(x, y, 100, 100, menu.header)
-	mb.SetCallback(func() { fmt.Println("menu callback") })
+	//	mb.SetCallback(func() { fmt.Println("menu callback") })
 	mb.SetType(fltk.POPUP3)
 	for _, item := range menu.items {
 		mb.Add(item.label, item.callback)

@@ -23,20 +23,15 @@ func newPortalList(x, y, w, h int) *portalList {
 	l.TableRow = fltk.NewTableRow(0, 0, 100, 540)
 
 	l.SetColumnCount(2)
-	l.SetDrawCellCallback(func(context fltk.TableContext, r, c, x, y, w, h int) {
-		l.drawCallback(context, r, c, x, y, w, h)
-	})
+	l.SetDrawCellCallback(l.drawCallback)
 	l.EnableColumnHeaders()
-	l.AllowColumnResizing()
+//	l.AllowColumnResizing()
 	l.SetColumnWidth(0, 200)
-	l.SetEventHandler(func(event fltk.Event) bool {
-		return l.onEvent(event)
-	})
+	l.SetEventHandler(l.onEvent)
 	l.SetCallbackCondition(fltk.WhenRelease)
-	l.SetCallback(func() {
-		l.onRelease()
-	})
+	l.SetCallback(l.onRelease)
 	l.SetType(fltk.SelectMulti)
+	l.SetResizeHandler(l.onResize)
 
 	return l
 }
@@ -151,5 +146,13 @@ func (l *portalList) onSelectionMaybeChanged() {
 		if l.selectionChangeCallback != nil {
 			l.selectionChangeCallback()
 		}
+	}
+}
+
+func (l *portalList) onResize() {
+	width := l.W()
+	if width > 2 {
+		l.SetColumnWidth(0, width/2-1)
+		l.SetColumnWidth(1, width/2-1)
 	}
 }
