@@ -2,6 +2,7 @@ package main
 
 import (
 	"image/color"
+	"os"
 	"path/filepath"
 
 	"github.com/golang/geo/s2"
@@ -64,10 +65,10 @@ func newBaseTab(name string, configuration *configuration.Configuration, tileFet
 	t.search = fltk.NewButton(0, 0, 70, 30, "Search")
 	t.search.Deactivate()
 	t.search.SetCallback(t.onSearchPressed)
-	t.save = fltk.NewButton(0, 0, 117, 30, "Save Solution")
+	t.save = fltk.NewButton(0, 0, 147, 30, "Export Draw Tools")
 	t.save.Deactivate()
-	t.save.SetCallback(t.onSavePressed)
-	t.copy = fltk.NewButton(0, 0, 147, 30, "Copy to Clipboard")
+	t.save.SetCallback(t.onExportPressed)
+	t.copy = fltk.NewButton(0, 0, 140, 30, "Copy Draw Tools")
 	t.copy.Deactivate()
 	t.copy.SetCallback(t.onCopyPressed)
 	t.solutionLabel = fltk.NewBox(fltk.NO_BOX, 0, 0, 300, 30)
@@ -111,23 +112,14 @@ func (t *baseTab) onSearchDone(solutionText string) {
 }
 
 func (t *baseTab) onAddPortalsPressed() {
-	fileChooser := fltk.NewFileChooser(t.configuration.PortalsDirectory, "JSON files (*.json)\tCSV files (*.csv)", fltk.SINGLE, "Select portals file")
-	fileChooser.SetCallback(
-		func() {
-			if !fileChooser.Shown() {
-				t.onPortalsFileSelected(fileChooser)
-			}
-		})
-	fileChooser.Show()
-}
-
-func (t *baseTab) onPortalsFileSelected(fileChooser *fltk.FileChooser) {
-	selection := fileChooser.Selection()
-	fileChooser.Destroy()
-	if len(selection) != 1 {
+	filename, ok := fltk.ChooseFile("Select portals file", "JSON files (*.json)\tCSV files (*.csv)", t.configuration.PortalsDirectory, false)
+	if !ok {
 		return
 	}
-	filename := selection[0]
+	t.onPortalsFileSelected(filename)
+}
+
+func (t *baseTab) onPortalsFileSelected(filename string) {
 	portalsDir, _ := filepath.Split(filename)
 	t.configuration.PortalsDirectory = portalsDir
 	if t.mapWindow == nil {
@@ -157,7 +149,11 @@ func (t *baseTab) onPortalsFileSelected(fileChooser *fltk.FileChooser) {
 	} else {
 		t.mapWindow.Show()
 	}
-	portals, _ := lib.ParseFile(filename)
+	portals, err := lib.ParseFile(filename)
+	if err != nil {
+		fltk.MessageBox("Error loading", "Couldn't read portals from file "+filename+"\n"+err.Error())
+		return
+	}
 	t.addPortals(portals)
 	if t.portalList != nil {
 		t.portalList.SetPortals(t.portals)
@@ -234,8 +230,25 @@ func (t *baseTab) addPortals(portals []lib.Portal) {
 	}
 }
 
-func (t *baseTab) onSavePressed() {}
-func (t *baseTab) onCopyPressed() {}
+func (t *baseTab) onExportPressed() {
+	filename, ok := fltk.ChooseFile("Select file for solution", "JSON files (*.json)", t.configuration.PortalsDirectory, false)
+	if !ok {
+		return
+	}
+	t.onDrawToolsFileSelected(filename)
+}
+func (t *baseTab) onDrawToolsFileSelected(filename string) {
+	file, err := os.Create(filename)
+	if err != nil {
+		fltk.MessageBox("Error saving", "Couldn't create file "+filename+"\n"+err.Error())
+		return
+	}
+	defer file.Close()
+	file.WriteString(t.pattern.solutionString())
+}
+func (t *baseTab) onCopyPressed() {
+	fltk.CopyToClipboard(t.pattern.solutionString())
+}
 func stringSetsAreTheSame(map1 map[string]struct{}, map2 map[string]struct{}) bool {
 	for s := range map1 {
 		if _, ok := map2[s]; !ok {
