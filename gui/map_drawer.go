@@ -31,11 +31,12 @@ type showTileRequest struct {
 }
 
 type mapPortal struct {
-	coords    r2.Point
-	color     imgui.PackedColor
-	name      string
-	guid      string
-	drawOrder int
+	coords      r2.Point
+	fillColor   imgui.PackedColor
+	strokeColor imgui.PackedColor
+	name        string
+	guid        string
+	drawOrder   int
 }
 
 type lockedCoordSet struct {
@@ -99,22 +100,24 @@ func (c *lockedTileCache) Add(coord osm.TileCoord, img image.Image) {
 
 type glTexture uint32
 type MapDrawer struct {
-	imguiContext          *imgui.Context
-	imguiRenderer         *guigl.OpenGL2
-	initialized           bool
-	tileCache             *lockedTileCache
-	mapTiles              map[osm.TileCoord]glTexture
-	missingTiles          *lockedCoordSet
-	portals               []mapPortal
-	portalShapeIndex      *s2.ShapeIndex
-	shapeIndexIDToPortal  map[int32]int
-	paths                 [][]r2.Point
-	portalIndices         map[string]int
-	portalDrawOrder       []int
-	defaultPortalColor    imgui.PackedColor
-	showTileChannel       chan showTileRequest
-	setPortalsChannel     chan []lib.Portal
-	setPathsChannel       chan [][]s2.Point
+	imguiContext         *imgui.Context
+	imguiRenderer        *guigl.OpenGL2
+	initialized          bool
+	tileCache            *lockedTileCache
+	mapTiles             map[osm.TileCoord]glTexture
+	missingTiles         *lockedCoordSet
+	portals              []mapPortal
+	portalShapeIndex     *s2.ShapeIndex
+	shapeIndexIDToPortal map[int32]int
+	paths                [][]r2.Point
+	portalIndices        map[string]int
+	portalDrawOrder      []int
+	defaultPortalColor   imgui.PackedColor
+	//	showTileChannel       chan showTileRequest
+	//	setPortalsChannel     chan []lib.Portal
+	//	setPathsChannel       chan [][]s2.Point
+	taskQueue             TaskQueue
+	asyncChannel          chan struct{}
 	tileFetcher           *osm.MapTiles
 	width, height         float32
 	zoom                  int
@@ -130,10 +133,7 @@ func NewMapDrawer(width, height int, tileFetcher *osm.MapTiles) *MapDrawer {
 		tileCache:          newLockedTileCache(1000),
 		mapTiles:           make(map[osm.TileCoord]glTexture),
 		missingTiles:       newLockedCoordSet(),
-		showTileChannel:    make(chan showTileRequest),
-		setPortalsChannel:  make(chan []lib.Portal),
 		defaultPortalColor: imgui.Packed(color.NRGBA{255, 127, 0, 127}),
-		setPathsChannel:    make(chan [][]s2.Point),
 		tileFetcher:        tileFetcher,
 		portalUnderMouse:   -1,
 		portalIndices:      make(map[string]int),
@@ -143,110 +143,134 @@ func NewMapDrawer(width, height int, tileFetcher *osm.MapTiles) *MapDrawer {
 	return w
 }
 
-func (w *MapDrawer) SetPortalColor(guid string, color color.Color) {
-	packedColor := imgui.Packed(color)
-	w.portals[w.portalIndices[guid]].color = packedColor
-	w.MapChanged()
+func (w *MapDrawer) Async(callback func()) {
+	w.taskQueue.Enqueue(callback)
+	for _, callback := range w.onMapChangedCallbacks {
+		callback()
+	}
+}
+func (w *MapDrawer) SetPortalColor(guid string, fillColor, strokeColor color.Color) {
+	w.Async(func() {
+		w.portals[w.portalIndices[guid]].fillColor = imgui.Packed(fillColor)
+		w.portals[w.portalIndices[guid]].strokeColor = imgui.Packed(strokeColor)
+		go w.MapChanged()
+	})
 }
 
 func (w *MapDrawer) Lower(guid string) {
-	loweredPortalIndex := w.portalIndices[guid]
-	drawOrder := w.portals[loweredPortalIndex].drawOrder
-	if drawOrder == 0 {
-		return
-	}
-	for i := len(w.portals) - 1; i >= 0; i-- {
-		if i == 0 {
-			w.portalDrawOrder[i] = loweredPortalIndex
-		} else if i <= drawOrder {
-			w.portalDrawOrder[i] = w.portalDrawOrder[i-1]
+	w.Async(func() {
+		loweredPortalIndex := w.portalIndices[guid]
+		drawOrder := w.portals[loweredPortalIndex].drawOrder
+		if drawOrder == 0 {
+			return
 		}
-	}
-	for ord, portalIndex := range w.portalDrawOrder {
-		w.portals[portalIndex].drawOrder = ord
-	}
+		for i := len(w.portals) - 1; i >= 0; i-- {
+			if i == 0 {
+				w.portalDrawOrder[i] = loweredPortalIndex
+			} else if i <= drawOrder {
+				w.portalDrawOrder[i] = w.portalDrawOrder[i-1]
+			}
+		}
+		for ord, portalIndex := range w.portalDrawOrder {
+			w.portals[portalIndex].drawOrder = ord
+		}
+	})
 }
 func (w *MapDrawer) Raise(guid string) {
-	raisedPortalIndex := w.portalIndices[guid]
-	drawOrder := w.portals[raisedPortalIndex].drawOrder
-	if drawOrder == len(w.portals)-1 {
-		return
-	}
-	for i := 0; i < len(w.portals); i++ {
-		if i == len(w.portals)-1 {
-			w.portalDrawOrder[i] = raisedPortalIndex
-		} else if i >= drawOrder {
-			w.portalDrawOrder[i] = w.portalDrawOrder[i+1]
+	w.Async(func() {
+		raisedPortalIndex := w.portalIndices[guid]
+		drawOrder := w.portals[raisedPortalIndex].drawOrder
+		if drawOrder == len(w.portals)-1 {
+			return
 		}
-	}
-	for ord, portalIndex := range w.portalDrawOrder {
-		w.portals[portalIndex].drawOrder = ord
-	}
+		for i := 0; i < len(w.portals); i++ {
+			if i == len(w.portals)-1 {
+				w.portalDrawOrder[i] = raisedPortalIndex
+			} else if i >= drawOrder {
+				w.portalDrawOrder[i] = w.portalDrawOrder[i+1]
+			}
+		}
+		for ord, portalIndex := range w.portalDrawOrder {
+			w.portals[portalIndex].drawOrder = ord
+		}
+	})
 }
 func (w *MapDrawer) Resize(width, height int) {
-	w.width = float32(width)
-	w.height = float32(height)
-	w.redrawTiles()
+	w.Async(func() {
+		w.width = float32(width)
+		w.height = float32(height)
+		w.redrawTiles()
+	})
 }
 func (w *MapDrawer) Drag(dx, dy int) {
-	w.x0 += float64(dx)
-	w.y0 += float64(dy)
-	w.redrawTiles()
+	w.Async(func() {
+		w.x0 += float64(dx)
+		w.y0 += float64(dy)
+		w.redrawTiles()
+	})
 }
 func (w *MapDrawer) ZoomIn(x, y int) {
-	if w.zoom < osm.MAX_ZOOM_LEVEL {
-		w.zoom++
-		w.zoomPow *= 2.0
-		w.x0 = (w.x0+float64(x))*2.0 - float64(x)
-		w.y0 = (w.y0+float64(y))*2.0 - float64(y)
-		w.redrawTiles()
-	}
+	w.Async(func() {
+		if w.zoom < osm.MAX_ZOOM_LEVEL {
+			w.zoom++
+			w.zoomPow *= 2.0
+			w.x0 = (w.x0+float64(x))*2.0 - float64(x)
+			w.y0 = (w.y0+float64(y))*2.0 - float64(y)
+			w.redrawTiles()
+		}
+	})
 }
 func (w *MapDrawer) ZoomOut(x, y int) {
-	if w.zoom > 0 {
-		w.zoom--
-		w.zoomPow /= 2.0
-		w.x0 = (w.x0+float64(x))*0.5 - float64(x)
-		w.y0 = (w.y0+float64(y))*0.5 - float64(y)
-		w.redrawTiles()
-	}
+	w.Async(func() {
+		if w.zoom > 0 {
+			w.zoom--
+			w.zoomPow /= 2.0
+			w.x0 = (w.x0+float64(x))*0.5 - float64(x)
+			w.y0 = (w.y0+float64(y))*0.5 - float64(y)
+			w.redrawTiles()
+		}
+	})
 }
 func (w *MapDrawer) Hover(x, y int) {
-	w.mouseX, w.mouseY = x, y
-	if len(w.portals) == 0 {
-		return
-	}
-	mapX := (float64(x) + w.x0) / 256 / w.zoomPow
-	mapY := (float64(y) + w.y0) / 256 / w.zoomPow
-	projectedX := mapX*360 - 180
-	projectedY := 180 - mapY*360
-	point := projection.Unproject(r2.Point{projectedX, projectedY})
-	opts := s2.NewClosestEdgeQueryOptions().MaxResults(1)
-	query := s2.NewClosestEdgeQuery(w.portalShapeIndex, opts)
-	target := s2.NewMinDistanceToPointTarget(point)
-	result := query.FindEdges(target)
-	if len(result) == 0 {
-		return
-	}
-	shapeID := result[0].ShapeID()
-	portalIx, ok := w.shapeIndexIDToPortal[shapeID]
-	if !ok {
-		return
-	}
-	closestPortal := w.portals[portalIx]
-	dx, dy := mapX-closestPortal.coords.X, mapY-closestPortal.coords.Y
-	dx, dy = dx*256*w.zoomPow, dy*256*w.zoomPow
-	portalUnderMouse := -1
-	if dx*dx+dy*dy <= PortalCircleRadius*PortalCircleRadius {
-		portalUnderMouse = portalIx
-	}
-	if portalUnderMouse != w.portalUnderMouse {
-		w.portalUnderMouse = portalUnderMouse
-		w.MapChanged()
-	}
+	w.Async(func() {
+		w.mouseX, w.mouseY = x, y
+		if len(w.portals) == 0 {
+			return
+		}
+		mapX := (float64(x) + w.x0) / 256 / w.zoomPow
+		mapY := (float64(y) + w.y0) / 256 / w.zoomPow
+		projectedX := mapX*360 - 180
+		projectedY := 180 - mapY*360
+		point := projection.Unproject(r2.Point{projectedX, projectedY})
+		opts := s2.NewClosestEdgeQueryOptions().MaxResults(1)
+		query := s2.NewClosestEdgeQuery(w.portalShapeIndex, opts)
+		target := s2.NewMinDistanceToPointTarget(point)
+		result := query.FindEdges(target)
+		if len(result) == 0 {
+			return
+		}
+		shapeID := result[0].ShapeID()
+		portalIx, ok := w.shapeIndexIDToPortal[shapeID]
+		if !ok {
+			return
+		}
+		closestPortal := w.portals[portalIx]
+		dx, dy := mapX-closestPortal.coords.X, mapY-closestPortal.coords.Y
+		dx, dy = dx*256*w.zoomPow, dy*256*w.zoomPow
+		portalUnderMouse := -1
+		if dx*dx+dy*dy <= PortalCircleRadius*PortalCircleRadius {
+			portalUnderMouse = portalIx
+		}
+		if portalUnderMouse != w.portalUnderMouse {
+			w.portalUnderMouse = portalUnderMouse
+			w.MapChanged()
+		}
+	})
 }
 func (w *MapDrawer) Leave() {
-	w.portalUnderMouse = -1
+	w.Async(func() {
+		w.portalUnderMouse = -1
+	})
 }
 
 func (w *MapDrawer) OnMapChanged(callback func()) {
@@ -271,39 +295,22 @@ func (w *MapDrawer) Init(screenWidth, screenHeight int) {
 	w.imguiContext = context
 	w.imguiRenderer = renderer
 	//	w.InitOpenGL()
+	w.onNewPortals(nil)
 	w.initialized = true
 }
 func (w *MapDrawer) Update() {
-	select {
-	case req := <-w.showTileChannel:
-		w.showTile(req.coord, req.tile)
-	case portals := <-w.setPortalsChannel:
-		w.onNewPortals(portals)
-	case paths := <-w.setPathsChannel:
-		tesselator := s2.NewEdgeTessellator(projection, 1e-3)
-		w.paths = w.paths[:0]
-		for _, path := range paths {
-			mapPath := []r2.Point{}
-			for i := 1; i < len(path); i++ {
-				mapPath = tesselator.AppendProjected(path[i-1], path[i], mapPath)
-			}
-			for i := range mapPath {
-				mapPath[i].X = (mapPath[i].X + 180) / 360
-				mapPath[i].Y = (180 - mapPath[i].Y) / 360
-			}
-			w.paths = append(w.paths, mapPath)
-		}
-		w.MapChanged()
-	default:
-		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-		if err := gl.GetError(); err != gl.NO_ERROR {
-			log.Fatalln("error on start", err)
-		}
-		w.DrawAllTilesImgui()
-		w.DrawAllPortalsImgui()
-		w.DrawAllPathsImgui()
-		w.DrawPortalLabelImgui()
+	for !w.taskQueue.Empty() {
+		callback := w.taskQueue.Dequeue()
+		callback()
 	}
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	if err := gl.GetError(); err != gl.NO_ERROR {
+		log.Fatalln("error on start", err)
+	}
+	w.drawAllTilesImgui()
+	w.drawAllPortalsImgui()
+	w.drawAllPathsImgui()
+	w.drawPortalLabelImgui()
 }
 
 func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
@@ -337,6 +344,16 @@ func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
 	w.portalShapeIndex = s2.NewShapeIndex()
 	w.shapeIndexIDToPortal = make(map[int32]int)
 	w.portalDrawOrder = w.portalDrawOrder[:0]
+	if len(portals) == 0 {
+		w.zoom = 0
+		w.zoomPow = 1
+		w.x0 = 0
+		w.y0 = 0
+		w.portalUnderMouse = -1
+		w.redrawTiles()
+		w.MapChanged()
+		return
+	}
 	for i, portal := range portals {
 		portalPoint := s2.PointFromLatLng(portal.LatLng)
 		portalCells := s2.SimpleRegionCovering(portalPoint, portalPoint, 30)
@@ -350,11 +367,12 @@ func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
 		mapCoords.X = (mapCoords.X + 180) / 360
 		mapCoords.Y = (180 - mapCoords.Y) / 360
 		w.portals = append(w.portals, mapPortal{
-			coords:    mapCoords,
-			color:     w.defaultPortalColor,
-			name:      portal.Name,
-			guid:      portal.Guid,
-			drawOrder: i,
+			coords:      mapCoords,
+			fillColor:   w.defaultPortalColor,
+			strokeColor: imgui.Packed(color.NRGBA{0, 0, 0, 0}),
+			name:        portal.Name,
+			guid:        portal.Guid,
+			drawOrder:   i,
 		})
 		w.portalIndices[portal.Guid] = i
 		w.portalDrawOrder = append(w.portalDrawOrder, i)
@@ -367,7 +385,7 @@ func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
 
 const LabelXMargin = 10
 
-func (w *MapDrawer) DrawPortalLabelImgui() {
+func (w *MapDrawer) drawPortalLabelImgui() {
 	if w.portalUnderMouse < 0 || w.portalUnderMouse >= len(w.portals) {
 		return
 	}
@@ -396,7 +414,7 @@ func (w *MapDrawer) DrawPortalLabelImgui() {
 	size := [2]float32{w.width, w.height}
 	w.imguiRenderer.Render(size, size, imgui.RenderedDrawData())
 }
-func (w *MapDrawer) DrawAllTilesImgui() {
+func (w *MapDrawer) drawAllTilesImgui() {
 	imgui.NewFrame()
 	drawList := imgui.BackgroundDrawList()
 	for coord, tex := range w.mapTiles {
@@ -408,7 +426,7 @@ func (w *MapDrawer) DrawAllTilesImgui() {
 	size := [2]float32{w.width, w.height}
 	w.imguiRenderer.Render(size, size, imgui.RenderedDrawData())
 }
-func (w *MapDrawer) DrawAllPortalsImgui() {
+func (w *MapDrawer) drawAllPortalsImgui() {
 	imgui.NewFrame()
 	drawList := imgui.BackgroundDrawList()
 	size := [2]float32{w.width, w.height}
@@ -416,7 +434,8 @@ func (w *MapDrawer) DrawAllPortalsImgui() {
 		portal := w.portals[portalIndex]
 		x := float32(portal.coords.X*w.zoomPow*256 - w.x0)
 		y := float32(portal.coords.Y*w.zoomPow*256 - w.y0)
-		drawList.AddCircleFilled(imgui.Vec2{x, y}, PortalCircleRadius, portal.color)
+		drawList.AddCircleFilled(imgui.Vec2{x, y}, PortalCircleRadius, portal.fillColor)
+		drawList.AddCircle(imgui.Vec2{x, y}, PortalCircleRadius, portal.strokeColor)
 		// Split drawing portals into smaller chunks, otherwise we exceed imgui limits.
 		if i%499 == 1 {
 			imgui.Render()
@@ -427,7 +446,7 @@ func (w *MapDrawer) DrawAllPortalsImgui() {
 	imgui.Render()
 	w.imguiRenderer.Render(size, size, imgui.RenderedDrawData())
 }
-func (w *MapDrawer) DrawAllPathsImgui() {
+func (w *MapDrawer) drawAllPathsImgui() {
 	imgui.NewFrame()
 	purple := imgui.Packed(color.NRGBA{100, 50, 225, 175})
 	drawList := imgui.BackgroundDrawList()
@@ -445,20 +464,38 @@ func (w *MapDrawer) DrawAllPathsImgui() {
 	w.imguiRenderer.Render(size, size, imgui.RenderedDrawData())
 }
 func (w *MapDrawer) SetPortals(portals []lib.Portal) {
-	go func() {
-		for _, callback := range w.onMapChangedCallbacks {
-			callback()
-		}
-		w.setPortalsChannel <- portals
-	}()
+	w.Async(func() { w.onNewPortals(portals) })
+	//	go func() {
+	//		for _, callback := range w.onMapChangedCallbacks {
+	//			callback()
+	//		}
+	//		w.setPortalsChannel <- portals
+	//	}()
 }
 func (w *MapDrawer) SetPaths(paths [][]s2.Point) {
-	go func() {
-		for _, callback := range w.onMapChangedCallbacks {
-			callback()
+	w.Async(func() {
+		tesselator := s2.NewEdgeTessellator(projection, 1e-3)
+		fmt.Println("SetPaths", paths, w.paths)
+		w.paths = w.paths[:0]
+		for _, path := range paths {
+			mapPath := []r2.Point{}
+			for i := 1; i < len(path); i++ {
+				mapPath = tesselator.AppendProjected(path[i-1], path[i], mapPath)
+			}
+			for i := range mapPath {
+				mapPath[i].X = (mapPath[i].X + 180) / 360
+				mapPath[i].Y = (180 - mapPath[i].Y) / 360
+			}
+			w.paths = append(w.paths, mapPath)
 		}
-		w.setPathsChannel <- paths
-	}()
+		w.MapChanged()
+	})
+	//	go func() {
+	//		for _, callback := range w.onMapChangedCallbacks {
+	//			callback()
+	//		}
+	//		w.setPathsChannel <- paths
+	//	}()
 }
 func (w *MapDrawer) onTileRead(coord osm.TileCoord, img image.Image) {
 	wrappedCoord := coord
@@ -469,12 +506,15 @@ func (w *MapDrawer) onTileRead(coord osm.TileCoord, img image.Image) {
 	wrappedCoord.X %= maxCoord
 	w.tileCache.Add(wrappedCoord, img)
 	w.missingTiles.Remove(coord)
-	go func() {
-		for _, callback := range w.onMapChangedCallbacks {
-			callback()
-		}
-		w.showTileChannel <- showTileRequest{coord: coord, tile: img}
-	}()
+	//	go func() {
+	w.Async(func() {
+		//		for _, callback := range w.onMapChangedCallbacks {
+		//			callback()
+		//		}
+		//		w.showTileChannel <- showTileRequest{coord: coord, tile: img}
+		w.showTile(coord, img)
+	})
+	//	}()
 }
 func (w *MapDrawer) redrawTiles() {
 	if w.zoomPow == 0 {

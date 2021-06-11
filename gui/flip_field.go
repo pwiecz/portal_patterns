@@ -2,12 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io"
 
-	//	"github.com/golang/geo/s2"
 	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
-	"github.com/pwiecz/portal_patterns/configuration"
-	"github.com/pwiecz/portal_patterns/gui/osm"
 	"github.com/pwiecz/portal_patterns/lib"
 )
 
@@ -19,13 +17,14 @@ type flipFieldTab struct {
 	simpleBackbone     *fltk.CheckButton
 	backbone           []lib.Portal
 	rest               []lib.Portal
+	solutionText       string
 }
 
-var _ = (*flipFieldTab)(nil)
+var _ pattern = (*flipFieldTab)(nil)
 
-func newFlipFieldTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *flipFieldTab {
+func newFlipFieldTab(portals *Portals) *flipFieldTab {
 	t := &flipFieldTab{}
-	t.baseTab = newBaseTab("Flip Field", configuration, tileFetcher, t)
+	t.baseTab = newBaseTab("Flip Field", portals, t)
 
 	numBackbonePortalsPack := fltk.NewPack(0, 0, 760, 30)
 	numBackbonePortalsPack.SetType(fltk.HORIZONTAL)
@@ -55,27 +54,20 @@ func newFlipFieldTab(configuration *configuration.Configuration, tileFetcher *os
 	simpleBackbonePack.End()
 	t.Add(simpleBackbonePack)
 
-	t.Add(t.searchSaveCopyPack)
-	t.Add(t.progress)
-	if t.portalList != nil {
-		t.Add(t.portalList)
-	}
 	t.End()
 
 	return t
 }
 
+func (t *flipFieldTab) encode(w io.Writer) error { return nil }
+func (t *flipFieldTab) decode(r io.Reader) error { return nil }
+
 func (t *flipFieldTab) onReset() {
 	t.backbone = nil
 	t.rest = nil
+	t.solutionText = ""
 }
-func (t *flipFieldTab) onSearch() {
-	progressFunc := func(val, max int) {
-		fltk.Awake(func() {
-			t.progress.SetMaximum(float64(max))
-			t.progress.SetValue(float64(val))
-		})
-	}
+func (t *flipFieldTab) onSearch(progressFunc func(int, int), onSearchDone func()) {
 	numPortalLimit := lib.LESS_EQUAL
 	if t.exactly.Value() {
 		numPortalLimit = lib.EQUAL
@@ -88,65 +80,53 @@ func (t *flipFieldTab) onSearch() {
 	}
 	go func() {
 		portals := t.enabledPortals()
-		t.backbone, t.rest = lib.LargestFlipField(portals, options...)
-		if t.mapWindow != nil {
-			lines := [][]s2.Point{portalsToPoints(t.backbone)}
-			if len(t.rest) > 0 {
-				hull := s2.NewConvexHullQuery()
-				for _, p := range t.rest {
-					hull.AddPoint(s2.PointFromLatLng(p.LatLng))
-				}
-				hullPoints := hull.ConvexHull().Vertices()
-				if len(hullPoints) > 0 {
-					hullPoints = append(hullPoints, hullPoints[0])
-				}
-				lines = append(lines, hullPoints)
-			}
-			t.mapWindow.SetPaths(lines)
-		}
+		backbone, rest := lib.LargestFlipField(portals, options...)
 		fltk.Awake(func() {
-			solutionText := fmt.Sprintf("Num backbone portals: %d, num flip portals: %d", len(t.backbone), len(t.rest))
-			t.onSearchDone(solutionText)
+			t.backbone, t.rest = backbone, rest
+			t.solutionText = fmt.Sprintf("Num backbone portals: %d, num flip portals: %d", len(t.backbone), len(t.rest))
+			onSearchDone()
 		})
 	}()
 }
 
-func (t *flipFieldTab) solutionString() string {
+func (t *flipFieldTab) hasSolution() bool {
+	return len(t.backbone) > 0 && len(t.rest) > 0
+}
+func (t *flipFieldTab) solutionInfoString() string {
+	return t.solutionText
+}
+func (t *flipFieldTab) solutionDrawToolsString() string {
 	s := fmt.Sprintf("[%s", lib.PolylineFromPortalList(t.backbone))
 	if len(t.rest) > 0 {
 		s += fmt.Sprintf(",%s", lib.MarkersFromPortalList(t.rest))
 	}
 	return s + "]"
 }
+func (t *flipFieldTab) solutionPaths() [][]s2.Point {
+	lines := [][]s2.Point{portalsToPoints(t.backbone)}
+	if len(t.rest) > 0 {
+		hull := s2.NewConvexHullQuery()
+		for _, p := range t.rest {
+			hull.AddPoint(s2.PointFromLatLng(p.LatLng))
+		}
+		hullPoints := hull.ConvexHull().Vertices()
+		if len(hullPoints) > 0 {
+			hullPoints = append(hullPoints, hullPoints[0])
+		}
+		lines = append(lines, hullPoints)
+	}
+	return lines
+}
 
 func (t *flipFieldTab) enableSelectedPortals() {
-	for guid := range t.selectedPortals {
-		delete(t.disabledPortals, guid)
-		if t.mapWindow != nil {
-			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
-		}
-		if t.portalList != nil {
-			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
-		}
-	}
-	if t.portalList != nil {
-		t.portalList.Redraw()
+	for guid := range t.portals.selectedPortals {
+		delete(t.portals.disabledPortals, guid)
 	}
 }
 
 func (t *flipFieldTab) disableSelectedPortals() {
-	for guid := range t.selectedPortals {
-		t.disabledPortals[guid] = struct{}{}
-		if t.mapWindow != nil {
-			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
-			t.mapWindow.Lower(guid)
-		}
-		if t.portalList != nil {
-			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
-		}
-	}
-	if t.portalList != nil {
-		t.portalList.Redraw()
+	for guid := range t.portals.selectedPortals {
+		t.portals.disabledPortals[guid] = struct{}{}
 	}
 }
 
@@ -154,33 +134,81 @@ func (t *flipFieldTab) contextMenu() *menu {
 	var aSelectedGUID string
 	numSelectedEnabled := 0
 	numSelectedDisabled := 0
-	for guid := range t.selectedPortals {
+	for guid := range t.portals.selectedPortals {
 		aSelectedGUID = guid
-		if _, ok := t.disabledPortals[guid]; ok {
+		if _, ok := t.portals.disabledPortals[guid]; ok {
 			numSelectedDisabled++
 		} else {
 			numSelectedEnabled++
 		}
 	}
 	menu := &menu{}
-	if len(t.selectedPortals) > 1 {
-		menu.header = fmt.Sprintf("%d portals selected", len(t.selectedPortals))
-	} else if len(t.selectedPortals) == 1 {
+	if len(t.portals.selectedPortals) > 1 {
+		menu.header = fmt.Sprintf("%d portals selected", len(t.portals.selectedPortals))
+	} else if len(t.portals.selectedPortals) == 1 {
 		menu.header = t.portalMap[aSelectedGUID].Name
 	}
 	if numSelectedDisabled > 0 {
-		if len(t.selectedPortals) == 1 {
+		if len(t.portals.selectedPortals) == 1 {
 			menu.items = append(menu.items, menuItem{"Enable", t.enableSelectedPortals})
 		} else {
 			menu.items = append(menu.items, menuItem{"Enable All", t.enableSelectedPortals})
 		}
 	}
 	if numSelectedEnabled > 0 {
-		if len(t.selectedPortals) == 1 {
+		if len(t.portals.selectedPortals) == 1 {
 			menu.items = append(menu.items, menuItem{"Disable", t.disableSelectedPortals})
 		} else {
 			menu.items = append(menu.items, menuItem{"Disable All", t.disableSelectedPortals})
 		}
 	}
 	return menu
+}
+
+type flipFieldState struct {
+	NumBackbonePortals int      `json:"numBackbonePortals"`
+	Exactly            bool     `json:"exactly"`
+	MaxFlipPortals     int      `json:"maxFlipPortals"`
+	SimpleBackbone     bool     `json:"simpleBackbone"`
+	Backbone           []string `json:"backbone"`
+	Rest               []string `json:"rest"`
+	SolutionText       string   `json:"solutionText"`
+}
+
+func (t *flipFieldTab) state() flipFieldState {
+	state := flipFieldState{
+		NumBackbonePortals: int(t.numBackbonePortals.Value()),
+		Exactly:            t.exactly.Value(),
+		MaxFlipPortals:     int(t.maxFlipPortals.Value()),
+		SimpleBackbone:     t.simpleBackbone.Value(),
+		SolutionText:       t.solutionText,
+	}
+	for _, backbonePortal := range t.backbone {
+		state.Backbone = append(state.Backbone, backbonePortal.Guid)
+	}
+	for _, restPortal := range t.rest {
+		state.Rest = append(state.Rest, restPortal.Guid)
+	}
+	return state
+}
+
+func (t *flipFieldTab) load(state flipFieldState) {
+	t.numBackbonePortals.SetValue(float64(state.NumBackbonePortals))
+	t.exactly.SetValue(state.Exactly)
+	t.maxFlipPortals.SetValue(float64(state.MaxFlipPortals))
+	t.simpleBackbone.SetValue(state.SimpleBackbone)
+	t.backbone = nil
+	for _, backboneGUID := range state.Backbone {
+		if backbonePortal, ok := t.portals.portalMap[backboneGUID]; ok {
+			t.backbone = append(t.backbone, backbonePortal)
+		} else {
+		}
+	}
+	for _, restGUID := range state.Rest {
+		if restPortal, ok := t.portals.portalMap[restGUID]; ok {
+			t.rest = append(t.rest, restPortal)
+		} else {
+		}
+	}
+	t.solutionText = state.SolutionText
 }

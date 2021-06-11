@@ -6,9 +6,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
-	"github.com/pwiecz/portal_patterns/configuration"
-	"github.com/pwiecz/portal_patterns/gui/osm"
 	"github.com/pwiecz/portal_patterns/lib"
 )
 
@@ -20,14 +19,16 @@ type homogeneousTab struct {
 	pure          *fltk.CheckButton
 	depth         uint16
 	solution      []lib.Portal
-	anchorPortals map[string]struct{}
+	solutionText  string
+	cornerPortals map[string]struct{}
 }
 
-func newHomogeneousTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *homogeneousTab {
-	t := &homogeneousTab{
-		anchorPortals: make(map[string]struct{}),
-	}
-	t.baseTab = newBaseTab("Homogeneous", configuration, tileFetcher, t)
+var _ pattern = (*homogeneousTab)(nil)
+
+func newHomogeneousTab(portals *Portals) *homogeneousTab {
+	t := &homogeneousTab{}
+	t.baseTab = newBaseTab("Homogeneous", portals, t)
+	t.cornerPortals = make(map[string]struct{})
 
 	maxDepthPack := fltk.NewPack(0, 0, 760, 30)
 	maxDepthPack.SetType(fltk.HORIZONTAL)
@@ -69,30 +70,21 @@ func newHomogeneousTab(configuration *configuration.Configuration, tileFetcher *
 	purePack.End()
 	t.Add(purePack)
 
-	t.Add(t.searchSaveCopyPack)
-	t.Add(t.progress)
-	if t.portalList != nil {
-		t.Add(t.portalList)
-	}
 	t.End()
 
 	return t
 }
 
 func (t *homogeneousTab) onReset() {
-	t.anchorPortals = make(map[string]struct{})
+	t.cornerPortals = make(map[string]struct{})
 	t.depth = 0
 	t.solution = nil
+	t.solutionText = ""
 }
-func (t *homogeneousTab) onSearch() {
+func (t *homogeneousTab) onSearch(progressFunc func(int, int), onSearchDone func()) {
 	options := []lib.HomogeneousOption{
 		lib.HomogeneousMaxDepth(t.maxDepth.Value()),
-		lib.HomogeneousProgressFunc(func(val, max int) {
-			fltk.Awake(func() {
-				t.progress.SetMaximum(float64(max))
-				t.progress.SetValue(float64(val))
-			})
-		}),
+		lib.HomogeneousProgressFunc(progressFunc),
 	}
 	if t.pure.Value() {
 		options = append(options, lib.HomogeneousPure(true))
@@ -113,110 +105,73 @@ func (t *homogeneousTab) onSearch() {
 	}
 	go func() {
 		portals := t.enabledPortals()
-		anchors := []int{}
+		corners := []int{}
 		for i, portal := range portals {
-			if _, ok := t.anchorPortals[portal.Guid]; ok {
-				anchors = append(anchors, i)
+			if _, ok := t.cornerPortals[portal.Guid]; ok {
+				corners = append(corners, i)
 			}
 		}
-		options = append(options, lib.HomogeneousFixedCornerIndices(anchors))
-		t.solution, t.depth = lib.DeepestHomogeneous(portals, options...)
-		if t.mapWindow != nil {
-			t.mapWindow.SetPortalPaths(lib.HomogeneousPolylines(t.depth, t.solution))
-		}
+		options = append(options, lib.HomogeneousFixedCornerIndices(corners))
+		solution, depth := lib.DeepestHomogeneous(portals, options...)
 		fltk.Awake(func() {
-			var solutionText string
+			t.solution, t.depth = solution, depth
 			if t.depth > 0 {
-				solutionText = fmt.Sprintf("Solution depth: %d", t.depth)
+				t.solutionText = fmt.Sprintf("Solution depth: %d", t.depth)
 			} else {
-				solutionText = "No solution found"
+				t.solutionText = "No solution found"
 			}
-			t.onSearchDone(solutionText)
+			onSearchDone()
 		})
 	}()
 }
 
-func (t *homogeneousTab) solutionString() string {
+func (t *homogeneousTab) hasSolution() bool {
+	return len(t.solution) > 0
+}
+func (t *homogeneousTab) solutionInfoString() string {
+	return t.solutionText
+}
+func (t *homogeneousTab) solutionDrawToolsString() string {
 	return lib.HomogeneousDrawToolsString(t.depth, t.solution)
 }
-
+func (t *homogeneousTab) solutionPaths() [][]s2.Point {
+	return portalPathsToPointPaths(lib.HomogeneousPolylines(t.depth, t.solution))
+}
 func (t *homogeneousTab) portalLabel(guid string) string {
-	if _, ok := t.anchorPortals[guid]; ok {
-		return "Anchor"
+	if _, ok := t.cornerPortals[guid]; ok {
+		return "Corner"
 	}
 	return t.baseTab.portalLabel(guid)
 }
-func (t *homogeneousTab) portalColor(guid string) color.Color {
-	if _, ok := t.anchorPortals[guid]; ok {
-		if _, ok := t.selectedPortals[guid]; ok {
-			return color.NRGBA{0, 255, 0, 128}
-		}
-		return color.NRGBA{0, 128, 0, 128}
+func (t *homogeneousTab) portalColor(guid string) (color.Color, color.Color) {
+	if _, ok := t.cornerPortals[guid]; ok {
+		return color.NRGBA{0, 128, 0, 128}, t.baseTab.strokeColor(guid)
 	}
 	return t.baseTab.portalColor(guid)
 }
 
 func (t *homogeneousTab) enableSelectedPortals() {
-	for guid := range t.selectedPortals {
-		delete(t.disabledPortals, guid)
-		if t.mapWindow != nil {
-			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
-		}
-		if t.portalList != nil {
-			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
-		}
-	}
-	if t.portalList != nil {
-		t.portalList.Redraw()
+	for guid := range t.portals.selectedPortals {
+		delete(t.portals.disabledPortals, guid)
 	}
 }
 
 func (t *homogeneousTab) disableSelectedPortals() {
-	for guid := range t.selectedPortals {
-		t.disabledPortals[guid] = struct{}{}
-		delete(t.anchorPortals, guid)
-		if t.mapWindow != nil {
-			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
-			t.mapWindow.Lower(guid)
-		}
-		if t.portalList != nil {
-			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
-		}
-	}
-	if t.portalList != nil {
-		t.portalList.Redraw()
+	for guid := range t.portals.selectedPortals {
+		t.portals.disabledPortals[guid] = struct{}{}
+		delete(t.cornerPortals, guid)
 	}
 }
 
-func (t *homogeneousTab) makeSelectedPortalsAnchors() {
-	for guid := range t.selectedPortals {
-		delete(t.disabledPortals, guid)
-		t.anchorPortals[guid] = struct{}{}
-		if t.mapWindow != nil {
-			t.mapWindow.SetPortalColor(guid, t.portalColor(guid))
-			t.mapWindow.Raise(guid)
-		}
-		if t.portalList != nil {
-			t.portalList.SetPortalLabel(guid, t.portalLabel(guid))
-		}
-	}
-	if t.portalList != nil {
-		t.portalList.Redraw()
+func (t *homogeneousTab) makeSelectedPortalsCorners() {
+	for guid := range t.portals.selectedPortals {
+		delete(t.portals.disabledPortals, guid)
+		t.cornerPortals[guid] = struct{}{}
 	}
 }
-func (t *homogeneousTab) unmakeSelectedPortalsAnchors() {
-	for guid := range t.selectedPortals {
-		delete(t.anchorPortals, guid)
-		if t.mapWindow != nil {
-			t.mapWindow.SetPortalColor(guid, t.portalColor(guid))
-			t.mapWindow.Raise(guid)
-		}
-		if t.portalList != nil {
-			t.portalList.SetPortalLabel(guid, t.portalLabel(guid))
-		}
-	}
-	if t.portalList != nil {
-		t.portalList.Redraw()
+func (t *homogeneousTab) unmakeSelectedPortalsCorners() {
+	for guid := range t.portals.selectedPortals {
+		delete(t.cornerPortals, guid)
 	}
 }
 
@@ -224,54 +179,100 @@ func (t *homogeneousTab) contextMenu() *menu {
 	var aSelectedGUID string
 	numSelectedEnabled := 0
 	numSelectedDisabled := 0
-	numSelectedAnchor := 0
-	numSelectedNotAnchor := 0
-	for guid := range t.selectedPortals {
+	numSelectedCorner := 0
+	numSelectedNotCorner := 0
+	for guid := range t.portals.selectedPortals {
 		aSelectedGUID = guid
-		if _, ok := t.disabledPortals[guid]; ok {
+		if _, ok := t.portals.disabledPortals[guid]; ok {
 			numSelectedDisabled++
 		} else {
 			numSelectedEnabled++
 		}
-		if _, ok := t.anchorPortals[guid]; ok {
-			numSelectedAnchor++
+		if _, ok := t.cornerPortals[guid]; ok {
+			numSelectedCorner++
 		} else {
-			numSelectedNotAnchor++
+			numSelectedNotCorner++
 		}
 	}
 	menu := &menu{}
-	if len(t.selectedPortals) > 1 {
-		menu.header = fmt.Sprintf("%d portals selected", len(t.selectedPortals))
-	} else if len(t.selectedPortals) == 1 {
+	if len(t.portals.selectedPortals) > 1 {
+		menu.header = fmt.Sprintf("%d portals selected", len(t.portals.selectedPortals))
+	} else if len(t.portals.selectedPortals) == 1 {
 		menu.header = t.portalMap[aSelectedGUID].Name
 	}
 	if numSelectedDisabled > 0 {
-		if len(t.selectedPortals) == 1 {
+		if len(t.portals.selectedPortals) == 1 {
 			menu.items = append(menu.items, menuItem{"Enable", t.enableSelectedPortals})
 		} else {
 			menu.items = append(menu.items, menuItem{"Enable All", t.enableSelectedPortals})
 		}
 	}
 	if numSelectedEnabled > 0 {
-		if len(t.selectedPortals) == 1 {
+		if len(t.portals.selectedPortals) == 1 {
 			menu.items = append(menu.items, menuItem{"Disable", t.disableSelectedPortals})
 		} else {
 			menu.items = append(menu.items, menuItem{"Disable All", t.disableSelectedPortals})
 		}
 	}
-	if numSelectedAnchor > 0 {
-		if len(t.selectedPortals) == 1 {
-			menu.items = append(menu.items, menuItem{"Unmake anchor", t.unmakeSelectedPortalsAnchors})
+	if numSelectedCorner > 0 {
+		if len(t.portals.selectedPortals) == 1 {
+			menu.items = append(menu.items, menuItem{"Unmake corner", t.unmakeSelectedPortalsCorners})
 		} else {
-			menu.items = append(menu.items, menuItem{"Unmake all anchors", t.unmakeSelectedPortalsAnchors})
+			menu.items = append(menu.items, menuItem{"Unmake all corners", t.unmakeSelectedPortalsCorners})
 		}
 	}
-	if numSelectedNotAnchor > 0 && numSelectedNotAnchor+len(t.anchorPortals) <= 3 {
-		if len(t.selectedPortals) == 1 {
-			menu.items = append(menu.items, menuItem{"Make anchor", t.makeSelectedPortalsAnchors})
+	if numSelectedNotCorner > 0 && numSelectedNotCorner+len(t.cornerPortals) <= 3 {
+		if len(t.portals.selectedPortals) == 1 {
+			menu.items = append(menu.items, menuItem{"Make corner", t.makeSelectedPortalsCorners})
 		} else {
-			menu.items = append(menu.items, menuItem{"Make all anchors", t.makeSelectedPortalsAnchors})
+			menu.items = append(menu.items, menuItem{"Make all corners", t.makeSelectedPortalsCorners})
 		}
 	}
 	return menu
+}
+
+type homogeneousState struct {
+	MaxDepth      int      `json:"maxDepth"`
+	InnerPortals  int      `json:"innerPortals"`
+	TopLevel      int      `json:"topLevel"`
+	Pure          bool     `json:"pure"`
+	CornerPortals []string `json:"cornerPortals"`
+	Depth         int      `json:"depth"`
+	Solution      []string `json:"solution"`
+	SolutionText  string   `json:"solutionText"`
+}
+
+func (t *homogeneousTab) state() homogeneousState {
+	state := homogeneousState{
+		MaxDepth:     int(t.maxDepth.Value()),
+		InnerPortals: t.innerPortals.Value(),
+		TopLevel:     t.topLevel.Value(),
+		Pure:         t.pure.Value(),
+		Depth:        int(t.depth),
+		SolutionText: t.solutionText,
+	}
+	for cornerGUID := range t.cornerPortals {
+		state.CornerPortals = append(state.CornerPortals, cornerGUID)
+	}
+	for _, solutionPortal := range t.solution {
+		state.Solution = append(state.Solution, solutionPortal.Guid)
+	}
+	return state
+}
+
+func (t *homogeneousTab) load(state homogeneousState) {
+	t.maxDepth.SetValue(float64(state.MaxDepth))
+	t.innerPortals.SetValue(state.InnerPortals)
+	t.topLevel.SetValue(state.TopLevel)
+	t.pure.SetValue(state.Pure)
+	t.cornerPortals = make(map[string]struct{})
+	for _, cornerGUID := range state.CornerPortals {
+		t.cornerPortals[cornerGUID] = struct{}{}
+	}
+	t.depth = uint16(state.Depth)
+	t.solution = nil
+	for _, solutionGUID := range state.Solution {
+		t.solution = append(t.solution, t.portals.portalMap[solutionGUID])
+	}
+	t.solutionText = state.SolutionText
 }

@@ -12,8 +12,8 @@ import (
 )
 
 type MapWindow struct {
-	window                   *fltk.Window
-	glWindow                 *fltk.GlWindow
+	//	window                   *fltk.Window
+	*fltk.GlWindow
 	mapDrawer                *MapDrawer
 	prevX, prevY             int
 	selectionChangedCallback func(map[string]struct{})
@@ -24,27 +24,24 @@ type MapWindow struct {
 
 func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
 	w := &MapWindow{}
-	w.window = fltk.NewWindow(800, 600)
-	w.window.SetLabel(title + " - © OpenStreetMap")
-	w.window.Begin()
-	w.window.SetCallback(w.onWindowClosed)
-	w.glWindow = fltk.NewGlWindow(0, 0, 800, 600, w.drawMap)
-	w.glWindow.SetEventHandler(w.handleEvent)
-	w.glWindow.SetResizeHandler(w.onGlWindowResized)
-	w.window.End()
-	w.window.Resizable(w.glWindow)
-	w.window.Show()
+	//	w.window = fltk.NewWindow(800, 600)
+	//	w.window.SetLabel(title + " - © OpenStreetMap")
+	//	w.window.Begin()
+	//	w.window.SetCallback(w.onWindowClosed)
+	w.GlWindow = fltk.NewGlWindow(0, 0, 1000, 600, w.drawMap)
+	w.GlWindow.SetEventHandler(w.handleEvent)
+	w.GlWindow.SetResizeHandler(w.onGlWindowResized)
+	//	w.window.End()
+	//	w.window.Resizable(w.glWindow)
+	//	w.window.Show()
 	w.mapDrawer = NewMapDrawer(800, 600, tileFetcher)
-	w.mapDrawer.OnMapChanged(
-		func() {
-			fltk.Awake(w.glWindow.Redraw)
-		})
+	w.mapDrawer.OnMapChanged(func() { fltk.Awake(w.Redraw) })
 	return w
 }
 
 func (w *MapWindow) Destroy() {
-	w.glWindow.Destroy()
-	w.window.Destroy()
+	w.Destroy()
+	//	w.window.Destroy()
 }
 func (w *MapWindow) SetSelectionChangeCallback(callback func(map[string]struct{})) {
 	w.selectionChangedCallback = callback
@@ -59,21 +56,13 @@ func (w *MapWindow) SetWindowClosedCallback(callback func()) {
 	w.windowClosedCallback = callback
 }
 func (w *MapWindow) Hide() {
-	w.window.Hide()
+	//	w.window.Hide()
 }
 func (w *MapWindow) Show() {
-	w.window.Show()
+	//	w.window.Show()
 }
 func (w *MapWindow) SetPortals(portals []lib.Portal) {
 	w.mapDrawer.SetPortals(portals)
-}
-func portalsToPoints(portals []lib.Portal) []s2.Point {
-	points := make([]s2.Point, 0, len(portals))
-	for _, portal := range portals {
-		points = append(points, s2.PointFromLatLng(portal.LatLng))
-	}
-	return points
-
 }
 func (w *MapWindow) SetPortalPaths(portalPaths [][]lib.Portal) {
 	paths := make([][]s2.Point, 0, len(portalPaths))
@@ -91,16 +80,16 @@ func (w *MapWindow) Raise(guid string) {
 func (w *MapWindow) Lower(guid string) {
 	w.mapDrawer.Lower(guid)
 }
-func (w *MapWindow) SetPortalColor(guid string, color color.Color) {
-	w.mapDrawer.SetPortalColor(guid, color)
+func (w *MapWindow) SetPortalColor(guid string, fillColor, strokeColor color.Color) {
+	w.mapDrawer.SetPortalColor(guid, fillColor, strokeColor)
 }
 func (w *MapWindow) drawMap() {
-	if !w.glWindow.Valid() {
+	if !w.Valid() {
 		if err := gl.Init(); err != nil {
 			log.Fatal("Cannot initialize OpenGL", err)
 		}
 	}
-	if !w.glWindow.ContextValid() {
+	if !w.ContextValid() {
 		_, _, width, height := fltk.ScreenWorkArea(0 /* main screen */)
 		w.mapDrawer.Init(width, height)
 	}
@@ -152,29 +141,29 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 			currX, currY := fltk.EventX(), fltk.EventY()
 			w.mapDrawer.Drag(w.prevX-currX, w.prevY-currY)
 			w.prevX, w.prevY = currX, currY
-			fltk.Awake(w.glWindow.Redraw)
+			fltk.Awake(w.Redraw)
 			return true
 		}
 	case fltk.MOUSEWHEEL:
 		dy := fltk.EventDY()
 		if dy < 0 {
 			w.mapDrawer.ZoomIn(fltk.EventX(), fltk.EventY())
-			fltk.Awake(w.glWindow.Redraw)
+			fltk.Awake(w.Redraw)
 			return true
 		} else if dy > 0 {
 			w.mapDrawer.ZoomOut(fltk.EventX(), fltk.EventY())
-			fltk.Awake(w.glWindow.Redraw)
+			fltk.Awake(w.Redraw)
 			return true
 		}
 	case fltk.KEY:
 		if (fltk.EventState()&fltk.CTRL) != 0 &&
 			(fltk.EventKey() == '+' || fltk.EventKey() == '=') {
-			w.mapDrawer.ZoomIn(w.glWindow.W()/2, w.glWindow.H()/2)
-			fltk.Awake(w.glWindow.Redraw)
+			w.mapDrawer.ZoomIn(w.W()/2, w.H()/2)
+			fltk.Awake(w.Redraw)
 			return true
 		} else if fltk.EventKey() == '-' && (fltk.EventState()&fltk.CTRL) != 0 {
-			w.mapDrawer.ZoomOut(w.glWindow.W()/2, w.glWindow.H()/2)
-			fltk.Awake(w.glWindow.Redraw)
+			w.mapDrawer.ZoomOut(w.W()/2, w.H()/2)
+			fltk.Awake(w.Redraw)
 			return true
 		}
 	case fltk.MOVE:
@@ -192,6 +181,6 @@ func (w *MapWindow) onWindowClosed() {
 }
 func (w *MapWindow) onGlWindowResized() {
 	if w.mapDrawer != nil {
-		w.mapDrawer.Resize(w.glWindow.W(), w.glWindow.H())
+		w.mapDrawer.Resize(w.W(), w.H())
 	}
 }

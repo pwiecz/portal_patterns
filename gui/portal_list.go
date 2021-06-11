@@ -5,7 +5,7 @@ import (
 	"github.com/pwiecz/portal_patterns/lib"
 )
 
-type portalList struct {
+type PortalList struct {
 	*fltk.TableRow
 	portals                 []lib.Portal
 	portalIndices           map[string]int
@@ -15,8 +15,8 @@ type portalList struct {
 	contextMenuCallback     func(int, int)
 }
 
-func newPortalList(x, y, w, h int) *portalList {
-	l := &portalList{
+func NewPortalList(x, y, w, h int) *PortalList {
+	l := &PortalList{
 		selectedPortals: make(map[string]struct{}),
 		portalState:     make(map[string]string),
 	}
@@ -36,19 +36,19 @@ func newPortalList(x, y, w, h int) *portalList {
 	return l
 }
 
-func (l *portalList) SetSelectedPortals(selection map[string]struct{}) {
+func (l *PortalList) SetSelectedPortals(selection map[string]struct{}) {
 	l.SelectAllRows(fltk.Deselect)
 	for guid := range selection {
 		l.SelectRow(l.portalIndices[guid], fltk.Select)
 	}
 }
-func (l *portalList) SetSelectionChangeCallback(callback func()) {
+func (l *PortalList) SetSelectionChangeCallback(callback func()) {
 	l.selectionChangeCallback = callback
 }
-func (l *portalList) SetContextMenuCallback(callback func(int, int)) {
+func (l *PortalList) SetContextMenuCallback(callback func(int, int)) {
 	l.contextMenuCallback = callback
 }
-func (l *portalList) SetPortals(portals []lib.Portal) {
+func (l *PortalList) SetPortals(portals []lib.Portal) {
 	l.portals = portals
 	l.portalIndices = make(map[string]int)
 	for i, portal := range l.portals {
@@ -56,11 +56,11 @@ func (l *portalList) SetPortals(portals []lib.Portal) {
 	}
 	l.SetRowCount(len(portals))
 }
-func (l *portalList) SetPortalLabel(guid, label string) {
+func (l *PortalList) SetPortalLabel(guid, label string) {
 	l.portalState[guid] = label
 }
 
-func (l *portalList) drawCallback(context fltk.TableContext, row, column, x, y, w, h int) {
+func (l *PortalList) drawCallback(context fltk.TableContext, row, column, x, y, w, h int) {
 	switch context {
 	case fltk.ContextCell:
 		if row >= len(l.portals) {
@@ -92,14 +92,14 @@ func (l *portalList) drawCallback(context fltk.TableContext, row, column, x, y, 
 	}
 }
 
-func (l *portalList) onEvent(event fltk.Event) bool {
+func (l *PortalList) onEvent(event fltk.Event) bool {
 	if event == fltk.RELEASE {
 		l.onSelectionMaybeChanged()
 	}
 	return false
 }
 
-func (l *portalList) onRelease() {
+func (l *PortalList) onRelease() {
 	if l.CallbackContext() != fltk.ContextCell {
 		return
 	}
@@ -118,7 +118,7 @@ func (l *portalList) onRelease() {
 	}
 }
 
-func (l *portalList) onSelectionMaybeChanged() {
+func (l *PortalList) onSelectionMaybeChanged() {
 	selectionChanged := false
 	numSelectedRows := 0
 	for i := 0; i < len(l.portals); i++ {
@@ -149,7 +149,7 @@ func (l *portalList) onSelectionMaybeChanged() {
 	}
 }
 
-func (l *portalList) onResize() {
+func (l *PortalList) onResize() {
 	width := l.W()
 	if width > 2 {
 		l.SetColumnWidth(0, width/2-1)

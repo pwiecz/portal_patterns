@@ -4,23 +4,23 @@ import (
 	"fmt"
 	"image/color"
 
+	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
-	"github.com/pwiecz/portal_patterns/configuration"
-	"github.com/pwiecz/portal_patterns/gui/osm"
 	"github.com/pwiecz/portal_patterns/lib"
 )
 
 type cobwebTab struct {
 	*baseTab
 	solution      []lib.Portal
+	solutionText  string
 	cornerPortals map[string]struct{}
 }
 
-var _ = (*cobwebTab)(nil)
+var _ pattern = (*cobwebTab)(nil)
 
-func newCobwebTab(configuration *configuration.Configuration, tileFetcher *osm.MapTiles) *cobwebTab {
+func newCobwebTab(portals *Portals) *cobwebTab {
 	t := &cobwebTab{}
-	t.baseTab = newBaseTab("Cobweb", configuration, tileFetcher, t)
+	t.baseTab = newBaseTab("Cobweb", portals, t)
 	t.cornerPortals = make(map[string]struct{})
 	t.End()
 
@@ -30,14 +30,9 @@ func newCobwebTab(configuration *configuration.Configuration, tileFetcher *osm.M
 func (t *cobwebTab) onReset() {
 	t.cornerPortals = make(map[string]struct{})
 	t.solution = nil
+	t.solutionText = ""
 }
-func (t *cobwebTab) onSearch() {
-	progressFunc := func(val, max int) {
-		fltk.Awake(func() {
-			t.progress.SetMaximum(float64(max))
-			t.progress.SetValue(float64(val))
-		})
-	}
+func (t *cobwebTab) onSearch(progressFunc func(int, int), onSearchDone func()) {
 	go func() {
 		portals := t.enabledPortals()
 		corners := []int{}
@@ -46,19 +41,24 @@ func (t *cobwebTab) onSearch() {
 				corners = append(corners, i)
 			}
 		}
-		t.solution = lib.LargestCobweb(portals, corners, progressFunc)
-		if t.mapWindow != nil {
-			t.mapWindow.SetPortalPaths([][]lib.Portal{lib.CobwebPolyline(t.solution)})
-		}
+		solution := lib.LargestCobweb(portals, corners, progressFunc)
 		fltk.Awake(func() {
-			solutionText := fmt.Sprintf("Solution length: %d", len(t.solution))
-			t.onSearchDone(solutionText)
+			t.solution = solution
+			onSearchDone()
 		})
 	}()
 }
-
-func (t *cobwebTab) solutionString() string {
+func (t *cobwebTab) hasSolution() bool {
+	return len(t.solution) > 0
+}
+func (t *cobwebTab) solutionInfoString() string {
+	return t.solutionText
+}
+func (t *cobwebTab) solutionDrawToolsString() string {
 	return lib.CobwebDrawToolsString(t.solution)
+}
+func (t *cobwebTab) solutionPaths() [][]s2.Point {
+	return [][]s2.Point{portalsToPoints(lib.CobwebPolyline(t.solution))}
 }
 
 func (t *cobwebTab) portalLabel(guid string) string {
@@ -67,77 +67,35 @@ func (t *cobwebTab) portalLabel(guid string) string {
 	}
 	return t.baseTab.portalLabel(guid)
 }
-func (t *cobwebTab) portalColor(guid string) color.Color {
+func (t *cobwebTab) portalColor(guid string) (color.Color, color.Color) {
 	if _, ok := t.cornerPortals[guid]; ok {
-		if _, ok := t.selectedPortals[guid]; ok {
-			return color.NRGBA{0, 255, 0, 128}
-		}
-		return color.NRGBA{0, 128, 0, 128}
+		return color.NRGBA{0, 128, 0, 128}, t.baseTab.strokeColor(guid)
 	}
 	return t.baseTab.portalColor(guid)
 }
 
 func (t *cobwebTab) enableSelectedPortals() {
-	for guid := range t.selectedPortals {
-		delete(t.disabledPortals, guid)
-		if t.mapWindow != nil {
-			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
-		}
-		if t.portalList != nil {
-			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
-		}
-	}
-	if t.portalList != nil {
-		t.portalList.Redraw()
+	for guid := range t.portals.selectedPortals {
+		delete(t.portals.disabledPortals, guid)
 	}
 }
 
 func (t *cobwebTab) disableSelectedPortals() {
-	for guid := range t.selectedPortals {
-		t.disabledPortals[guid] = struct{}{}
+	for guid := range t.portals.selectedPortals {
+		t.portals.disabledPortals[guid] = struct{}{}
 		delete(t.cornerPortals, guid)
-		if t.mapWindow != nil {
-			t.mapWindow.SetPortalColor(guid, t.pattern.portalColor(guid))
-			t.mapWindow.Lower(guid)
-		}
-		if t.portalList != nil {
-			t.portalList.SetPortalLabel(guid, t.pattern.portalLabel(guid))
-		}
-	}
-	if t.portalList != nil {
-		t.portalList.Redraw()
 	}
 }
 
 func (t *cobwebTab) makeSelectedPortalsCorners() {
-	for guid := range t.selectedPortals {
-		delete(t.disabledPortals, guid)
+	for guid := range t.portals.selectedPortals {
+		delete(t.portals.disabledPortals, guid)
 		t.cornerPortals[guid] = struct{}{}
-		if t.mapWindow != nil {
-			t.mapWindow.SetPortalColor(guid, t.portalColor(guid))
-			t.mapWindow.Raise(guid)
-		}
-		if t.portalList != nil {
-			t.portalList.SetPortalLabel(guid, t.portalLabel(guid))
-		}
-	}
-	if t.portalList != nil {
-		t.portalList.Redraw()
 	}
 }
 func (t *cobwebTab) unmakeSelectedPortalsCorners() {
-	for guid := range t.selectedPortals {
+	for guid := range t.portals.selectedPortals {
 		delete(t.cornerPortals, guid)
-		if t.mapWindow != nil {
-			t.mapWindow.SetPortalColor(guid, t.portalColor(guid))
-			t.mapWindow.Raise(guid)
-		}
-		if t.portalList != nil {
-			t.portalList.SetPortalLabel(guid, t.portalLabel(guid))
-		}
-	}
-	if t.portalList != nil {
-		t.portalList.Redraw()
 	}
 }
 func (t *cobwebTab) contextMenu() *menu {
@@ -146,9 +104,9 @@ func (t *cobwebTab) contextMenu() *menu {
 	numSelectedDisabled := 0
 	numSelectedCorner := 0
 	numSelectedNotCorner := 0
-	for guid := range t.selectedPortals {
+	for guid := range t.portals.selectedPortals {
 		aSelectedGUID = guid
-		if _, ok := t.disabledPortals[guid]; ok {
+		if _, ok := t.portals.disabledPortals[guid]; ok {
 			numSelectedDisabled++
 		} else {
 			numSelectedEnabled++
@@ -160,38 +118,73 @@ func (t *cobwebTab) contextMenu() *menu {
 		}
 	}
 	menu := &menu{}
-	if len(t.selectedPortals) > 1 {
-		menu.header = fmt.Sprintf("%d portals selected", len(t.selectedPortals))
-	} else if len(t.selectedPortals) == 1 {
+	if len(t.portals.selectedPortals) > 1 {
+		menu.header = fmt.Sprintf("%d portals selected", len(t.portals.selectedPortals))
+	} else if len(t.portals.selectedPortals) == 1 {
 		menu.header = t.portalMap[aSelectedGUID].Name
 	}
 	if numSelectedDisabled > 0 {
-		if len(t.selectedPortals) == 1 {
+		if len(t.portals.selectedPortals) == 1 {
 			menu.items = append(menu.items, menuItem{"Enable", t.enableSelectedPortals})
 		} else {
 			menu.items = append(menu.items, menuItem{"Enable All", t.enableSelectedPortals})
 		}
 	}
 	if numSelectedEnabled > 0 {
-		if len(t.selectedPortals) == 1 {
+		if len(t.portals.selectedPortals) == 1 {
 			menu.items = append(menu.items, menuItem{"Disable", t.disableSelectedPortals})
 		} else {
 			menu.items = append(menu.items, menuItem{"Disable All", t.disableSelectedPortals})
 		}
 	}
 	if numSelectedCorner > 0 {
-		if len(t.selectedPortals) == 1 {
+		if len(t.portals.selectedPortals) == 1 {
 			menu.items = append(menu.items, menuItem{"Unmake corner", t.unmakeSelectedPortalsCorners})
 		} else {
 			menu.items = append(menu.items, menuItem{"Unmake all corners", t.unmakeSelectedPortalsCorners})
 		}
 	}
 	if numSelectedNotCorner > 0 && numSelectedNotCorner+len(t.cornerPortals) <= 3 {
-		if len(t.selectedPortals) == 1 {
+		if len(t.portals.selectedPortals) == 1 {
 			menu.items = append(menu.items, menuItem{"Make corner", t.makeSelectedPortalsCorners})
 		} else {
 			menu.items = append(menu.items, menuItem{"Make all corners", t.makeSelectedPortalsCorners})
 		}
 	}
 	return menu
+}
+
+type cobwebState struct {
+	CornerPortals []string `json:"cornerPortals"`
+	Solution      []string `json:"solution"`
+	SolutionText  string   `json:"solutionText"`
+}
+
+func (t *cobwebTab) state() cobwebState {
+	state := cobwebState{}
+	for cornerGUID := range t.cornerPortals {
+		state.CornerPortals = append(state.CornerPortals, cornerGUID)
+	}
+	for _, solutionPortal := range t.solution {
+		state.Solution = append(state.Solution, solutionPortal.Guid)
+	}
+	state.SolutionText = t.solutionText
+	return state
+}
+
+func (t *cobwebTab) load(state cobwebState) {
+	t.cornerPortals = make(map[string]struct{})
+	for _, cornerGUID := range state.CornerPortals {
+		if _, ok := t.portals.portalMap[cornerGUID]; !ok {
+		}
+		t.cornerPortals[cornerGUID] = struct{}{}
+	}
+	t.solution = nil
+	for _, solutionGUID := range state.Solution {
+		if portal, ok := t.portals.portalMap[solutionGUID]; ok {
+			t.solution = append(t.solution, portal)
+		} else {
+		}
+	}
+	t.solutionText = state.SolutionText
 }

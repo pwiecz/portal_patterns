@@ -1,22 +1,28 @@
 package main
 
-import "image/color"
+import (
+	"image/color"
 
+	"github.com/golang/geo/s2"
+)
 
 type menuItem struct {
-	label string
+	label    string
 	callback func()
 }
 type menu struct {
 	header string
-	items []menuItem
+	items  []menuItem
 }
 
 type pattern interface {
-	onSearch()
-	portalColor(string) color.Color
+	onSearch(func(int, int), func())
+	portalColor(string) (color.Color, color.Color)
 	portalLabel(string) string
-	solutionString() string
+	hasSolution() bool
+	solutionInfoString() string
+	solutionPaths() [][]s2.Point
+	solutionDrawToolsString() string
 	onReset()
 	contextMenu() *menu
 }
