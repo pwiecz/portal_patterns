@@ -12,7 +12,6 @@ import (
 )
 
 type MapWindow struct {
-	//	window                   *fltk.Window
 	*fltk.GlWindow
 	mapDrawer                *MapDrawer
 	prevX, prevY             int
@@ -24,16 +23,9 @@ type MapWindow struct {
 
 func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
 	w := &MapWindow{}
-	//	w.window = fltk.NewWindow(800, 600)
-	//	w.window.SetLabel(title + " - © OpenStreetMap")
-	//	w.window.Begin()
-	//	w.window.SetCallback(w.onWindowClosed)
 	w.GlWindow = fltk.NewGlWindow(0, 0, 1000, 600, w.drawMap)
 	w.GlWindow.SetEventHandler(w.handleEvent)
 	w.GlWindow.SetResizeHandler(w.onGlWindowResized)
-	//	w.window.End()
-	//	w.window.Resizable(w.glWindow)
-	//	w.window.Show()
 	w.mapDrawer = NewMapDrawer(800, 600, tileFetcher)
 	w.mapDrawer.OnMapChanged(func() { fltk.Awake(w.Redraw) })
 	return w
@@ -41,7 +33,6 @@ func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
 
 func (w *MapWindow) Destroy() {
 	w.Destroy()
-	//	w.window.Destroy()
 }
 func (w *MapWindow) SetSelectionChangeCallback(callback func(map[string]struct{})) {
 	w.selectionChangedCallback = callback
@@ -54,12 +45,6 @@ func (w *MapWindow) SetRightClickCallback(callback func(string, int, int)) {
 }
 func (w *MapWindow) SetWindowClosedCallback(callback func()) {
 	w.windowClosedCallback = callback
-}
-func (w *MapWindow) Hide() {
-	//	w.window.Hide()
-}
-func (w *MapWindow) Show() {
-	//	w.window.Show()
 }
 func (w *MapWindow) SetPortals(portals []lib.Portal) {
 	w.mapDrawer.SetPortals(portals)

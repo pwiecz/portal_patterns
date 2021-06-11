@@ -113,9 +113,6 @@ type MapDrawer struct {
 	portalIndices        map[string]int
 	portalDrawOrder      []int
 	defaultPortalColor   imgui.PackedColor
-	//	showTileChannel       chan showTileRequest
-	//	setPortalsChannel     chan []lib.Portal
-	//	setPathsChannel       chan [][]s2.Point
 	taskQueue             TaskQueue
 	asyncChannel          chan struct{}
 	tileFetcher           *osm.MapTiles
@@ -465,17 +462,10 @@ func (w *MapDrawer) drawAllPathsImgui() {
 }
 func (w *MapDrawer) SetPortals(portals []lib.Portal) {
 	w.Async(func() { w.onNewPortals(portals) })
-	//	go func() {
-	//		for _, callback := range w.onMapChangedCallbacks {
-	//			callback()
-	//		}
-	//		w.setPortalsChannel <- portals
-	//	}()
 }
 func (w *MapDrawer) SetPaths(paths [][]s2.Point) {
 	w.Async(func() {
 		tesselator := s2.NewEdgeTessellator(projection, 1e-3)
-		fmt.Println("SetPaths", paths, w.paths)
 		w.paths = w.paths[:0]
 		for _, path := range paths {
 			mapPath := []r2.Point{}
@@ -490,12 +480,6 @@ func (w *MapDrawer) SetPaths(paths [][]s2.Point) {
 		}
 		w.MapChanged()
 	})
-	//	go func() {
-	//		for _, callback := range w.onMapChangedCallbacks {
-	//			callback()
-	//		}
-	//		w.setPathsChannel <- paths
-	//	}()
 }
 func (w *MapDrawer) onTileRead(coord osm.TileCoord, img image.Image) {
 	wrappedCoord := coord
@@ -506,15 +490,9 @@ func (w *MapDrawer) onTileRead(coord osm.TileCoord, img image.Image) {
 	wrappedCoord.X %= maxCoord
 	w.tileCache.Add(wrappedCoord, img)
 	w.missingTiles.Remove(coord)
-	//	go func() {
 	w.Async(func() {
-		//		for _, callback := range w.onMapChangedCallbacks {
-		//			callback()
-		//		}
-		//		w.showTileChannel <- showTileRequest{coord: coord, tile: img}
 		w.showTile(coord, img)
 	})
-	//	}()
 }
 func (w *MapDrawer) redrawTiles() {
 	if w.zoomPow == 0 {
