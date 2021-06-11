@@ -151,6 +151,9 @@ func LargestCobweb(portals []Portal, fixedCornerIndices []int, progressFunc func
 }
 
 func CobwebPolyline(result []Portal) []Portal {
+	if len(result) < 3 {
+		return []Portal{}
+	}
 	portalList := []Portal{result[1], result[0]}
 	for _, portal := range result[2:] {
 		portalList = append(portalList, portal, portalList[len(portalList)-2])

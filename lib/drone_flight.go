@@ -330,6 +330,9 @@ func longestDroneFlightST(portals []Portal, params droneFlightParams) ([]Portal,
 		}
 	}
 	params.progressFunc(numIndexEntries, numIndexEntries)
+	if len(bestPath) < 2 {
+		return nil, nil
+	}
 
 	if reverseRoute {
 		reverse(bestPath)
