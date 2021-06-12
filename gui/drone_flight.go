@@ -25,7 +25,7 @@ func newDroneFlightTab(portals *Portals) *droneFlightTab {
 	t := &droneFlightTab{}
 	t.baseTab = newBaseTab("Drone Flight", portals, t)
 
-	useLongJumpsPack := fltk.NewPack(0, 0, 760, 30)
+	useLongJumpsPack := fltk.NewPack(0, 0, 700, 30)
 	useLongJumpsPack.SetType(fltk.HORIZONTAL)
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.useLongJumps = fltk.NewCheckButton(200, 0, 200, 30, "Use long jumps (key needed)")
@@ -33,7 +33,7 @@ func newDroneFlightTab(portals *Portals) *droneFlightTab {
 	useLongJumpsPack.End()
 	t.Add(useLongJumpsPack)
 
-	optimizeForPack := fltk.NewPack(0, 0, 760, 30)
+	optimizeForPack := fltk.NewPack(0, 0, 700, 30)
 	optimizeForPack.SetType(fltk.HORIZONTAL)
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.optimizeFor = fltk.NewChoice(200, 0, 200, 30, "Optimize for:")

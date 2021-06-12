@@ -26,7 +26,7 @@ func newFlipFieldTab(portals *Portals) *flipFieldTab {
 	t := &flipFieldTab{}
 	t.baseTab = newBaseTab("Flip Field", portals, t)
 
-	numBackbonePortalsPack := fltk.NewPack(0, 0, 760, 30)
+	numBackbonePortalsPack := fltk.NewPack(0, 0, 700, 30)
 	numBackbonePortalsPack.SetType(fltk.HORIZONTAL)
 	numBackbonePortalsPack.SetSpacing(5)
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 195, 30)
@@ -37,7 +37,7 @@ func newFlipFieldTab(portals *Portals) *flipFieldTab {
 	numBackbonePortalsPack.End()
 	t.Add(numBackbonePortalsPack)
 
-	maxFlipPortalsPack := fltk.NewPack(0, 0, 760, 30)
+	maxFlipPortalsPack := fltk.NewPack(0, 0, 700, 30)
 	maxFlipPortalsPack.SetType(fltk.HORIZONTAL)
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.maxFlipPortals = fltk.NewSpinner(0, 0, 200, 30, "Max flip portals:")
@@ -46,7 +46,7 @@ func newFlipFieldTab(portals *Portals) *flipFieldTab {
 	maxFlipPortalsPack.End()
 	t.Add(maxFlipPortalsPack)
 
-	simpleBackbonePack := fltk.NewPack(0, 0, 760, 30)
+	simpleBackbonePack := fltk.NewPack(0, 0, 700, 30)
 	simpleBackbonePack.SetType(fltk.HORIZONTAL)
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.simpleBackbone = fltk.NewCheckButton(0, 0, 200, 30, "Simple backbone")

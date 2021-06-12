@@ -58,7 +58,7 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	w.configuration = conf
 	w.portals = NewPortals()
 	w.Begin()
-	pack := fltk.NewPack(0, 0, 1000, 900)
+	pack := fltk.NewPack(0, 0, 1600, 900)
 	pack.SetType(fltk.HORIZONTAL)
 	tileFetcher := osm.NewMapTiles()
 	w.mapWindow = NewMapWindow("", tileFetcher)
@@ -84,9 +84,9 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 		w.onContextMenu(x, y)
 	})
 
-	rightPack := fltk.NewPack(0, 0, 600, 900)
+	rightPack := fltk.NewPack(0, 0, 700, 900)
 	rightPack.SetType(fltk.VERTICAL)
-	topButtonPack := fltk.NewPack(0, 0, 600, 30)
+	topButtonPack := fltk.NewPack(0, 0, 700, 30)
 	topButtonPack.SetType(fltk.HORIZONTAL)
 	topButtonPack.SetSpacing(5)
 
@@ -101,7 +101,7 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	w.reset.SetCallback(w.onResetPortalsPressed)
 	topButtonPack.End()
 
-	w.tabs = fltk.NewTabs(0, 0, 600, 250)
+	w.tabs = fltk.NewTabs(0, 0, 700, 200)
 	w.tabs.SetCallbackCondition(fltk.WhenChanged)
 	w.homogeneous = newHomogeneousTab(w.portals)
 	w.herringbone = newHerringboneTab(w.portals)
@@ -120,7 +120,7 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	// Mark one random tab as resizable, as per www.fltk.org/doc-1.3/classFl__Tabs.html - "resizing caveats"
 	w.tabs.Resizable(w.flipField)
 
-	searchSaveCopyPack := fltk.NewPack(0, 0, 600, 30)
+	searchSaveCopyPack := fltk.NewPack(0, 0, 700, 30)
 	searchSaveCopyPack.SetType(fltk.HORIZONTAL)
 	searchSaveCopyPack.SetSpacing(5)
 	w.search = fltk.NewButton(0, 0, 70, 30, "Search")
@@ -138,10 +138,10 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	searchSaveCopyPack.Resizable(w.solutionLabel)
 	searchSaveCopyPack.End()
 
-	w.progress = fltk.NewProgress(0, 0, 740, 30)
+	w.progress = fltk.NewProgress(0, 0, 700, 30)
 	w.progress.SetSelectionColor(0x4444ff00)
 
-	w.portalList = NewPortalList(0, 0, 600, 620)
+	w.portalList = NewPortalList(0, 0, 700, 620)
 	w.portalList.SetSelectionChangeCallback(func() { w.OnSelectionChanged(w.portalList.selectedPortals) })
 	w.portalList.SetContextMenuCallback(w.onContextMenu)
 

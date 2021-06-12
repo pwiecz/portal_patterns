@@ -30,7 +30,7 @@ func newHomogeneousTab(portals *Portals) *homogeneousTab {
 	t.baseTab = newBaseTab("Homogeneous", portals, t)
 	t.cornerPortals = make(map[string]struct{})
 
-	maxDepthPack := fltk.NewPack(0, 0, 760, 30)
+	maxDepthPack := fltk.NewPack(0, 0, 700, 30)
 	maxDepthPack.SetType(fltk.HORIZONTAL)
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.maxDepth = fltk.NewSpinner(0, 0, 200, 30, "Max depth:")
@@ -41,7 +41,7 @@ func newHomogeneousTab(portals *Portals) *homogeneousTab {
 	maxDepthPack.End()
 	t.Add(maxDepthPack)
 
-	innerPortalsPack := fltk.NewPack(0, 0, 760, 30)
+	innerPortalsPack := fltk.NewPack(0, 0, 700, 30)
 	innerPortalsPack.SetType(fltk.HORIZONTAL)
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.innerPortals = fltk.NewChoice(0, 0, 200, 30, "Inner portal positions:")
@@ -51,7 +51,7 @@ func newHomogeneousTab(portals *Portals) *homogeneousTab {
 	innerPortalsPack.End()
 	t.Add(innerPortalsPack)
 
-	topLevelPack := fltk.NewPack(0, 0, 760, 30)
+	topLevelPack := fltk.NewPack(0, 0, 700, 30)
 	topLevelPack.SetType(fltk.HORIZONTAL)
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.topLevel = fltk.NewChoice(0, 0, 200, 30, "Top level triangle:")
@@ -63,7 +63,7 @@ func newHomogeneousTab(portals *Portals) *homogeneousTab {
 	topLevelPack.End()
 	t.Add(topLevelPack)
 
-	purePack := fltk.NewPack(0, 0, 760, 30)
+	purePack := fltk.NewPack(0, 0, 700, 30)
 	purePack.SetType(fltk.HORIZONTAL)
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.pure = fltk.NewCheckButton(0, 0, 200, 30, "Pure")
