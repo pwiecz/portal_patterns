@@ -29,7 +29,7 @@ func newDroneFlightTab(portals *Portals) *droneFlightTab {
 	useLongJumpsPack.SetType(fltk.HORIZONTAL)
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.useLongJumps = fltk.NewCheckButton(200, 0, 200, 30, "Use long jumps (key needed)")
-	t.useLongJumps.SetValue(true)
+	t.useLongJumps.SetValue(false)
 	useLongJumpsPack.End()
 	t.Add(useLongJumpsPack)
 
