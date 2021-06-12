@@ -100,19 +100,19 @@ func (c *lockedTileCache) Add(coord osm.TileCoord, img image.Image) {
 
 type glTexture uint32
 type MapDrawer struct {
-	imguiContext         *imgui.Context
-	imguiRenderer        *guigl.OpenGL2
-	initialized          bool
-	tileCache            *lockedTileCache
-	mapTiles             map[osm.TileCoord]glTexture
-	missingTiles         *lockedCoordSet
-	portals              []mapPortal
-	portalShapeIndex     *s2.ShapeIndex
-	shapeIndexIDToPortal map[int32]int
-	paths                [][]r2.Point
-	portalIndices        map[string]int
-	portalDrawOrder      []int
-	defaultPortalColor   imgui.PackedColor
+	imguiContext          *imgui.Context
+	imguiRenderer         *guigl.OpenGL2
+	initialized           bool
+	tileCache             *lockedTileCache
+	mapTiles              map[osm.TileCoord]glTexture
+	missingTiles          *lockedCoordSet
+	portals               []mapPortal
+	portalShapeIndex      *s2.ShapeIndex
+	shapeIndexIDToPortal  map[int32]int
+	paths                 [][]r2.Point
+	portalIndices         map[string]int
+	portalDrawOrder       []int
+	defaultPortalColor    imgui.PackedColor
 	taskQueue             TaskQueue
 	asyncChannel          chan struct{}
 	tileFetcher           *osm.MapTiles
@@ -269,7 +269,19 @@ func (w *MapDrawer) Leave() {
 		w.portalUnderMouse = -1
 	})
 }
-
+func (w *MapDrawer) ScrollToPortal(guid string) {
+	w.Async(func() {
+		portalCoords := w.portals[w.portalIndices[guid]].coords
+		x := portalCoords.X*w.zoomPow*256 - w.x0
+		y := portalCoords.Y*w.zoomPow*256 - w.y0
+		if x >= 0 && x < float64(w.width) && y >= 0 && y < float64(w.height) {
+			return
+		}
+		w.x0 = portalCoords.X*w.zoomPow*256 - float64(w.width*0.5)
+		w.y0 = portalCoords.Y*w.zoomPow*256 - float64(w.height*0.5)
+		w.redrawTiles()
+	})
+}
 func (w *MapDrawer) OnMapChanged(callback func()) {
 	w.onMapChangedCallbacks = append(w.onMapChangedCallbacks, callback)
 }

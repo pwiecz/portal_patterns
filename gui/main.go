@@ -133,11 +133,10 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	w.copy = fltk.NewButton(0, 0, 140, 30, "Copy Draw Tools")
 	w.copy.Deactivate()
 	w.copy.SetCallback(w.onCopyPressed)
-	w.solutionLabel = fltk.NewBox(fltk.NO_BOX, 0, 0, 300, 30)
-	w.solutionLabel.SetAlign(fltk.ALIGN_INSIDE)
-	searchSaveCopyPack.Add(w.solutionLabel)
-	searchSaveCopyPack.Resizable(w.solutionLabel)
 	searchSaveCopyPack.End()
+
+	w.solutionLabel = fltk.NewBox(fltk.NO_BOX, 0, 0, 700, 30)
+	w.solutionLabel.SetAlign(fltk.ALIGN_INSIDE | fltk.ALIGN_LEFT)
 
 	w.progress = fltk.NewProgress(0, 0, 700, 30)
 	w.progress.SetSelectionColor(0x4444ff00)
@@ -207,14 +206,16 @@ func (w *MainWindow) OnSelectionChanged(selectedPortals map[string]struct{}) {
 		fill, stroke := selectedPattern.portalColor(guid)
 		w.mapWindow.SetPortalColor(guid, fill, stroke)
 	}
+	selectedGuid := ""
 	for guid := range w.portals.selectedPortals {
+		selectedGuid = guid
 		fill, stroke := selectedPattern.portalColor(guid)
 		w.mapWindow.SetPortalColor(guid, fill, stroke)
 		w.mapWindow.Raise(guid)
 	}
 	if len(w.portals.selectedPortals) == 1 {
-		//t.mapWindow.ScrollToPortal(selection[0])
-		//t.mapWindow.ScrollToPortal(selection[0])
+		w.mapWindow.ScrollToPortal(selectedGuid)
+		w.portalList.ScrollToPortal(selectedGuid)
 	}
 }
 
@@ -224,6 +225,7 @@ func (w *MainWindow) onContextMenu(x, y int) {
 	if menu == nil || len(menu.items) == 0 {
 		return
 	}
+	fmt.Println("header", menu.header)
 	mb := fltk.NewMenuButton(x, y, 100, 100, menu.header)
 	mb.SetType(fltk.POPUP3)
 	for _, item := range menu.items {

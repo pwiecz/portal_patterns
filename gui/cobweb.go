@@ -121,7 +121,7 @@ func (t *cobwebTab) contextMenu() *menu {
 	if len(t.portals.selectedPortals) > 1 {
 		menu.header = fmt.Sprintf("%d portals selected", len(t.portals.selectedPortals))
 	} else if len(t.portals.selectedPortals) == 1 {
-		menu.header = t.portalMap[aSelectedGUID].Name
+		menu.header = t.portals.portalMap[aSelectedGUID].Name
 	}
 	if numSelectedDisabled > 0 {
 		if len(t.portals.selectedPortals) == 1 {

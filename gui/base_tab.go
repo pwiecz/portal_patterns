@@ -10,9 +10,8 @@ import (
 
 type baseTab struct {
 	*fltk.Pack
-	portals   *Portals
-	portalMap map[string]lib.Portal
-	pattern   pattern
+	portals *Portals
+	pattern pattern
 }
 
 func newBaseTab(name string, portals *Portals, pattern pattern) *baseTab {
@@ -73,18 +72,6 @@ func (t *baseTab) portalLabel(guid string) string {
 	return "Normal"
 }
 
-/*func (t *baseTab) OnPortalSelected(guid string) {
-	selection := make(map[string]struct{})
-	selection[guid] = struct{}{}
-	t.OnSelectionChanged(selection)
-	if t.portalList != nil {
-		//t.portalList.ScrollToPortal(guid)
-	}
-	if t.mapWindow != nil {
-		//t.solutionMap.ScrollToPortal(guid)
-	}
-}*/
-
 func (t *baseTab) enabledPortals() []lib.Portal {
 	portals := []lib.Portal{}
 	for _, portal := range t.portals.portals {
@@ -93,21 +80,6 @@ func (t *baseTab) enabledPortals() []lib.Portal {
 		}
 	}
 	return portals
-}
-
-func (t *baseTab) onContextMenu(x, y int) {
-	menu := t.pattern.contextMenu()
-	if menu == nil || len(menu.items) == 0 {
-		return
-	}
-	mb := fltk.NewMenuButton(x, y, 100, 100, menu.header)
-	//	mb.SetCallback(func() { fmt.Println("menu callback") })
-	mb.SetType(fltk.POPUP3)
-	for _, item := range menu.items {
-		mb.Add(item.label, item.callback)
-	}
-	mb.Popup()
-	mb.Destroy()
 }
 
 func portalsToPoints(portals []lib.Portal) []s2.Point {

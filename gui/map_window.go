@@ -68,6 +68,9 @@ func (w *MapWindow) Lower(guid string) {
 func (w *MapWindow) SetPortalColor(guid string, fillColor, strokeColor color.Color) {
 	w.mapDrawer.SetPortalColor(guid, fillColor, strokeColor)
 }
+func (w *MapWindow) ScrollToPortal(guid string) {
+	w.mapDrawer.ScrollToPortal(guid)
+}
 func (w *MapWindow) drawMap() {
 	if !w.Valid() {
 		if err := gl.Init(); err != nil {

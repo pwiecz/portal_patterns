@@ -59,6 +59,21 @@ func (l *PortalList) SetPortals(portals []lib.Portal) {
 func (l *PortalList) SetPortalLabel(guid, label string) {
 	l.portalState[guid] = label
 }
+func (l *PortalList) ScrollToPortal(guid string) {
+	portalIndex, ok := l.portalIndices[guid]
+	if !ok {
+		return
+	}
+	top, _, bottom, _ := l.VisibleCells()
+	if portalIndex >= top && portalIndex <= bottom {
+		return
+	}
+	topRow := portalIndex - (bottom - top) / 2
+	if topRow < 0 {
+		topRow = 0
+	}
+	l.SetTopRow(topRow)
+}
 
 func (l *PortalList) drawCallback(context fltk.TableContext, row, column, x, y, w, h int) {
 	switch context {
