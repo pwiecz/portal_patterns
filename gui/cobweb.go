@@ -172,19 +172,22 @@ func (t *cobwebTab) state() cobwebState {
 	return state
 }
 
-func (t *cobwebTab) load(state cobwebState) {
+func (t *cobwebTab) load(state cobwebState) error {
 	t.cornerPortals = make(map[string]struct{})
 	for _, cornerGUID := range state.CornerPortals {
 		if _, ok := t.portals.portalMap[cornerGUID]; !ok {
+			return fmt.Errorf("unknown cobweb corner portal %s", cornerGUID)
 		}
 		t.cornerPortals[cornerGUID] = struct{}{}
 	}
 	t.solution = nil
 	for _, solutionGUID := range state.Solution {
-		if portal, ok := t.portals.portalMap[solutionGUID]; ok {
-			t.solution = append(t.solution, portal)
+		if portal, ok := t.portals.portalMap[solutionGUID]; !ok {
+			return fmt.Errorf("unknown cobwewb solution portal %s", solutionGUID)
 		} else {
+			t.solution = append(t.solution, portal)
 		}
 	}
 	t.solutionText = state.SolutionText
+	return nil
 }

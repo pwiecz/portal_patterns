@@ -260,19 +260,39 @@ func (t *homogeneousTab) state() homogeneousState {
 	return state
 }
 
-func (t *homogeneousTab) load(state homogeneousState) {
+func (t *homogeneousTab) load(state homogeneousState) error {
+	if state.MaxDepth <= 0 {
+		return fmt.Errorf("non-positive homogeneous.maxDepth value %d", state.MaxDepth)
+	}
 	t.maxDepth.SetValue(float64(state.MaxDepth))
+	if state.InnerPortals < 0 || state.InnerPortals >= t.innerPortals.Size() {
+		return fmt.Errorf("invalid homogeneous.innerPortals value %d", state.InnerPortals)
+	}
 	t.innerPortals.SetValue(state.InnerPortals)
+	if state.TopLevel < 0 || state.TopLevel >= t.topLevel.Size() {
+		return fmt.Errorf("imvalid homogeneous.topLevel value %d", state.TopLevel)
+	}
 	t.topLevel.SetValue(state.TopLevel)
 	t.pure.SetValue(state.Pure)
 	t.cornerPortals = make(map[string]struct{})
 	for _, cornerGUID := range state.CornerPortals {
+		if _, ok := t.portals.portalMap[cornerGUID]; !ok {
+			return fmt.Errorf("unknown homogeneous corner portal %s", cornerGUID)
+		}
 		t.cornerPortals[cornerGUID] = struct{}{}
+	}
+	if state.Depth < 0 {
+		return fmt.Errorf("negative homogeneous.depth value %d", state.Depth)
 	}
 	t.depth = uint16(state.Depth)
 	t.solution = nil
 	for _, solutionGUID := range state.Solution {
-		t.solution = append(t.solution, t.portals.portalMap[solutionGUID])
+		if solutionPortal, ok := t.portals.portalMap[solutionGUID]; !ok {
+			return fmt.Errorf("unknown homogeneous solution portal %s", solutionGUID)
+		} else {
+			t.solution = append(t.solution, solutionPortal)
+		}
 	}
 	t.solutionText = state.SolutionText
+	return nil
 }

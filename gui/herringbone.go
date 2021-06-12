@@ -181,16 +181,32 @@ func (t *herringboneTab) state() herringboneState {
 	return state
 }
 
-func (t *herringboneTab) load(state herringboneState) {
+func (t *herringboneTab) load(state herringboneState) error {
 	t.basePortals = make(map[string]struct{})
 	for _, baseGUID := range state.BasePortals {
+		if _, ok := t.portals.portalMap[baseGUID]; !ok {
+			return fmt.Errorf("unknown herringbone base portal %s", baseGUID)
+		}
 		t.basePortals[baseGUID] = struct{}{}
 	}
-	t.b0 = t.portals.portalMap[state.B0]
-	t.b1 = t.portals.portalMap[state.B1]
+	if b0Portal, ok := t.portals.portalMap[state.B0]; !ok && state.B0 != "" {
+		return fmt.Errorf("unknown herringbone.b0 portal %s", state.B0)
+	} else {
+		t.b0 = b0Portal
+	}
+	if b1Portal, ok := t.portals.portalMap[state.B1]; !ok && state.B1 != "" {
+		return fmt.Errorf("unknown herringbone.b1 portal %s", state.B1)
+	} else {
+		t.b1 = b1Portal
+	}
 	t.spine = nil
 	for _, spineGUID := range state.Spine {
-		t.spine = append(t.spine, t.portals.portalMap[spineGUID])
+		if spinePortal, ok := t.portals.portalMap[spineGUID]; !ok {
+			return fmt.Errorf("unknown herringbone spine portal %s", spineGUID)
+		} else {
+			t.spine = append(t.spine, spinePortal)
+		}
 	}
 	t.solutionText = state.SolutionText
+	return nil
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -256,6 +257,7 @@ func (w *MainWindow) onLoadPressed() {
 	defer file.Close()
 	if err := w.decode(file); err != nil {
 		fltk.MessageBox("Error loading", "Error while loading "+filename+"\n"+err.Error())
+		w.onResetPortalsPressed()
 	}
 }
 func (w *MainWindow) onSavePressed() {
@@ -483,19 +485,39 @@ func (w *MainWindow) decode(reader io.Reader) error {
 	}
 	w.portals.disabledPortals = make(map[string]struct{})
 	for _, disabledGUID := range state.DisabledPortals {
+		if _, ok := w.portals.portalMap[disabledGUID]; !ok {
+			return fmt.Errorf("invalid disabled portal %s", disabledGUID)
+		}
 		w.portals.disabledPortals[disabledGUID] = struct{}{}
 	}
 	w.portals.selectedPortals = make(map[string]struct{})
 	for _, selectedGUID := range state.SelectedPortals {
+		if _, ok := w.portals.portalMap[selectedGUID]; !ok {
+			return fmt.Errorf("invalid selected portal %s", selectedGUID)
+		}
 		w.portals.selectedPortals[selectedGUID] = struct{}{}
 	}
-	w.homogeneous.load(state.Homogeneous)
-	w.herringbone.load(state.Herringbone)
-	w.doubleHerringbone.load(state.DoubleHerringbone)
-	w.cobweb.load(state.Cobweb)
-	w.droneFlight.load(state.DroneFlight)
-	w.flipField.load(state.FlipField)
-
+	if err := w.homogeneous.load(state.Homogeneous); err != nil {
+		return err
+	}
+	if err := w.herringbone.load(state.Herringbone); err != nil {
+		return err
+	}
+	if err := w.doubleHerringbone.load(state.DoubleHerringbone); err != nil {
+		return err
+	}
+	if err := w.cobweb.load(state.Cobweb); err != nil {
+		return err
+	}
+	if err := w.droneFlight.load(state.DroneFlight); err != nil {
+		return err
+	}
+	if err := w.flipField.load(state.FlipField); err != nil {
+		return err
+	}
+	if state.SelectedTab < 0 || state.SelectedTab > 5 {
+		return fmt.Errorf("invalid selected tab %d", state.SelectedTab)
+	}
 	w.selectedTab = state.SelectedTab
 	w.tabs.SetValue(w.selectedTab)
 	w.onPortalsChanged()

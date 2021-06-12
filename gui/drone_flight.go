@@ -248,27 +248,35 @@ func (t *droneFlightTab) state() droneFlightState {
 	return state
 }
 
-func (t *droneFlightTab) load(state droneFlightState) {
+func (t *droneFlightTab) load(state droneFlightState) error {
 	t.useLongJumps.SetValue(state.UseLongJumps)
+	if state.OptimizeFor < 0 || state.OptimizeFor >= t.optimizeFor.Size() {
+		return fmt.Errorf("invalid droneFlight.optimizeFor value %d", state.OptimizeFor)
+	}
 	t.optimizeFor.SetValue(state.OptimizeFor)
 	t.solution = nil
 	for _, solutionGUID := range state.Solution {
-		if solutionPortal, ok := t.portals.portalMap[solutionGUID]; ok {
-			t.solution = append(t.solution, solutionPortal)
+		if solutionPortal, ok := t.portals.portalMap[solutionGUID]; !ok {
+			return fmt.Errorf("invalid droneFlight solution portal %s", solutionGUID)
 		} else {
+			t.solution = append(t.solution, solutionPortal)
 		}
 	}
 	for _, keyGUID := range state.Keys {
-		if keyPortal, ok := t.portals.portalMap[keyGUID]; ok {
-			t.keys = append(t.keys, keyPortal)
+		if keyPortal, ok := t.portals.portalMap[keyGUID]; !ok {
+			return fmt.Errorf("invalid droneFlight key portal %s", keyGUID)
 		} else {
+			t.keys = append(t.keys, keyPortal)
 		}
 	}
-	if _, ok := t.portals.portalMap[state.StartPortal]; !ok {
+	if _, ok := t.portals.portalMap[state.StartPortal]; !ok && state.StartPortal != "" {
+		return fmt.Errorf("invalid droneFlight.startPortal %s", state.StartPortal)
 	}
 	t.startPortal = state.StartPortal
-	if _, ok := t.portals.portalMap[state.EndPortal]; !ok {
+	if _, ok := t.portals.portalMap[state.EndPortal]; !ok && state.EndPortal != "" {
+		return fmt.Errorf("invalid droneFlight.endPortal %s", state.EndPortal)
 	}
 	t.endPortal = state.EndPortal
 	t.solutionText = state.SolutionText
+	return nil
 }

@@ -192,23 +192,32 @@ func (t *flipFieldTab) state() flipFieldState {
 	return state
 }
 
-func (t *flipFieldTab) load(state flipFieldState) {
+func (t *flipFieldTab) load(state flipFieldState) error {
+	if state.NumBackbonePortals <= 0 {
+		return fmt.Errorf("non-positive flipField.numBackbonePortals value %d", state.NumBackbonePortals)
+	}
 	t.numBackbonePortals.SetValue(float64(state.NumBackbonePortals))
 	t.exactly.SetValue(state.Exactly)
+	if state.MaxFlipPortals <= 0 {
+		return fmt.Errorf("non-positive flipField.maxFlipPortals value %d", state.MaxFlipPortals)
+	}
 	t.maxFlipPortals.SetValue(float64(state.MaxFlipPortals))
 	t.simpleBackbone.SetValue(state.SimpleBackbone)
 	t.backbone = nil
 	for _, backboneGUID := range state.Backbone {
-		if backbonePortal, ok := t.portals.portalMap[backboneGUID]; ok {
-			t.backbone = append(t.backbone, backbonePortal)
+		if backbonePortal, ok := t.portals.portalMap[backboneGUID]; !ok {
+			return fmt.Errorf("invalid flipField backbone portal %s", backboneGUID)
 		} else {
+			t.backbone = append(t.backbone, backbonePortal)
 		}
 	}
 	for _, restGUID := range state.Rest {
-		if restPortal, ok := t.portals.portalMap[restGUID]; ok {
-			t.rest = append(t.rest, restPortal)
+		if restPortal, ok := t.portals.portalMap[restGUID]; !ok {
+			return fmt.Errorf("invalid flipField rest portal %s", restGUID)
 		} else {
+			t.rest = append(t.rest, restPortal)
 		}
 	}
 	t.solutionText = state.SolutionText
+	return nil
 }
