@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"runtime"
 
 	"github.com/golang/geo/s2"
@@ -59,9 +58,6 @@ func newFlipFieldTab(portals *Portals) *flipFieldTab {
 
 	return t
 }
-
-func (t *flipFieldTab) encode(w io.Writer) error { return nil }
-func (t *flipFieldTab) decode(r io.Reader) error { return nil }
 
 func (t *flipFieldTab) onReset() {
 	t.backbone = nil

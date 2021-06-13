@@ -25,11 +25,6 @@ const PortalCircleRadius = 7
 
 var projection = s2.NewMercatorProjection(180)
 
-type showTileRequest struct {
-	coord osm.TileCoord
-	tile  image.Image
-}
-
 type mapPortal struct {
 	coords      r2.Point
 	fillColor   imgui.PackedColor
@@ -114,7 +109,6 @@ type MapDrawer struct {
 	portalDrawOrder       []int
 	defaultPortalColor    imgui.PackedColor
 	taskQueue             TaskQueue
-	asyncChannel          chan struct{}
 	tileFetcher           *osm.MapTiles
 	width, height         float32
 	zoom                  int

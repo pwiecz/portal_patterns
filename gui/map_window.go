@@ -31,9 +31,6 @@ func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
 	return w
 }
 
-func (w *MapWindow) Destroy() {
-	w.Destroy()
-}
 func (w *MapWindow) SetSelectionChangeCallback(callback func(map[string]struct{})) {
 	w.selectionChangedCallback = callback
 }
@@ -162,11 +159,6 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 	return false
 }
 
-func (w *MapWindow) onWindowClosed() {
-	if w.windowClosedCallback != nil {
-		w.windowClosedCallback()
-	}
-}
 func (w *MapWindow) onGlWindowResized() {
 	if w.mapDrawer != nil {
 		w.mapDrawer.Resize(w.W(), w.H())
