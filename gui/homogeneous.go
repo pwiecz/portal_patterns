@@ -315,8 +315,9 @@ func (t *homogeneousTab) load(state homogeneousState) error {
 	for _, solutionGUID := range state.Solution {
 		if solutionPortal, ok := t.portals.portalMap[solutionGUID]; !ok {
 			return fmt.Errorf("unknown homogeneous solution portal \"%s\"", solutionGUID)
+		} else {
+			t.solution = append(t.solution, solutionPortal)
 		}
-		t.solution = append(t.solution, solutionPortal)
 	}
 	t.solutionText = state.SolutionText
 	return nil

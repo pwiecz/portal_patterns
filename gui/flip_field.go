@@ -205,14 +205,16 @@ func (t *flipFieldTab) load(state flipFieldState) error {
 	for _, backboneGUID := range state.Backbone {
 		if backbonePortal, ok := t.portals.portalMap[backboneGUID]; !ok {
 			return fmt.Errorf("invalid flipField backbone portal \"%s\"", backboneGUID)
+		} else {
+			t.backbone = append(t.backbone, backbonePortal)
 		}
-		t.backbone = append(t.backbone, backbonePortal)
 	}
 	for _, restGUID := range state.Rest {
 		if restPortal, ok := t.portals.portalMap[restGUID]; !ok {
 			return fmt.Errorf("invalid flipField rest portal \"%s\"", restGUID)
+		} else {
+			t.rest = append(t.rest, restPortal)
 		}
-		t.rest = append(t.rest, restPortal)
 	}
 	t.solutionText = state.SolutionText
 	return nil
