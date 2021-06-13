@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"runtime"
 
 	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
@@ -77,6 +78,7 @@ func (t *flipFieldTab) onSearch(progressFunc func(int, int), onSearchDone func()
 		lib.FlipFieldBackbonePortalLimit{Value: int(t.numBackbonePortals.Value()), LimitType: numPortalLimit},
 		lib.FlipFieldMaxFlipPortals(int(t.maxFlipPortals.Value())),
 		lib.FlipFieldSimpleBackbone(t.simpleBackbone.Value()),
+		lib.FlipFieldNumWorkers(runtime.GOMAXPROCS(0)),
 	}
 	portals := t.enabledPortals()
 	go func() {
@@ -206,14 +208,14 @@ func (t *flipFieldTab) load(state flipFieldState) error {
 	t.backbone = nil
 	for _, backboneGUID := range state.Backbone {
 		if backbonePortal, ok := t.portals.portalMap[backboneGUID]; !ok {
-			return fmt.Errorf("invalid flipField backbone portal %s", backboneGUID)
+			return fmt.Errorf("invalid flipField backbone portal \"%s\"", backboneGUID)
 		} else {
 			t.backbone = append(t.backbone, backbonePortal)
 		}
 	}
 	for _, restGUID := range state.Rest {
 		if restPortal, ok := t.portals.portalMap[restGUID]; !ok {
-			return fmt.Errorf("invalid flipField rest portal %s", restGUID)
+			return fmt.Errorf("invalid flipField rest portal \"%s\"", restGUID)
 		} else {
 			t.rest = append(t.rest, restPortal)
 		}
