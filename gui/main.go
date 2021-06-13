@@ -531,6 +531,11 @@ func (w *MainWindow) decode(reader io.Reader) error {
 func main() {
 	runtime.LockOSThread()
 	conf := configuration.LoadConfiguration()
+	// Disable screen scaling, as we don't handle it well.
+	for i := 0; i < fltk.ScreenCount(); i++ {
+		fltk.SetScreenScale(i, 1.0)
+	}
+	fltk.SetKeyboardScreenScaling(false)
 	w := NewMainWindow(conf)
 	fltk.Lock()
 	w.Show()
