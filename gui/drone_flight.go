@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image/color"
+	"runtime"
 
 	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
@@ -38,7 +39,7 @@ func newDroneFlightTab(portals *Portals) *droneFlightTab {
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.optimizeFor = fltk.NewChoice(200, 0, 200, 30, "Optimize for:")
 	t.optimizeFor.Add("Least keys needed", func() {})
-	t.optimizeFor.Add("Least jump", func() {})
+	t.optimizeFor.Add("Least jumps", func() {})
 	t.optimizeFor.SetValue(0)
 	optimizeForPack.End()
 	t.Add(optimizeForPack)
@@ -62,6 +63,7 @@ func (t *droneFlightTab) onSearch(progressFunc func(int, int), onSearchDone func
 	options := []lib.DroneFlightOption{
 		lib.DroneFlightProgressFunc(progressFunc),
 		lib.DroneFlightUseLongJumps(t.useLongJumps.Value()),
+		lib.DroneFlightNumWorkers(runtime.GOMAXPROCS(0)),
 	}
 	switch t.optimizeFor.Value() {
 	case 0:
@@ -223,7 +225,7 @@ func (t *droneFlightTab) contextMenu() *menu {
 
 type droneFlightState struct {
 	UseLongJumps bool     `json:"useLongJumps"`
-	OptimizeFor  int      `json:"optimizeFor"`
+	OptimizeFor  string   `json:"optimizeFor"`
 	Solution     []string `json:"solution"`
 	Keys         []string `json:"keys"`
 	StartPortal  string   `json:"startPortal"`
@@ -234,10 +236,15 @@ type droneFlightState struct {
 func (t *droneFlightTab) state() droneFlightState {
 	state := droneFlightState{
 		UseLongJumps: t.useLongJumps.Value(),
-		OptimizeFor:  t.optimizeFor.Value(),
 		StartPortal:  t.startPortal,
 		EndPortal:    t.endPortal,
 		SolutionText: t.solutionText,
+	}
+	switch t.optimizeFor.Value() {
+	case 0:
+		state.OptimizeFor = "LeastKeys"
+	case 1:
+		state.OptimizeFor = "LeastJumps"
 	}
 	for _, solutionPortal := range t.solution {
 		state.Solution = append(state.Solution, solutionPortal.Guid)
@@ -250,31 +257,35 @@ func (t *droneFlightTab) state() droneFlightState {
 
 func (t *droneFlightTab) load(state droneFlightState) error {
 	t.useLongJumps.SetValue(state.UseLongJumps)
-	if state.OptimizeFor < 0 || state.OptimizeFor >= t.optimizeFor.Size() {
-		return fmt.Errorf("invalid droneFlight.optimizeFor value %d", state.OptimizeFor)
+	switch state.OptimizeFor {
+	case "LeastKeys":
+		t.optimizeFor.SetValue(0)
+	case "LeastJumps":
+		t.optimizeFor.SetValue(1)
+	default:
+		return fmt.Errorf("invalid droneFlight.optimizeFor value \"%s\"", state.OptimizeFor)
 	}
-	t.optimizeFor.SetValue(state.OptimizeFor)
 	t.solution = nil
 	for _, solutionGUID := range state.Solution {
 		if solutionPortal, ok := t.portals.portalMap[solutionGUID]; !ok {
-			return fmt.Errorf("invalid droneFlight solution portal %s", solutionGUID)
+			return fmt.Errorf("invalid droneFlight solution portal \"%s\"", solutionGUID)
 		} else {
 			t.solution = append(t.solution, solutionPortal)
 		}
 	}
 	for _, keyGUID := range state.Keys {
 		if keyPortal, ok := t.portals.portalMap[keyGUID]; !ok {
-			return fmt.Errorf("invalid droneFlight key portal %s", keyGUID)
+			return fmt.Errorf("invalid droneFlight key portal \"%s\"", keyGUID)
 		} else {
 			t.keys = append(t.keys, keyPortal)
 		}
 	}
 	if _, ok := t.portals.portalMap[state.StartPortal]; !ok && state.StartPortal != "" {
-		return fmt.Errorf("invalid droneFlight.startPortal %s", state.StartPortal)
+		return fmt.Errorf("invalid droneFlight.startPortal \"%s\"", state.StartPortal)
 	}
 	t.startPortal = state.StartPortal
 	if _, ok := t.portals.portalMap[state.EndPortal]; !ok && state.EndPortal != "" {
-		return fmt.Errorf("invalid droneFlight.endPortal %s", state.EndPortal)
+		return fmt.Errorf("invalid droneFlight.endPortal \"%s\"", state.EndPortal)
 	}
 	t.endPortal = state.EndPortal
 	t.solutionText = state.SolutionText

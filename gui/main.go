@@ -225,7 +225,6 @@ func (w *MainWindow) onContextMenu(x, y int) {
 	if menu == nil || len(menu.items) == 0 {
 		return
 	}
-	fmt.Println("header", menu.header)
 	mb := fltk.NewMenuButton(x, y, 100, 100, menu.header)
 	mb.SetType(fltk.POPUP3)
 	for _, item := range menu.items {

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image/color"
+	"runtime"
 
 	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
@@ -36,8 +37,14 @@ func (t *doubleHerringboneTab) onReset() {
 }
 func (t *doubleHerringboneTab) onSearch(progressFunc func(int, int), onSearchDone func()) {
 	portals := t.enabledPortals()
+	base := []int{}
+	for i, portal := range portals {
+		if _, ok := t.basePortals[portal.Guid]; ok {
+			base = append(base, i)
+		}
+	}
 	go func() {
-		b0, b1, spine0, spine1 := lib.LargestDoubleHerringbone(portals, []int{}, 8, progressFunc)
+		b0, b1, spine0, spine1 := lib.LargestDoubleHerringbone(portals, base, runtime.GOMAXPROCS(0), progressFunc)
 		fltk.Awake(func() {
 			t.b0, t.b1, t.spine0, t.spine1 = b0, b1, spine0, spine1
 			t.solutionText = fmt.Sprintf("Solution length: %d + %d", len(t.spine0), len(t.spine1))
@@ -183,24 +190,24 @@ func (t *doubleHerringboneTab) load(state doubleHerringboneState) error {
 	t.basePortals = make(map[string]struct{})
 	for _, baseGUID := range state.BasePortals {
 		if _, ok := t.portals.portalMap[baseGUID]; !ok {
-			return fmt.Errorf("unknown doubleHerringbone base portal %s", baseGUID)
+			return fmt.Errorf("unknown doubleHerringbone base portal \"%s\"", baseGUID)
 		}
 		t.basePortals[baseGUID] = struct{}{}
 	}
 	if b0Portal, ok := t.portals.portalMap[state.B0]; !ok && state.B0 != "" {
-		return fmt.Errorf("unknown doubleHerringbone.b0 portal %s", state.B0)
+		return fmt.Errorf("unknown doubleHerringbone.b0 portal \"%s\"", state.B0)
 	} else {
 		t.b0 = b0Portal
 	}
 	if b1Portal, ok := t.portals.portalMap[state.B1]; !ok && state.B1 != "" {
-		return fmt.Errorf("unknown doubleHerringbone.b1 portal %s", state.B1)
+		return fmt.Errorf("unknown doubleHerringbone.b1 portal \"%s\"", state.B1)
 	} else {
 		t.b1 = b1Portal
 	}
 	t.spine0 = nil
 	for _, spine0GUID := range state.Spine0 {
 		if spine0Portal, ok := t.portals.portalMap[spine0GUID]; !ok {
-			return fmt.Errorf("unknown doubleHerringbone spine0 portal %s", spine0GUID)
+			return fmt.Errorf("unknown doubleHerringbone spine0 portal \"%s\"", spine0GUID)
 		} else {
 			t.spine0 = append(t.spine0, spine0Portal)
 		}
@@ -208,7 +215,7 @@ func (t *doubleHerringboneTab) load(state doubleHerringboneState) error {
 	t.spine1 = nil
 	for _, spine1GUID := range state.Spine1 {
 		if spine1Portal, ok := t.portals.portalMap[spine1GUID]; !ok {
-			return fmt.Errorf("unknown doubleHerringbone spine1 portal %s", spine1GUID)
+			return fmt.Errorf("unknown doubleHerringbone spine1 portal \"%s\"", spine1GUID)
 		} else {
 			t.spine1 = append(t.spine1, spine1Portal)
 		}

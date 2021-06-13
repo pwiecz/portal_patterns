@@ -233,8 +233,8 @@ func (t *homogeneousTab) contextMenu() *menu {
 
 type homogeneousState struct {
 	MaxDepth      int      `json:"maxDepth"`
-	InnerPortals  int      `json:"innerPortals"`
-	TopLevel      int      `json:"topLevel"`
+	InnerPortals  string   `json:"innerPortals"`
+	TopLevel      string   `json:"topLevel"`
 	Pure          bool     `json:"pure"`
 	CornerPortals []string `json:"cornerPortals"`
 	Depth         int      `json:"depth"`
@@ -245,11 +245,25 @@ type homogeneousState struct {
 func (t *homogeneousTab) state() homogeneousState {
 	state := homogeneousState{
 		MaxDepth:     int(t.maxDepth.Value()),
-		InnerPortals: t.innerPortals.Value(),
-		TopLevel:     t.topLevel.Value(),
 		Pure:         t.pure.Value(),
 		Depth:        int(t.depth),
 		SolutionText: t.solutionText,
+	}
+	switch t.innerPortals.Value() {
+	case 0:
+		state.InnerPortals = "Arbitrary"
+	case 1:
+		state.InnerPortals = "SpreadAround"
+	}
+	switch t.topLevel.Value() {
+	case 0:
+		state.TopLevel = "SmallestArea"
+	case 1:
+		state.TopLevel = "LargestArea"
+	case 2:
+		state.TopLevel = "MostEquilateral"
+	case 3:
+		state.TopLevel = "Random"
 	}
 	for cornerGUID := range t.cornerPortals {
 		state.CornerPortals = append(state.CornerPortals, cornerGUID)
@@ -265,19 +279,31 @@ func (t *homogeneousTab) load(state homogeneousState) error {
 		return fmt.Errorf("non-positive homogeneous.maxDepth value %d", state.MaxDepth)
 	}
 	t.maxDepth.SetValue(float64(state.MaxDepth))
-	if state.InnerPortals < 0 || state.InnerPortals >= t.innerPortals.Size() {
-		return fmt.Errorf("invalid homogeneous.innerPortals value %d", state.InnerPortals)
+	switch state.InnerPortals {
+	case "Arbitrary":
+		t.innerPortals.SetValue(0)
+	case "SpreadAround":
+		t.innerPortals.SetValue(1)
+	default:
+		return fmt.Errorf("invalid homogeneous.innerPortals value \"%s\"", state.InnerPortals)
 	}
-	t.innerPortals.SetValue(state.InnerPortals)
-	if state.TopLevel < 0 || state.TopLevel >= t.topLevel.Size() {
-		return fmt.Errorf("imvalid homogeneous.topLevel value %d", state.TopLevel)
+	switch state.TopLevel {
+	case "SmallestArea":
+		t.topLevel.SetValue(0)
+	case "LargestArea":
+		t.topLevel.SetValue(1)
+	case "MostEquilateral":
+		t.topLevel.SetValue(2)
+	case "Random":
+		t.topLevel.SetValue(3)
+	default:
+		return fmt.Errorf("imvalid homogeneous.topLevel value \"%s\"", state.TopLevel)
 	}
-	t.topLevel.SetValue(state.TopLevel)
 	t.pure.SetValue(state.Pure)
 	t.cornerPortals = make(map[string]struct{})
 	for _, cornerGUID := range state.CornerPortals {
 		if _, ok := t.portals.portalMap[cornerGUID]; !ok {
-			return fmt.Errorf("unknown homogeneous corner portal %s", cornerGUID)
+			return fmt.Errorf("unknown homogeneous corner portal \"%s\"", cornerGUID)
 		}
 		t.cornerPortals[cornerGUID] = struct{}{}
 	}
@@ -288,7 +314,7 @@ func (t *homogeneousTab) load(state homogeneousState) error {
 	t.solution = nil
 	for _, solutionGUID := range state.Solution {
 		if solutionPortal, ok := t.portals.portalMap[solutionGUID]; !ok {
-			return fmt.Errorf("unknown homogeneous solution portal %s", solutionGUID)
+			return fmt.Errorf("unknown homogeneous solution portal \"%s\"", solutionGUID)
 		} else {
 			t.solution = append(t.solution, solutionPortal)
 		}

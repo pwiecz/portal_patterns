@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image/color"
+	"runtime"
 
 	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
@@ -42,7 +43,7 @@ func (t *herringboneTab) onSearch(progressFunc func(int, int), onSearchDone func
 		}
 	}
 	go func() {
-		b0, b1, spine := lib.LargestHerringbone(portals, base, 8, progressFunc)
+		b0, b1, spine := lib.LargestHerringbone(portals, base, runtime.GOMAXPROCS(0), progressFunc)
 		fltk.Awake(func() {
 			t.b0, t.b1, t.spine = b0, b1, spine
 			t.solutionText = fmt.Sprintf("Solution length: %d", len(t.spine))
@@ -185,24 +186,24 @@ func (t *herringboneTab) load(state herringboneState) error {
 	t.basePortals = make(map[string]struct{})
 	for _, baseGUID := range state.BasePortals {
 		if _, ok := t.portals.portalMap[baseGUID]; !ok {
-			return fmt.Errorf("unknown herringbone base portal %s", baseGUID)
+			return fmt.Errorf("unknown herringbone base portal \"%s\"", baseGUID)
 		}
 		t.basePortals[baseGUID] = struct{}{}
 	}
 	if b0Portal, ok := t.portals.portalMap[state.B0]; !ok && state.B0 != "" {
-		return fmt.Errorf("unknown herringbone.b0 portal %s", state.B0)
+		return fmt.Errorf("unknown herringbone.b0 portal \"%s\"", state.B0)
 	} else {
 		t.b0 = b0Portal
 	}
 	if b1Portal, ok := t.portals.portalMap[state.B1]; !ok && state.B1 != "" {
-		return fmt.Errorf("unknown herringbone.b1 portal %s", state.B1)
+		return fmt.Errorf("unknown herringbone.b1 portal \"%s\"", state.B1)
 	} else {
 		t.b1 = b1Portal
 	}
 	t.spine = nil
 	for _, spineGUID := range state.Spine {
 		if spinePortal, ok := t.portals.portalMap[spineGUID]; !ok {
-			return fmt.Errorf("unknown herringbone spine portal %s", spineGUID)
+			return fmt.Errorf("unknown herringbone spine portal \"%s\"", spineGUID)
 		} else {
 			t.spine = append(t.spine, spinePortal)
 		}
