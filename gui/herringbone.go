@@ -192,21 +192,18 @@ func (t *herringboneTab) load(state herringboneState) error {
 	}
 	if b0Portal, ok := t.portals.portalMap[state.B0]; !ok && state.B0 != "" {
 		return fmt.Errorf("unknown herringbone.b0 portal \"%s\"", state.B0)
-	} else {
-		t.b0 = b0Portal
 	}
+	t.b0 = b0Portal
 	if b1Portal, ok := t.portals.portalMap[state.B1]; !ok && state.B1 != "" {
 		return fmt.Errorf("unknown herringbone.b1 portal \"%s\"", state.B1)
-	} else {
-		t.b1 = b1Portal
 	}
+	t.b1 = b1Portal
 	t.spine = nil
 	for _, spineGUID := range state.Spine {
 		if spinePortal, ok := t.portals.portalMap[spineGUID]; !ok {
 			return fmt.Errorf("unknown herringbone spine portal \"%s\"", spineGUID)
-		} else {
-			t.spine = append(t.spine, spinePortal)
 		}
+		t.spine = append(t.spine, spinePortal)
 	}
 	t.solutionText = state.SolutionText
 	return nil

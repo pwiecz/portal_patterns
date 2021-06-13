@@ -184,9 +184,8 @@ func (t *cobwebTab) load(state cobwebState) error {
 	for _, solutionGUID := range state.Solution {
 		if portal, ok := t.portals.portalMap[solutionGUID]; !ok {
 			return fmt.Errorf("unknown cobwewb solution portal %s", solutionGUID)
-		} else {
-			t.solution = append(t.solution, portal)
 		}
+		t.solution = append(t.solution, portal)
 	}
 	t.solutionText = state.SolutionText
 	return nil

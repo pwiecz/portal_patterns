@@ -52,9 +52,8 @@ func stringSetCopy(set map[string]struct{}) map[string]struct{} {
 func (t *baseTab) strokeColor(guid string) color.Color {
 	if _, ok := t.portals.selectedPortals[guid]; ok {
 		return color.NRGBA{0, 0, 0, 255}
-	} else {
-		return color.NRGBA{0, 0, 0, 0}
 	}
+	return color.NRGBA{0, 0, 0, 0}
 }
 
 func (t *baseTab) portalColor(guid string) (color.Color, color.Color) {

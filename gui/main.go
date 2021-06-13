@@ -206,16 +206,16 @@ func (w *MainWindow) OnSelectionChanged(selectedPortals map[string]struct{}) {
 		fill, stroke := selectedPattern.portalColor(guid)
 		w.mapWindow.SetPortalColor(guid, fill, stroke)
 	}
-	selectedGuid := ""
+	selectedGUID := ""
 	for guid := range w.portals.selectedPortals {
-		selectedGuid = guid
+		selectedGUID = guid
 		fill, stroke := selectedPattern.portalColor(guid)
 		w.mapWindow.SetPortalColor(guid, fill, stroke)
 		w.mapWindow.Raise(guid)
 	}
 	if len(w.portals.selectedPortals) == 1 {
-		w.mapWindow.ScrollToPortal(selectedGuid)
-		w.portalList.ScrollToPortal(selectedGuid)
+		w.mapWindow.ScrollToPortal(selectedGUID)
+		w.portalList.ScrollToPortal(selectedGUID)
 	}
 }
 

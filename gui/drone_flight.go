@@ -269,16 +269,14 @@ func (t *droneFlightTab) load(state droneFlightState) error {
 	for _, solutionGUID := range state.Solution {
 		if solutionPortal, ok := t.portals.portalMap[solutionGUID]; !ok {
 			return fmt.Errorf("invalid droneFlight solution portal \"%s\"", solutionGUID)
-		} else {
-			t.solution = append(t.solution, solutionPortal)
 		}
+		t.solution = append(t.solution, solutionPortal)
 	}
 	for _, keyGUID := range state.Keys {
 		if keyPortal, ok := t.portals.portalMap[keyGUID]; !ok {
 			return fmt.Errorf("invalid droneFlight key portal \"%s\"", keyGUID)
-		} else {
-			t.keys = append(t.keys, keyPortal)
 		}
+		t.keys = append(t.keys, keyPortal)
 	}
 	if _, ok := t.portals.portalMap[state.StartPortal]; !ok && state.StartPortal != "" {
 		return fmt.Errorf("invalid droneFlight.startPortal \"%s\"", state.StartPortal)
