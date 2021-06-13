@@ -23,7 +23,7 @@ func NewDroneFlightCmd() droneFlightCmd {
 	flags := flag.NewFlagSet("drone_flight", flag.ExitOnError)
 	cmd := droneFlightCmd{
 		flags:        flags,
-		useLongJumps: flags.Bool("use_long_jumps", true, "when creating the drone flight consider using long jumps that require a key to the target portal"),
+		useLongJumps: flags.Bool("use_long_jumps", false, "when creating the drone flight consider using long jumps that require a key to the target portal"),
 		leastKeys:    flags.Bool("least_keys", false, "among the longest flights find one that requires the least keys (default)"),
 		leastJumps:   flags.Bool("least_jumps", false, "among the longest flights find one that requires the least jumps"),
 		startPortal:  &portalValue{},
