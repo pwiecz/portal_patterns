@@ -238,7 +238,7 @@ func (w *MapDrawer) Hover(x, y int) {
 		mapY := (float64(y) + w.y0) / 256 / w.zoomPow
 		projectedX := mapX*360 - 180
 		projectedY := 180 - mapY*360
-		point := projection.Unproject(r2.Point{projectedX, projectedY})
+		point := projection.Unproject(r2.Point{X: projectedX, Y: projectedY})
 		opts := s2.NewClosestEdgeQueryOptions().MaxResults(1)
 		query := s2.NewClosestEdgeQuery(w.portalShapeIndex, opts)
 		target := s2.NewMinDistanceToPointTarget(point)
@@ -295,7 +295,7 @@ func (w *MapDrawer) Init(screenWidth, screenHeight int) {
 		return
 	}
 	context := imgui.CreateContext(nil)
-	imgui.CurrentIO().SetDisplaySize(imgui.Vec2{float32(screenWidth), float32(screenHeight)})
+	imgui.CurrentIO().SetDisplaySize(imgui.Vec2{X: float32(screenWidth), Y: float32(screenHeight)})
 	renderer, err := guigl.NewOpenGL2(imgui.CurrentIO())
 	if err != nil {
 		panic(err)
@@ -413,11 +413,11 @@ func (w *MapDrawer) drawPortalLabelImgui() {
 	if labelPosY-textSize.Y < 0 {
 		labelPosY = y + 5 + textSize.Y + 4
 	}
-	labelPos := imgui.Vec2{labelPosX, labelPosY - 20}
+	labelPos := imgui.Vec2{X: labelPosX, Y: labelPosY - 20}
 	white := imgui.Packed(color.NRGBA{255, 255, 255, 255})
-	drawList.AddRectFilled(labelPos, labelPos.Plus(imgui.Vec2{textSize.X + 2*LabelXMargin, textSize.Y}), white)
+	drawList.AddRectFilled(labelPos, labelPos.Plus(imgui.Vec2{X: textSize.X + 2*LabelXMargin, Y: textSize.Y}), white)
 	black := imgui.Packed(color.NRGBA{0, 0, 0, 255})
-	textPos := labelPos.Plus(imgui.Vec2{LabelXMargin, 0})
+	textPos := labelPos.Plus(imgui.Vec2{X: LabelXMargin, Y: 0})
 	drawList.AddText(textPos, black, portal.name)
 	imgui.Render()
 	size := [2]float32{w.width, w.height}
@@ -429,7 +429,7 @@ func (w *MapDrawer) drawAllTilesImgui() {
 	for coord, tex := range w.mapTiles {
 		dx := float32(coord.X)*256 - float32(w.x0)
 		dy := float32(coord.Y)*256 - float32(w.y0)
-		drawList.AddImage(imgui.TextureID(tex), imgui.Vec2{dx, dy}, imgui.Vec2{dx + 256, dy + 256})
+		drawList.AddImage(imgui.TextureID(tex), imgui.Vec2{X: dx, Y: dy}, imgui.Vec2{X: dx + 256, Y: dy + 256})
 	}
 	imgui.Render()
 	size := [2]float32{w.width, w.height}
@@ -443,8 +443,8 @@ func (w *MapDrawer) drawAllPortalsImgui() {
 		portal := w.portals[portalIndex]
 		x := float32(portal.coords.X*w.zoomPow*256 - w.x0)
 		y := float32(portal.coords.Y*w.zoomPow*256 - w.y0)
-		drawList.AddCircleFilled(imgui.Vec2{x, y}, PortalCircleRadius, portal.fillColor)
-		drawList.AddCircle(imgui.Vec2{x, y}, PortalCircleRadius, portal.strokeColor)
+		drawList.AddCircleFilled(imgui.Vec2{X: x, Y: y}, PortalCircleRadius, portal.fillColor)
+		drawList.AddCircle(imgui.Vec2{X: x, Y: y}, PortalCircleRadius, portal.strokeColor)
 		// Split drawing portals into smaller chunks, otherwise we exceed imgui limits.
 		if i%499 == 1 {
 			imgui.Render()
@@ -465,7 +465,7 @@ func (w *MapDrawer) drawAllPathsImgui() {
 			y0 := float32(path[i-1].Y*w.zoomPow*256 - w.y0)
 			x1 := float32(path[i].X*w.zoomPow*256 - w.x0)
 			y1 := float32(path[i].Y*w.zoomPow*256 - w.y0)
-			drawList.AddLineV(imgui.Vec2{x0, y0}, imgui.Vec2{x1, y1}, purple, 3)
+			drawList.AddLineV(imgui.Vec2{X: x0, Y: y0}, imgui.Vec2{X: x1, Y: y1}, purple, 3)
 		}
 	}
 	imgui.Render()
@@ -516,7 +516,7 @@ func (w *MapDrawer) redrawTiles() {
 	for x := int(math.Floor(w.x0 / 256)); x <= int(math.Floor(x1/256)); x++ {
 		for y := int(math.Floor(w.y0 / 256)); y <= int(math.Floor(y1/256)); y++ {
 			if y >= 0 && y < maxCoord {
-				tileCoords[osm.TileCoord{x, y, w.zoom}] = struct{}{}
+				tileCoords[osm.TileCoord{X: x, Y: y, Zoom: w.zoom}] = struct{}{}
 			}
 		}
 	}
