@@ -104,7 +104,7 @@ func longestDroneFlightMT(portals []Portal, params droneFlightParams) ([]Portal,
 	bestPath, bestKeysNeeded := q.optimalFlight(bestStart, bestEnd, params.optimizeNumKeys)
 	if params.startPortalIndex == invalidPortalIndex {
 		path, keysNeeded := q.optimalFlight(bestEnd, bestStart, params.optimizeNumKeys)
-		if path != nil {
+		if len(path) > 1 {
 			if params.optimizeNumKeys {
 				if len(keysNeeded) < len(bestKeysNeeded) || (len(keysNeeded) == len(bestKeysNeeded) && len(path) < len(bestPath)) {
 					bestPath, bestKeysNeeded = path, keysNeeded
