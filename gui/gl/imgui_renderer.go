@@ -6,7 +6,7 @@ import (
 
 	"github.com/adrg/sysfont"
 	"github.com/go-gl/gl/v2.1/gl"
-	"github.com/inkyblackness/imgui-go/v3"
+	"github.com/inkyblackness/imgui-go/v4"
 )
 
 // OpenGL2 implements a renderer based on github.com/go-gl/gl (v2.1).

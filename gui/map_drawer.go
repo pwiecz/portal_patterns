@@ -14,7 +14,7 @@ import (
 	"github.com/golang/geo/r2"
 	"github.com/golang/geo/s2"
 	"github.com/golang/groupcache/lru"
-	"github.com/inkyblackness/imgui-go/v3"
+	"github.com/inkyblackness/imgui-go/v4"
 	guigl "github.com/pwiecz/portal_patterns/gui/gl"
 	"github.com/pwiecz/portal_patterns/gui/osm"
 	"github.com/pwiecz/portal_patterns/lib"
@@ -440,10 +440,11 @@ func (w *MapDrawer) drawAllPortalsImgui() {
 		drawList.AddCircleFilled(imgui.Vec2{X: x, Y: y}, PortalCircleRadius, portal.fillColor)
 		drawList.AddCircle(imgui.Vec2{X: x, Y: y}, PortalCircleRadius, portal.strokeColor)
 		// Split drawing portals into smaller chunks, otherwise we exceed imgui limits.
-		if i%499 == 1 {
+		if i%499 == 498 {
 			imgui.Render()
 			w.imguiRenderer.Render(size, size, imgui.RenderedDrawData())
 			imgui.NewFrame()
+			drawList = imgui.BackgroundDrawList()
 		}
 	}
 	imgui.Render()

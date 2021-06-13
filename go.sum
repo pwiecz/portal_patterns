@@ -13,8 +13,8 @@ github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 h1:gtexQ/VGyN+VVFRXSFig
 github.com/golang/geo v0.0.0-20210211234256-740aa86cb551/go.mod h1:QZ0nwyI2jOfgRAoBvP+ab5aRr7c9x7lhGEJrKvBwjWI=
 github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e h1:1r7pUrabqp18hOBcwBwiTsbnFeTZHV9eER/QT5JVZxY=
 github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
-github.com/inkyblackness/imgui-go/v3 v3.1.0 h1:KPUUEmt4I/Q1VGqBVpvHKOPZklltuHJ+WpTBZzUkNQc=
-github.com/inkyblackness/imgui-go/v3 v3.1.0/go.mod h1:WdM5LZHuTrjd1d+yd2fA19t3mG538kJ6zOLB2sAXF6U=
+github.com/inkyblackness/imgui-go/v4 v4.2.0 h1:5MuhU1tocnrHDZHyHTArzYr1X0+oA3ITleEwgx9juQ4=
+github.com/inkyblackness/imgui-go/v4 v4.2.0/go.mod h1:g8SAGtOYUP7rYaOB2AsVKCEHmPMDmJKgt4z6d+flhb0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
