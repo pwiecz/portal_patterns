@@ -372,6 +372,7 @@ func (w *MainWindow) onResetPortalsPressed() {
 	w.export.Deactivate()
 	w.copy.Deactivate()
 	w.mapWindow.SetPortals(w.portals.portals)
+	w.mapWindow.SetPaths(nil)
 	w.portalList.SetPortals(w.portals.portals)
 	w.solutionLabel.SetLabel("")
 	w.homogeneous.onReset()
