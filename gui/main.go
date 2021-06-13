@@ -271,6 +271,19 @@ func (w *MainWindow) onSavePressed() {
 		return
 	}
 	filename := selectedFilenames[0]
+	if filepath.Ext(filename) != ".pp" {
+		filename += ".pp"
+	}
+	if stat, err := os.Stat(filename); err == nil {
+		if stat.IsDir() {
+			fltk.MessageBox("Directory selected", "Selected file "+filename+" is a directory")
+			return
+		}
+		answer := fltk.ChoiceDialog("File already exists.\nDo you want to overwrite it?", "Yes", "No")
+		if answer != 0 {
+			return
+		}
+	}
 	file, err := os.Create(filename)
 	if err != nil {
 		fltk.MessageBox("Error saving", "Couldn't create file "+filename+"\n"+err.Error())
