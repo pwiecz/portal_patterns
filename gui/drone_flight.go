@@ -69,16 +69,16 @@ func (t *droneFlightTab) onSearch(progressFunc func(int, int), onSearchDone func
 	case 1:
 		options = append(options, lib.DroneFlightLeastJumps{})
 	}
-	go func() {
-		portals := t.enabledPortals()
-		for i, portal := range portals {
-			if t.startPortal == portal.Guid {
-				options = append(options, lib.DroneFlightStartPortalIndex(i))
-			}
-			if t.endPortal == portal.Guid {
-				options = append(options, lib.DroneFlightEndPortalIndex(i))
-			}
+	portals := t.enabledPortals()
+	for i, portal := range portals {
+		if t.startPortal == portal.Guid {
+			options = append(options, lib.DroneFlightStartPortalIndex(i))
 		}
+		if t.endPortal == portal.Guid {
+			options = append(options, lib.DroneFlightEndPortalIndex(i))
+		}
+	}
+	go func() {
 		solution, keys := lib.LongestDroneFlight(portals, options...)
 		fltk.Awake(func() {
 			t.solution, t.keys = solution, keys

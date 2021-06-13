@@ -78,8 +78,8 @@ func (t *flipFieldTab) onSearch(progressFunc func(int, int), onSearchDone func()
 		lib.FlipFieldMaxFlipPortals(int(t.maxFlipPortals.Value())),
 		lib.FlipFieldSimpleBackbone(t.simpleBackbone.Value()),
 	}
+	portals := t.enabledPortals()
 	go func() {
-		portals := t.enabledPortals()
 		backbone, rest := lib.LargestFlipField(portals, options...)
 		fltk.Awake(func() {
 			t.backbone, t.rest = backbone, rest

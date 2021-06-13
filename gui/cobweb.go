@@ -33,14 +33,14 @@ func (t *cobwebTab) onReset() {
 	t.solutionText = ""
 }
 func (t *cobwebTab) onSearch(progressFunc func(int, int), onSearchDone func()) {
-	go func() {
-		portals := t.enabledPortals()
-		corners := []int{}
-		for i, portal := range portals {
-			if _, ok := t.cornerPortals[portal.Guid]; ok {
-				corners = append(corners, i)
-			}
+	portals := t.enabledPortals()
+	corners := []int{}
+	for i, portal := range portals {
+		if _, ok := t.cornerPortals[portal.Guid]; ok {
+			corners = append(corners, i)
 		}
+	}
+	go func() {
 		solution := lib.LargestCobweb(portals, corners, progressFunc)
 		fltk.Awake(func() {
 			t.solution = solution

@@ -103,14 +103,14 @@ func (t *homogeneousTab) onSearch(progressFunc func(int, int), onSearchDone func
 		rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 		options = append(options, lib.HomogeneousRandom{Rand: rand})
 	}
-	go func() {
-		portals := t.enabledPortals()
-		corners := []int{}
-		for i, portal := range portals {
-			if _, ok := t.cornerPortals[portal.Guid]; ok {
-				corners = append(corners, i)
-			}
+	portals := t.enabledPortals()
+	corners := []int{}
+	for i, portal := range portals {
+		if _, ok := t.cornerPortals[portal.Guid]; ok {
+			corners = append(corners, i)
 		}
+	}
+	go func() {
 		options = append(options, lib.HomogeneousFixedCornerIndices(corners))
 		solution, depth := lib.DeepestHomogeneous(portals, options...)
 		fltk.Awake(func() {

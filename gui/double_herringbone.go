@@ -35,8 +35,8 @@ func (t *doubleHerringboneTab) onReset() {
 	t.solutionText = ""
 }
 func (t *doubleHerringboneTab) onSearch(progressFunc func(int, int), onSearchDone func()) {
+	portals := t.enabledPortals()
 	go func() {
-		portals := t.enabledPortals()
 		b0, b1, spine0, spine1 := lib.LargestDoubleHerringbone(portals, []int{}, 8, progressFunc)
 		fltk.Awake(func() {
 			t.b0, t.b1, t.spine0, t.spine1 = b0, b1, spine0, spine1
