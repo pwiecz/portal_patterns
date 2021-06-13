@@ -145,6 +145,11 @@ func LargestHerringboneST(portals []Portal, fixedBaseIndices []int, progressFunc
 	resultCache := make([]portalIndex, 0, len(portals))
 
 	numPairs := len(portals) * (len(portals) - 1) / 2
+	if len(fixedBaseIndices) == 1 {
+		numPairs = len(portals) - 1
+	} else if len(fixedBaseIndices) == 2 {
+		numPairs = 1
+	}
 	everyNth := numPairs / 1000
 	if everyNth < 50 {
 		everyNth = 2
