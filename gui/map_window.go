@@ -23,11 +23,12 @@ type MapWindow struct {
 
 func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
 	w := &MapWindow{}
-	w.GlWindow = fltk.NewGlWindow(0, 0, 900, 600, w.drawMap)
+	w.GlWindow = fltk.NewGlWindow(0, 0, 900, 870, w.drawMap)
 	w.GlWindow.SetEventHandler(w.handleEvent)
 	w.GlWindow.SetResizeHandler(w.onGlWindowResized)
-	w.mapDrawer = NewMapDrawer(800, 600, tileFetcher)
+	w.mapDrawer = NewMapDrawer(900, 870, tileFetcher)
 	w.mapDrawer.OnMapChanged(func() { fltk.Awake(w.Redraw) })
+	w.Resizable(w.GlWindow)
 	return w
 }
 

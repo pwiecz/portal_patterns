@@ -25,7 +25,7 @@ func NewPortalList(x, y, w, h int) *PortalList {
 	l.SetColumnCount(2)
 	l.SetDrawCellCallback(l.drawCallback)
 	l.EnableColumnHeaders()
-//	l.AllowColumnResizing()
+	// l.AllowColumnResizing()
 	l.SetColumnWidth(0, 200)
 	l.SetEventHandler(l.onEvent)
 	l.SetCallbackCondition(fltk.WhenRelease)
@@ -68,7 +68,7 @@ func (l *PortalList) ScrollToPortal(guid string) {
 	if portalIndex >= top && portalIndex <= bottom {
 		return
 	}
-	topRow := portalIndex - (bottom - top) / 2
+	topRow := portalIndex - (bottom-top)/2
 	if topRow < 0 {
 		topRow = 0
 	}

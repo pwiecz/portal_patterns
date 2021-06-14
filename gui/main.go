@@ -65,7 +65,7 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	menuBar.AddEx("&File/&Save", fltk.CTRL+int('s'), w.onSavePressed, 0)
 	menuBar.AddEx("&View/Zoom &In", fltk.CTRL+int('+'), w.onZoomIn, 0)
 	menuBar.AddEx("&View/Zoom &Out", fltk.CTRL+int('-'), w.onZoomOut, 0)
-	pack := fltk.NewPack(0, 0, 1600, 900)
+	pack := fltk.NewPack(0, 0, 1600, 870)
 	pack.SetType(fltk.HORIZONTAL)
 	tileFetcher := osm.NewMapTiles()
 	w.mapWindow = NewMapWindow("", tileFetcher)
@@ -91,7 +91,7 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 		w.onContextMenu(x, y)
 	})
 
-	rightPack := fltk.NewPack(0, 0, 700, 900)
+	rightPack := fltk.NewPack(0, 0, 700, 870)
 	rightPack.SetType(fltk.VERTICAL)
 	topButtonPack := fltk.NewPack(0, 0, 700, 30)
 	topButtonPack.SetType(fltk.HORIZONTAL)
@@ -143,7 +143,7 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	w.progress = fltk.NewProgress(0, 0, 700, 30)
 	w.progress.SetSelectionColor(0x4444ff00)
 
-	w.portalList = NewPortalList(0, 0, 700, 620)
+	w.portalList = NewPortalList(0, 0, 700, 590)
 	w.portalList.SetSelectionChangeCallback(func() { w.OnSelectionChanged(w.portalList.selectedPortals) })
 	w.portalList.SetContextMenuCallback(w.onContextMenu)
 
@@ -152,6 +152,7 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	pack.End()
 	pack.Resizable(w.mapWindow)
 	mainPack.End()
+	mainPack.Resizable(pack)
 	w.End()
 	w.Resizable(mainPack)
 	return w

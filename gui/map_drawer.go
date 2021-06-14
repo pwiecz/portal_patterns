@@ -199,6 +199,9 @@ func (w *MapDrawer) Raise(guid string) {
 }
 func (w *MapDrawer) Resize(width, height int) {
 	w.Async(func() {
+		if w.width == float32(width) && w.height == float32(height) {
+			return
+		}
 		w.width = float32(width)
 		w.height = float32(height)
 		w.redrawTiles()
@@ -206,6 +209,9 @@ func (w *MapDrawer) Resize(width, height int) {
 }
 func (w *MapDrawer) Drag(dx, dy int) {
 	w.Async(func() {
+		if dx == 0 && dy == 0 {
+			return
+		}
 		w.x0 += float64(dx)
 		w.y0 += float64(dy)
 		w.redrawTiles()
@@ -325,6 +331,7 @@ func (w *MapDrawer) Update() {
 	w.drawAllPortalsImgui()
 	w.drawAllPathsImgui()
 	w.drawPortalLabelImgui()
+	w.drawCopyrightLabel()
 }
 
 func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
@@ -398,6 +405,20 @@ func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
 }
 
 const LabelXMargin = 10
+
+func (w *MapDrawer) drawCopyrightLabel() {
+	imgui.NewFrame()
+	label := "© OpenStreetMap"
+	textSize := imgui.CalcTextSize(label, false, 0)
+	posX, posY := w.width-textSize.X-5, w.height-textSize.Y-5
+	textPos := imgui.Vec2{X: posX, Y: posY}
+	drawList := imgui.BackgroundDrawList()
+	black := imgui.Packed(color.NRGBA{0, 0, 0, 255})
+	drawList.AddText(textPos, black, label)
+	imgui.Render()
+	size := [2]float32{w.width, w.height}
+	w.imguiRenderer.Render(size, size, imgui.RenderedDrawData())
+}
 
 func (w *MapDrawer) drawPortalLabelImgui() {
 	if w.portalUnderMouse < 0 || w.portalUnderMouse >= len(w.portals) {
