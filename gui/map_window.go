@@ -87,6 +87,12 @@ func (w *MapWindow) drawMap() {
 	w.mapDrawer.Update()
 }
 
+func (w *MapWindow) ZoomIn() {
+	w.mapDrawer.ZoomIn(int(w.mapDrawer.width/2), int(w.mapDrawer.height/2))
+}
+func (w *MapWindow) ZoomOut() {
+	w.mapDrawer.ZoomOut(int(w.mapDrawer.width/2), int(w.mapDrawer.height/2))
+}
 func (w *MapWindow) handleEvent(event fltk.Event) bool {
 	switch event {
 	case fltk.PUSH:

@@ -63,6 +63,8 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	menuBar := fltk.NewMenuBar(0, 0, 1600, 30)
 	menuBar.AddEx("&File/&Load", fltk.CTRL+int('o'), w.onLoadPressed, 0)
 	menuBar.AddEx("&File/&Save", fltk.CTRL+int('s'), w.onSavePressed, 0)
+	menuBar.AddEx("&View/Zoom &In", fltk.CTRL+int('+'), w.onZoomIn, 0)
+	menuBar.AddEx("&View/Zoom &Out", fltk.CTRL+int('-'), w.onZoomOut, 0)
 	pack := fltk.NewPack(0, 0, 1600, 900)
 	pack.SetType(fltk.HORIZONTAL)
 	tileFetcher := osm.NewMapTiles()
@@ -239,7 +241,12 @@ func (w *MainWindow) onContextMenu(x, y int) {
 	}
 	w.portalList.Redraw()
 }
-
+func (w *MainWindow) onZoomIn() {
+	w.mapWindow.ZoomIn()
+}
+func (w *MainWindow) onZoomOut() {
+	w.mapWindow.ZoomOut()
+}
 func (w *MainWindow) onLoadPressed() {
 	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "PP files (*.pp)", fltk.SINGLE, "Select project file")
 	fileChooser.SetPreview(false)
