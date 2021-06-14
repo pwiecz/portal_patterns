@@ -134,6 +134,17 @@ func NewMapDrawer(width, height int, tileFetcher *osm.MapTiles) *MapDrawer {
 	return w
 }
 
+func (w *MapDrawer) Destroy() {
+	if w.imguiRenderer != nil {
+		w.imguiRenderer.Dispose()
+		w.imguiRenderer = nil
+	}
+	if w.imguiContext != nil {
+		w.imguiContext.Destroy()
+		w.imguiContext = nil
+	}
+}
+
 func (w *MapDrawer) Async(callback func()) {
 	w.taskQueue.Enqueue(callback)
 	for _, callback := range w.onMapChangedCallbacks {

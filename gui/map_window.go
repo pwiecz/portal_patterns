@@ -31,6 +31,11 @@ func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
 	return w
 }
 
+func (w *MapWindow) Destroy() {
+	w.mapDrawer.Destroy()
+	w.GlWindow.Destroy()
+}
+
 func (w *MapWindow) SetSelectionChangeCallback(callback func(map[string]struct{})) {
 	w.selectionChangedCallback = callback
 }
