@@ -33,7 +33,6 @@ func NewPortals() *Portals {
 type MainWindow struct {
 	*fltk.Window
 	configuration     *configuration.Configuration
-	save, load        *fltk.Button
 	add, reset        *fltk.Button
 	search            *fltk.Button
 	export            *fltk.Button
@@ -59,6 +58,11 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	w.configuration = conf
 	w.portals = NewPortals()
 	w.Begin()
+	mainPack := fltk.NewPack(0, 0, 1600, 900)
+	mainPack.SetType(fltk.VERTICAL)
+	menuBar := fltk.NewMenuBar(0, 0, 1600, 30)
+	menuBar.AddEx("&File/&Load", fltk.CTRL+int('o'), w.onLoadPressed, 0)
+	menuBar.AddEx("&File/&Save", fltk.CTRL+int('s'), w.onSavePressed, 0)
 	pack := fltk.NewPack(0, 0, 1600, 900)
 	pack.SetType(fltk.HORIZONTAL)
 	tileFetcher := osm.NewMapTiles()
@@ -91,10 +95,6 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	topButtonPack.SetType(fltk.HORIZONTAL)
 	topButtonPack.SetSpacing(5)
 
-	w.load = fltk.NewButton(0, 0, 60, 30, "Load")
-	w.load.SetCallback(w.onLoadPressed)
-	w.save = fltk.NewButton(0, 0, 60, 30, "Save")
-	w.save.SetCallback(w.onSavePressed)
 	w.add = fltk.NewButton(0, 0, 101, 30, "Add portals")
 	w.add.SetCallback(w.onAddPortalsPressed)
 	w.reset = fltk.NewButton(0, 0, 113, 30, "Reset portals")
@@ -149,9 +149,9 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	rightPack.Resizable(w.portalList)
 	pack.End()
 	pack.Resizable(w.mapWindow)
-
+	mainPack.End()
 	w.End()
-	w.Resizable(pack)
+	w.Resizable(mainPack)
 	return w
 }
 
@@ -259,7 +259,9 @@ func (w *MainWindow) onLoadPressed() {
 	if err := w.decode(file); err != nil {
 		fltk.MessageBox("Error loading", "Error while loading "+filename+"\n"+err.Error())
 		w.onResetPortalsPressed()
+		return
 	}
+	w.SetLabel(filepath.Base(filename))
 }
 func (w *MainWindow) onSavePressed() {
 	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "PP files (*.pp)", fltk.CREATE, "Select project file")
@@ -294,6 +296,7 @@ func (w *MainWindow) onSavePressed() {
 		fltk.MessageBox("Error saving", "Error while saving to "+filename+"\n"+err.Error())
 		return
 	}
+	w.SetLabel(filepath.Base(filename))
 }
 func (w *MainWindow) onAddPortalsPressed() {
 	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "JSON files (*.json)\tCSV files (*.csv)", fltk.MULTI, "Select portals file")
@@ -393,10 +396,10 @@ func (w *MainWindow) onResetPortalsPressed() {
 	w.cobweb.onReset()
 	w.droneFlight.onReset()
 	w.flipField.onReset()
+	w.SetLabel("")
 }
 
 func (w *MainWindow) onSearchPressed() {
-	w.load.Deactivate()
 	w.add.Deactivate()
 	w.reset.Deactivate()
 	w.search.Deactivate()
@@ -414,7 +417,6 @@ func (w *MainWindow) progressCallback(val, max int) {
 }
 func (w *MainWindow) onSearchDone() {
 	fltk.Awake(func() {
-		w.load.Activate()
 		w.add.Activate()
 		w.reset.Activate()
 		w.search.Activate()
@@ -554,4 +556,7 @@ func main() {
 	w.Show()
 
 	fltk.Run()
+
+	w.mapWindow.Destroy()
+	w.Destroy()
 }
