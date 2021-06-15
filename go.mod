@@ -13,4 +13,3 @@ require (
 	golang.org/x/image v0.0.0-20210216034530-4410531fe030
 )
 
-replace github.com/pwiecz/go-fltk v0.0.0-20210216230453-ace57b5ba92d => ../go-fltk
