@@ -9,7 +9,6 @@ require (
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 	github.com/inkyblackness/imgui-go/v4 v4.2.0
-	github.com/pwiecz/go-fltk v0.0.0-20210216230453-ace57b5ba92d
+	github.com/pwiecz/go-fltk v0.0.0-20210615221625-b32f6be70241
 	golang.org/x/image v0.0.0-20210216034530-4410531fe030
 )
-
