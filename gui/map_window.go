@@ -27,11 +27,17 @@ func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
 	w.GlWindow.SetEventHandler(w.handleEvent)
 	w.GlWindow.SetResizeHandler(w.onGlWindowResized)
 	w.mapDrawer = NewMapDrawer(900, 870, tileFetcher)
-	w.mapDrawer.OnMapChanged(func() { fltk.Awake(w.Redraw) })
+	w.mapDrawer.OnMapChanged(w.redraw)
 	w.Resizable(w.GlWindow)
 	return w
 }
 
+func (w *MapWindow) redraw() {
+	if (fltk.Lock()) {
+		defer fltk.Unlock()
+		w.Redraw()
+	}
+}
 func (w *MapWindow) Destroy() {
 	w.mapDrawer.Destroy()
 	w.GlWindow.Destroy()
@@ -138,29 +144,29 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 			currX, currY := fltk.EventX(), fltk.EventY()
 			w.mapDrawer.Drag(w.prevX-currX, w.prevY-currY)
 			w.prevX, w.prevY = currX, currY
-			fltk.Awake(w.Redraw)
+			w.redraw()
 			return true
 		}
 	case fltk.MOUSEWHEEL:
 		dy := fltk.EventDY()
 		if dy < 0 {
 			w.mapDrawer.ZoomIn(fltk.EventX(), fltk.EventY())
-			fltk.Awake(w.Redraw)
+			w.redraw()
 			return true
 		} else if dy > 0 {
 			w.mapDrawer.ZoomOut(fltk.EventX(), fltk.EventY())
-			fltk.Awake(w.Redraw)
+			w.redraw()
 			return true
 		}
 	case fltk.KEY:
 		if (fltk.EventState()&fltk.CTRL) != 0 &&
 			(fltk.EventKey() == '+' || fltk.EventKey() == '=') {
 			w.mapDrawer.ZoomIn(w.W()/2, w.H()/2)
-			fltk.Awake(w.Redraw)
+			w.redraw()
 			return true
 		} else if fltk.EventKey() == '-' && (fltk.EventState()&fltk.CTRL) != 0 {
 			w.mapDrawer.ZoomOut(w.W()/2, w.H()/2)
-			fltk.Awake(w.Redraw)
+			w.redraw()
 			return true
 		}
 	case fltk.MOVE:

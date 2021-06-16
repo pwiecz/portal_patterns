@@ -418,13 +418,16 @@ func (w *MainWindow) onSearchPressed() {
 	selectedPattern.onSearch(w.progressCallback, w.onSearchDone)
 }
 func (w *MainWindow) progressCallback(val, max int) {
-	fltk.Awake(func() {
+	if (fltk.Lock()) {
+		defer fltk.Unlock()
 		w.progress.SetMaximum(float64(max))
 		w.progress.SetValue(float64(val))
-	})
+		fltk.Unlock()
+	}
 }
 func (w *MainWindow) onSearchDone() {
-	fltk.Awake(func() {
+	if (fltk.Lock()) {
+		defer fltk.Unlock()
 		w.add.Activate()
 		w.reset.Activate()
 		w.search.Activate()
@@ -436,7 +439,7 @@ func (w *MainWindow) onSearchDone() {
 			w.solutionLabel.SetLabel(selectedPattern.solutionInfoString())
 			w.mapWindow.SetPaths(selectedPattern.solutionPaths())
 		}
-	})
+	}
 }
 func (w *MainWindow) onExportPressed() {
 	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "JSON files (*.json)", fltk.CREATE, "Select draw tools file")
