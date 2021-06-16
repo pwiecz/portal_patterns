@@ -16,7 +16,7 @@ type flipFieldTab struct {
 	maxFlipPortals     *fltk.Spinner
 	simpleBackbone     *fltk.CheckButton
 	backbone           []lib.Portal
-	rest               []lib.Portal
+	flipPortals        []lib.Portal
 	solutionText       string
 }
 
@@ -61,7 +61,7 @@ func newFlipFieldTab(portals *Portals) *flipFieldTab {
 
 func (t *flipFieldTab) onReset() {
 	t.backbone = nil
-	t.rest = nil
+	t.flipPortals = nil
 	t.solutionText = ""
 }
 func (t *flipFieldTab) onSearch(progressFunc func(int, int), onSearchDone func()) {
@@ -78,33 +78,33 @@ func (t *flipFieldTab) onSearch(progressFunc func(int, int), onSearchDone func()
 	}
 	portals := t.enabledPortals()
 	go func() {
-		backbone, rest := lib.LargestFlipField(portals, options...)
+		backbone, flipPortals := lib.LargestFlipField(portals, options...)
 		fltk.Awake(func() {
-			t.backbone, t.rest = backbone, rest
-			t.solutionText = fmt.Sprintf("Num backbone portals: %d, num flip portals: %d", len(t.backbone), len(t.rest))
+			t.backbone, t.flipPortals = backbone, flipPortals
+			t.solutionText = fmt.Sprintf("Num backbone portals: %d, num flip portals: %d", len(t.backbone), len(t.flipPortals))
 			onSearchDone()
 		})
 	}()
 }
 
 func (t *flipFieldTab) hasSolution() bool {
-	return len(t.backbone) > 0 && len(t.rest) > 0
+	return len(t.backbone) > 0 && len(t.flipPortals) > 0
 }
 func (t *flipFieldTab) solutionInfoString() string {
 	return t.solutionText
 }
 func (t *flipFieldTab) solutionDrawToolsString() string {
 	s := fmt.Sprintf("[%s", lib.PolylineFromPortalList(t.backbone))
-	if len(t.rest) > 0 {
-		s += fmt.Sprintf(",%s", lib.MarkersFromPortalList(t.rest))
+	if len(t.flipPortals) > 0 {
+		s += fmt.Sprintf(",%s", lib.MarkersFromPortalList(t.flipPortals))
 	}
 	return s + "]"
 }
 func (t *flipFieldTab) solutionPaths() [][]s2.Point {
 	lines := [][]s2.Point{portalsToPoints(t.backbone)}
-	if len(t.rest) > 0 {
+	if len(t.flipPortals) > 0 {
 		hull := s2.NewConvexHullQuery()
-		for _, p := range t.rest {
+		for _, p := range t.flipPortals {
 			hull.AddPoint(s2.PointFromLatLng(p.LatLng))
 		}
 		hullPoints := hull.ConvexHull().Vertices()
@@ -169,7 +169,7 @@ type flipFieldState struct {
 	MaxFlipPortals     int      `json:"maxFlipPortals"`
 	SimpleBackbone     bool     `json:"simpleBackbone"`
 	Backbone           []string `json:"backbone"`
-	Rest               []string `json:"rest"`
+	FlipPortals        []string `json:"flipPortals"`
 	SolutionText       string   `json:"solutionText"`
 }
 
@@ -184,8 +184,8 @@ func (t *flipFieldTab) state() flipFieldState {
 	for _, backbonePortal := range t.backbone {
 		state.Backbone = append(state.Backbone, backbonePortal.Guid)
 	}
-	for _, restPortal := range t.rest {
-		state.Rest = append(state.Rest, restPortal.Guid)
+	for _, flipPortal := range t.flipPortals {
+		state.FlipPortals = append(state.FlipPortals, flipPortal.Guid)
 	}
 	return state
 }
@@ -209,11 +209,11 @@ func (t *flipFieldTab) load(state flipFieldState) error {
 			t.backbone = append(t.backbone, backbonePortal)
 		}
 	}
-	for _, restGUID := range state.Rest {
-		if restPortal, ok := t.portals.portalMap[restGUID]; !ok {
-			return fmt.Errorf("invalid flipField rest portal \"%s\"", restGUID)
+	for _, flipPortalGUID := range state.FlipPortals {
+		if flipPortal, ok := t.portals.portalMap[flipPortalGUID]; !ok {
+			return fmt.Errorf("invalid flipField flip portal \"%s\"", flipPortalGUID)
 		} else {
-			t.rest = append(t.rest, restPortal)
+			t.flipPortals = append(t.flipPortals, flipPortal)
 		}
 	}
 	t.solutionText = state.SolutionText
