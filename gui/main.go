@@ -422,7 +422,6 @@ func (w *MainWindow) progressCallback(val, max int) {
 		defer fltk.Unlock()
 		w.progress.SetMaximum(float64(max))
 		w.progress.SetValue(float64(val))
-		fltk.Unlock()
 	}
 }
 func (w *MainWindow) onSearchDone() {
