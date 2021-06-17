@@ -63,10 +63,10 @@ func bestFlipFieldWorker(
 
 func LargestFlipFieldMT(portals []Portal, params flipFieldParams) ([]Portal, []Portal) {
 	if params.numWorkers < 1 {
-		panic(fmt.Errorf("Too few workers: %d", params.numWorkers))
+		panic(fmt.Errorf("too few workers: %d", params.numWorkers))
 	}
 	if len(portals) < 3 {
-		panic(fmt.Errorf("Too short portal list: %d", len(portals)))
+		panic(fmt.Errorf("too short portal list: %d", len(portals)))
 	}
 	portalsData := portalsToPortalData(portals)
 

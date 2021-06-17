@@ -201,7 +201,7 @@ func prepareDroneGraph(portalsData []portalData, useLongJumps bool, reverseRoute
 	for _, p := range portalsData {
 		cellId := s2.CellFromPoint(p.LatLng).ID()
 		if cellId.Level() < 16 {
-			panic(fmt.Errorf("Got cell level: %d", cellId.Level()))
+			panic(fmt.Errorf("got cell level: %d", cellId.Level()))
 		}
 		cellId = cellId.Parent(16)
 		cellPortals[cellId] = append(cellPortals[cellId], p)
@@ -317,7 +317,7 @@ func longestDroneFlightST(portals []Portal, params droneFlightParams) ([]Portal,
 	bestPath, bestKeysNeeded := q.optimalFlight(bestStart, bestEnd, params.optimizeNumKeys)
 	if params.startPortalIndex == invalidPortalIndex {
 		path, keysNeeded := q.optimalFlight(bestEnd, bestStart, params.optimizeNumKeys)
-		if path != nil {
+		if len(path) > 1 {
 			if params.optimizeNumKeys {
 				if len(keysNeeded) < len(bestKeysNeeded) || (len(keysNeeded) == len(bestKeysNeeded) && len(path) < len(bestPath)) {
 					bestPath, bestKeysNeeded = path, keysNeeded
@@ -330,6 +330,9 @@ func longestDroneFlightST(portals []Portal, params droneFlightParams) ([]Portal,
 		}
 	}
 	params.progressFunc(numIndexEntries, numIndexEntries)
+	if len(bestPath) < 2 {
+		return nil, nil
+	}
 
 	if reverseRoute {
 		reverse(bestPath)

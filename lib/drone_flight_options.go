@@ -67,7 +67,7 @@ func defaultDroneFlightParams() droneFlightParams {
 	return droneFlightParams{
 		startPortalIndex: invalidPortalIndex,
 		endPortalIndex:   invalidPortalIndex,
-		useLongJumps:     true,
+		useLongJumps:     false,
 		optimizeNumKeys:  true,
 		numWorkers:       runtime.GOMAXPROCS(0),
 		progressFunc:     func(int, int) {},

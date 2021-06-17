@@ -10,31 +10,32 @@ import (
 	"github.com/pwiecz/portal_patterns/lib"
 )
 
-type herringboneTab struct {
+type doubleHerringboneTab struct {
 	*baseTab
-	b0, b1       lib.Portal
-	spine        []lib.Portal
-	solutionText string
-	basePortals  map[string]struct{}
+	b0, b1         lib.Portal
+	spine0, spine1 []lib.Portal
+	solutionText   string
+	basePortals    map[string]struct{}
 }
 
-var _ pattern = (*herringboneTab)(nil)
+var _ pattern = (*doubleHerringboneTab)(nil)
 
-func newHerringboneTab(portals *Portals) *herringboneTab {
-	t := &herringboneTab{}
-	t.baseTab = newBaseTab("Herringbone", portals, t)
+func newDoubleHerringboneTab(portals *Portals) *doubleHerringboneTab {
+	t := &doubleHerringboneTab{}
+	t.baseTab = newBaseTab("Double Herringbone", portals, t)
 	t.basePortals = make(map[string]struct{})
 	t.End()
 
 	return t
 }
 
-func (t *herringboneTab) onReset() {
+func (t *doubleHerringboneTab) onReset() {
 	t.basePortals = make(map[string]struct{})
-	t.spine = nil
+	t.spine0 = nil
+	t.spine1 = nil
 	t.solutionText = ""
 }
-func (t *herringboneTab) onSearch(progressFunc func(int, int), onSearchDone func()) {
+func (t *doubleHerringboneTab) onSearch(progressFunc func(int, int), onSearchDone func()) {
 	portals := t.enabledPortals()
 	base := []int{}
 	for i, portal := range portals {
@@ -43,67 +44,66 @@ func (t *herringboneTab) onSearch(progressFunc func(int, int), onSearchDone func
 		}
 	}
 	go func() {
-		b0, b1, spine := lib.LargestHerringbone(portals, base, runtime.GOMAXPROCS(0), progressFunc)
+		b0, b1, spine0, spine1 := lib.LargestDoubleHerringbone(portals, base, runtime.GOMAXPROCS(0), progressFunc)
 		fltk.Awake(func() {
-			t.b0, t.b1, t.spine = b0, b1, spine
-			t.solutionText = fmt.Sprintf("Solution length: %d", len(t.spine))
-			onSearchDone()
+			t.b0, t.b1, t.spine0, t.spine1 = b0, b1, spine0, spine1
+			t.solutionText = fmt.Sprintf("Solution length: %d + %d", len(t.spine0), len(t.spine1))
 		})
+		onSearchDone()
 	}()
 }
-
-func (t *herringboneTab) hasSolution() bool {
-	return len(t.spine) > 0
+func (t *doubleHerringboneTab) hasSolution() bool {
+	return len(t.spine0)+len(t.spine1) > 0
 }
-func (t *herringboneTab) solutionInfoString() string {
+func (t *doubleHerringboneTab) solutionInfoString() string {
 	return t.solutionText
 }
-func (t *herringboneTab) solutionDrawToolsString() string {
-	return lib.HerringboneDrawToolsString(t.b0, t.b1, t.spine)
+func (t *doubleHerringboneTab) solutionDrawToolsString() string {
+	return lib.DoubleHerringboneDrawToolsString(t.b0, t.b1, t.spine0, t.spine1)
 }
-func (t *herringboneTab) solutionPaths() [][]s2.Point {
-	return [][]s2.Point{portalsToPoints(lib.HerringbonePolyline(t.b0, t.b1, t.spine))}
+func (t *doubleHerringboneTab) solutionPaths() [][]s2.Point {
+	return [][]s2.Point{portalsToPoints(lib.DoubleHerringbonePolyline(t.b0, t.b1, t.spine0, t.spine1))}
 }
-
-func (t *herringboneTab) portalLabel(guid string) string {
+func (t *doubleHerringboneTab) portalLabel(guid string) string {
 	if _, ok := t.basePortals[guid]; ok {
 		return "Base"
 	}
 	return t.baseTab.portalLabel(guid)
 }
-func (t *herringboneTab) portalColor(guid string) (color.Color, color.Color) {
+
+func (t *doubleHerringboneTab) portalColor(guid string) (color.Color, color.Color) {
 	if _, ok := t.basePortals[guid]; ok {
 		return color.NRGBA{0, 128, 0, 128}, t.baseTab.strokeColor(guid)
 	}
 	return t.baseTab.portalColor(guid)
 }
 
-func (t *herringboneTab) enableSelectedPortals() {
+func (t *doubleHerringboneTab) enableSelectedPortals() {
 	for guid := range t.portals.selectedPortals {
 		delete(t.basePortals, guid)
 	}
 }
 
-func (t *herringboneTab) disableSelectedPortals() {
+func (t *doubleHerringboneTab) disableSelectedPortals() {
 	for guid := range t.portals.selectedPortals {
 		t.portals.disabledPortals[guid] = struct{}{}
 		delete(t.basePortals, guid)
 	}
 }
 
-func (t *herringboneTab) makeSelectedPortalsBase() {
+func (t *doubleHerringboneTab) makeSelectedPortalsBase() {
 	for guid := range t.portals.selectedPortals {
 		delete(t.portals.disabledPortals, guid)
 		t.basePortals[guid] = struct{}{}
 	}
 }
-func (t *herringboneTab) unmakeSelectedPortalsBase() {
+func (t *doubleHerringboneTab) unmakeSelectedPortalsBase() {
 	for guid := range t.portals.selectedPortals {
 		delete(t.basePortals, guid)
 	}
 }
 
-func (t *herringboneTab) contextMenu() *menu {
+func (t *doubleHerringboneTab) contextMenu() *menu {
 	var aSelectedGUID string
 	numSelectedEnabled := 0
 	numSelectedDisabled := 0
@@ -159,16 +159,17 @@ func (t *herringboneTab) contextMenu() *menu {
 	return menu
 }
 
-type herringboneState struct {
+type doubleHerringboneState struct {
 	BasePortals  []string `json:"basePortals"`
 	B0           string   `json:"b0"`
 	B1           string   `json:"b1"`
-	Spine        []string `json:"spine"`
+	Spine0       []string `json:"spine0"`
+	Spine1       []string `json:"spine1"`
 	SolutionText string   `json:"solutionText"`
 }
 
-func (t *herringboneTab) state() herringboneState {
-	state := herringboneState{
+func (t *doubleHerringboneTab) state() doubleHerringboneState {
+	state := doubleHerringboneState{
 		B0:           t.b0.Guid,
 		B1:           t.b1.Guid,
 		SolutionText: t.solutionText,
@@ -176,36 +177,47 @@ func (t *herringboneTab) state() herringboneState {
 	for baseGUID := range t.basePortals {
 		state.BasePortals = append(state.BasePortals, baseGUID)
 	}
-	for _, spinePortal := range t.spine {
-		state.Spine = append(state.Spine, spinePortal.Guid)
+	for _, spine0Portal := range t.spine0 {
+		state.Spine0 = append(state.Spine0, spine0Portal.Guid)
+	}
+	for _, spine1Portal := range t.spine1 {
+		state.Spine1 = append(state.Spine1, spine1Portal.Guid)
 	}
 	return state
 }
 
-func (t *herringboneTab) load(state herringboneState) error {
+func (t *doubleHerringboneTab) load(state doubleHerringboneState) error {
 	t.basePortals = make(map[string]struct{})
 	for _, baseGUID := range state.BasePortals {
 		if _, ok := t.portals.portalMap[baseGUID]; !ok {
-			return fmt.Errorf("unknown herringbone base portal \"%s\"", baseGUID)
+			return fmt.Errorf("unknown doubleHerringbone base portal \"%s\"", baseGUID)
 		}
 		t.basePortals[baseGUID] = struct{}{}
 	}
 	if b0Portal, ok := t.portals.portalMap[state.B0]; !ok && state.B0 != "" {
-		return fmt.Errorf("unknown herringbone.b0 portal \"%s\"", state.B0)
+		return fmt.Errorf("unknown doubleHerringbone.b0 portal \"%s\"", state.B0)
 	} else {
 		t.b0 = b0Portal
 	}
 	if b1Portal, ok := t.portals.portalMap[state.B1]; !ok && state.B1 != "" {
-		return fmt.Errorf("unknown herringbone.b1 portal \"%s\"", state.B1)
+		return fmt.Errorf("unknown doubleHerringbone.b1 portal \"%s\"", state.B1)
 	} else {
 		t.b1 = b1Portal
 	}
-	t.spine = nil
-	for _, spineGUID := range state.Spine {
-		if spinePortal, ok := t.portals.portalMap[spineGUID]; !ok {
-			return fmt.Errorf("unknown herringbone spine portal \"%s\"", spineGUID)
+	t.spine0 = nil
+	for _, spine0GUID := range state.Spine0 {
+		if spine0Portal, ok := t.portals.portalMap[spine0GUID]; !ok {
+			return fmt.Errorf("unknown doubleHerringbone spine0 portal \"%s\"", spine0GUID)
 		} else {
-			t.spine = append(t.spine, spinePortal)
+			t.spine0 = append(t.spine0, spine0Portal)
+		}
+	}
+	t.spine1 = nil
+	for _, spine1GUID := range state.Spine1 {
+		if spine1Portal, ok := t.portals.portalMap[spine1GUID]; !ok {
+			return fmt.Errorf("unknown doubleHerringbone spine1 portal \"%s\"", spine1GUID)
+		} else {
+			t.spine1 = append(t.spine1, spine1Portal)
 		}
 	}
 	t.solutionText = state.SolutionText

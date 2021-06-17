@@ -5,11 +5,6 @@ import (
 	"sync"
 )
 
-type longestDroneFlightMtQuery struct {
-	neighbours     [][]droneFlightNeighbour
-	portalDistance func(portalIndex, portalIndex) float64
-}
-
 type droneFlightResponse struct {
 	start, end portalIndex
 	distance   float64
@@ -35,10 +30,10 @@ func longestDroneFlightWorker(
 
 func longestDroneFlightMT(portals []Portal, params droneFlightParams) ([]Portal, []Portal) {
 	if params.numWorkers < 1 {
-		panic(fmt.Errorf("Too few workers: %d", params.numWorkers))
+		panic(fmt.Errorf("too few workers: %d", params.numWorkers))
 	}
 	if len(portals) < 2 {
-		panic(fmt.Errorf("Too short portal list: %d", len(portals)))
+		panic(fmt.Errorf("too short portal list: %d", len(portals)))
 	}
 	portalsData := portalsToPortalData(portals)
 
@@ -109,7 +104,7 @@ func longestDroneFlightMT(portals []Portal, params droneFlightParams) ([]Portal,
 	bestPath, bestKeysNeeded := q.optimalFlight(bestStart, bestEnd, params.optimizeNumKeys)
 	if params.startPortalIndex == invalidPortalIndex {
 		path, keysNeeded := q.optimalFlight(bestEnd, bestStart, params.optimizeNumKeys)
-		if path != nil {
+		if len(path) > 1 {
 			if params.optimizeNumKeys {
 				if len(keysNeeded) < len(bestKeysNeeded) || (len(keysNeeded) == len(bestKeysNeeded) && len(path) < len(bestPath)) {
 					bestPath, bestKeysNeeded = path, keysNeeded
@@ -122,6 +117,9 @@ func longestDroneFlightMT(portals []Portal, params droneFlightParams) ([]Portal,
 		}
 	}
 	params.progressFunc(numIndexEntries, numIndexEntries)
+	if len(bestPath) < 2 {
+		return nil, nil
+	}
 
 	if reverseRoute {
 		reverse(bestPath)

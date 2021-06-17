@@ -51,7 +51,7 @@ func ParseFile(filename string) ([]Portal, error) {
 	allGuids := make(map[string]struct{})
 	for _, p := range portalInfo {
 		if _, ok := allGuids[p.Guid]; ok {
-			return nil, fmt.Errorf("Duplicate guid: \"%s\"", p.Guid)
+			return nil, fmt.Errorf("duplicate guid: \"%s\"", p.Guid)
 		}
 		allGuids[p.Guid] = struct{}{}
 	}
@@ -68,7 +68,7 @@ func parseFileAsPortalInfo(filename string) ([]PortalInfo, error) {
 	case ".json":
 		return parseJSONFileAsPortalInfo(filename)
 	default:
-		return nil, fmt.Errorf("Unknown extension of file %s", filename)
+		return nil, fmt.Errorf("unknown extension of file %s", filename)
 	}
 }
 
@@ -129,23 +129,23 @@ func parseCSVFileAsPortalInfo(filename string) ([]PortalInfo, error) {
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("Error: %v, in line %d", err, lineNo+1)
+			return nil, fmt.Errorf("error: %v, in line %d", err, lineNo+1)
 		}
 		if len(record) != 4 {
-			return nil, fmt.Errorf("Unexcepted number of fields: %d in line %d", len(record), lineNo+1)
+			return nil, fmt.Errorf("unexcepted number of fields: %d in line %d", len(record), lineNo+1)
 		}
 		_, err = strconv.ParseFloat(record[2], 64)
 		if err != nil {
-			return nil, errors.New("Cannot parse latitude: \"" + record[2] + "\"")
+			return nil, errors.New("cannot parse latitude: \"" + record[2] + "\"")
 		}
 		_, err = strconv.ParseFloat(record[3], 64)
 		if err != nil {
-			return nil, errors.New("Cannot parse longitude: \"" + record[3] + "\"")
+			return nil, errors.New("cannot parse longitude: \"" + record[3] + "\"")
 		}
 		portalCoordinates := PortalCoordinates{Lat: record[2], Lng: record[3]}
 		portals = append(portals, PortalInfo{Guid: record[0], Name: record[1], Coordinates: portalCoordinates})
 		if len(portals) >= math.MaxUint16-1 {
-			return nil, errors.New("Too many portals")
+			return nil, errors.New("too many portals")
 		}
 
 		lineNo++
@@ -176,16 +176,16 @@ func portalInfoToPortal(portalInfo []PortalInfo) ([]Portal, error) {
 		latlng := portal.Coordinates
 		lat, err := strconv.ParseFloat(latlng.Lat, 64)
 		if err != nil {
-			return nil, errors.New("Cannot parse latitude: \"" + latlng.Lat + "\"")
+			return nil, errors.New("cannot parse latitude: \"" + latlng.Lat + "\"")
 		}
 		lng, err := strconv.ParseFloat(latlng.Lng, 64)
 		if err != nil {
-			return nil, errors.New("Cannot parse longitude: \"" + latlng.Lng + "\"")
+			return nil, errors.New("cannot parse longitude: \"" + latlng.Lng + "\"")
 		}
 		point := s2.LatLngFromDegrees(lat, lng)
 		portals = append(portals, Portal{Guid: portal.Guid, Name: portal.Name, LatLng: point})
 		if len(portals) >= math.MaxUint16-1 {
-			return nil, errors.New("Too many portals")
+			return nil, errors.New("too many portals")
 		}
 	}
 	return portals, nil

@@ -2,237 +2,292 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"runtime"
 
-	"github.com/pwiecz/atk/tk"
-	"github.com/pwiecz/portal_patterns/configuration"
-	"github.com/pwiecz/portal_patterns/gui/osm"
+	"github.com/golang/geo/s2"
+	"github.com/pwiecz/go-fltk"
 	"github.com/pwiecz/portal_patterns/lib"
 )
 
 type droneFlightTab struct {
 	*baseTab
-	useLongJumps   *tk.CheckButton
-	optimizeFor    *tk.ComboBox
+	useLongJumps   *fltk.CheckButton
+	optimizeFor    *fltk.Choice
 	solution, keys []lib.Portal
+	solutionText   string
 	startPortal    string
 	endPortal      string
 }
 
-func NewDroneFlightTab(parent *Window, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *droneFlightTab {
+var _ pattern = (*droneFlightTab)(nil)
+
+func newDroneFlightTab(portals *Portals) *droneFlightTab {
 	t := &droneFlightTab{}
-	t.baseTab = NewBaseTab(parent, "Drone Flight", conf, tileFetcher)
-	t.pattern = t
-	addResetBox := tk.NewHPackLayout(parent)
-	addResetBox.AddWidget(t.add)
-	addResetBox.AddWidget(t.reset)
-	t.AddWidget(addResetBox)
-	t.useLongJumps = tk.NewCheckButton(parent, "Use long jumps (key needed)")
-	t.useLongJumps.SetChecked(true)
-	t.AddWidgetEx(t.useLongJumps, tk.FillNone, true, tk.AnchorWest)
-	optimizeForBox := tk.NewHPackLayout(parent)
-	optimizeForLabel := tk.NewLabel(parent, "Optimize for: ")
-	optimizeForBox.AddWidget(optimizeForLabel)
-	t.optimizeFor = tk.NewComboBox(parent, tk.ComboBoxAttrState(tk.StateReadOnly))
-	t.optimizeFor.SetValues([]string{"Least keys needed", "Least jumps"})
-	t.optimizeFor.SetCurrentIndex(0)
-	t.optimizeFor.OnSelected(func() { t.optimizeFor.Entry().ClearSelection() })
-	optimizeForBox.AddWidget(t.optimizeFor)
-	t.AddWidget(optimizeForBox)
-	solutionBox := tk.NewHPackLayout(parent)
-	solutionBox.AddWidget(t.find)
-	solutionBox.AddWidget(t.save)
-	solutionBox.AddWidget(t.copy)
-	solutionBox.AddWidget(t.solutionLabel)
-	t.AddWidget(solutionBox)
-	t.AddWidgetEx(t.progress, tk.FillBoth, true, tk.AnchorWest)
-	t.AddWidgetEx(t.portalList, tk.FillBoth, true, tk.AnchorWest)
+	t.baseTab = newBaseTab("Drone Flight", portals, t)
+
+	useLongJumpsPack := fltk.NewPack(0, 0, 700, 30)
+	useLongJumpsPack.SetType(fltk.HORIZONTAL)
+	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
+	t.useLongJumps = fltk.NewCheckButton(200, 0, 200, 30, "Use long jumps (key needed)")
+	t.useLongJumps.SetValue(false)
+	useLongJumpsPack.End()
+	t.Add(useLongJumpsPack)
+
+	optimizeForPack := fltk.NewPack(0, 0, 700, 30)
+	optimizeForPack.SetType(fltk.HORIZONTAL)
+	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
+	t.optimizeFor = fltk.NewChoice(200, 0, 200, 30, "Optimize for:")
+	t.optimizeFor.Add("Least keys needed", func() {})
+	t.optimizeFor.Add("Least jumps", func() {})
+	t.optimizeFor.SetValue(0)
+	optimizeForPack.End()
+	t.Add(optimizeForPack)
+
+	t.End()
 
 	return t
 }
 
 func (t *droneFlightTab) onReset() {
+	t.solution = nil
+	t.keys = nil
+	t.solutionText = ""
 	t.startPortal = ""
 	t.endPortal = ""
 }
-
-func (t *droneFlightTab) portalLabel(guid string) string {
-	if t.disabledPortals[guid] {
-		return "Disabled"
-	}
-	if t.startPortal == guid {
-		return "Start"
-	}
-	if t.endPortal == guid {
-		return "End"
-	}
-	return "Normal"
-}
-
-func (t *droneFlightTab) portalColor(guid string) string {
-	if t.disabledPortals[guid] {
-		if !t.selectedPortals[guid] {
-			return "gray"
-		}
-		return "dark gray"
-	}
-	if t.startPortal == guid {
-		if !t.selectedPortals[guid] {
-			return "green"
-		}
-		return "dark green"
-	}
-	if t.endPortal == guid {
-		if !t.selectedPortals[guid] {
-			return "yellow"
-		}
-		return "khaki"
-	}
-	if !t.selectedPortals[guid] {
-		return "orange"
-	}
-	return "red"
-}
-
-func (t *droneFlightTab) onPortalContextMenu(guid string, x, y int) {
-	menu := NewDroneFlightPortalContextMenu(tk.RootWindow(), guid, t)
-	tk.PopupMenu(menu.Menu, x, y)
-}
-
-func (t *droneFlightTab) search() {
-	if len(t.portals) < 3 {
+func (t *droneFlightTab) onSearch(progressFunc func(int, int), onSearchDone func()) {
+	if len(t.portals.portals) < 3 {
 		return
 	}
-
-	t.add.SetState(tk.StateDisable)
-	t.reset.SetState(tk.StateDisable)
-	t.find.SetState(tk.StateDisable)
-	t.save.SetState(tk.StateDisable)
-	t.copy.SetState(tk.StateDisable)
-	tk.Update()
-	portals := []lib.Portal{}
-	options := []lib.DroneFlightOption{lib.DroneFlightNumWorkers(runtime.GOMAXPROCS(0))}
-	for _, portal := range t.portals {
-		if !t.disabledPortals[portal.Guid] {
-			portals = append(portals, portal)
-			if t.startPortal == portal.Guid {
-				options = append(options, lib.DroneFlightStartPortalIndex(len(portals)-1))
-			}
-			if t.endPortal == portal.Guid {
-				options = append(options, lib.DroneFlightEndPortalIndex(len(portals)-1))
-			}
-		}
+	options := []lib.DroneFlightOption{
+		lib.DroneFlightProgressFunc(progressFunc),
+		lib.DroneFlightUseLongJumps(t.useLongJumps.Value()),
+		lib.DroneFlightNumWorkers(runtime.GOMAXPROCS(0)),
 	}
-	options = append(options, lib.DroneFlightUseLongJumps(t.useLongJumps.IsChecked()))
-	options = append(options, lib.DroneFlightProgressFunc(
-		func(val int, max int) { t.onProgress(val, max) }))
-	if t.optimizeFor.CurrentIndex() == 1 {
+	switch t.optimizeFor.Value() {
+	case 0:
+		options = append(options, lib.DroneFlightLeastKeys{})
+	case 1:
 		options = append(options, lib.DroneFlightLeastJumps{})
 	}
-	t.solution, t.keys = lib.LongestDroneFlight(portals, options...)
-	if t.solutionMap != nil {
-		t.solutionMap.SetSolution([][]lib.Portal{t.solution})
+	portals := t.enabledPortals()
+	for i, portal := range portals {
+		if t.startPortal == portal.Guid {
+			options = append(options, lib.DroneFlightStartPortalIndex(i))
+		}
+		if t.endPortal == portal.Guid {
+			options = append(options, lib.DroneFlightEndPortalIndex(i))
+		}
 	}
-	distance := t.solution[0].LatLng.Distance(t.solution[len(t.solution)-1].LatLng) * lib.RadiansToMeters
-	solutionText := fmt.Sprintf("Flight distance: %.1fm, keys needed: %d", distance, len(t.keys))
-	t.solutionLabel.SetText(solutionText)
-	t.add.SetState(tk.StateNormal)
-	t.reset.SetState(tk.StateNormal)
-	t.find.SetState(tk.StateNormal)
-	t.save.SetState(tk.StateNormal)
-	t.copy.SetState(tk.StateNormal)
-	tk.Update()
+	go func() {
+		solution, keys := lib.LongestDroneFlight(portals, options...)
+		fltk.Awake(func() {
+			t.solution, t.keys = solution, keys
+			if len(t.solution) == 0 {
+				t.solutionText = "No flightpath found"
+			} else {
+				distance := t.solution[0].LatLng.Distance(t.solution[len(t.solution)-1].LatLng) * lib.RadiansToMeters
+				t.solutionText = fmt.Sprintf("Flight distance: %.1fm, keys needed: %d", distance, len(t.keys))
+			}
+			onSearchDone()
+		})
+	}()
 }
 
-func (t *droneFlightTab) solutionString() string {
+func (t *droneFlightTab) hasSolution() bool {
+	return len(t.solution) > 0
+}
+func (t *droneFlightTab) solutionInfoString() string {
+	return t.solutionText
+}
+func (t *droneFlightTab) solutionDrawToolsString() string {
 	s := fmt.Sprintf("[%s", lib.PolylineFromPortalList(t.solution))
 	if len(t.keys) > 0 {
 		s += fmt.Sprintf(",%s", lib.MarkersFromPortalList(t.keys))
 	}
 	return s + "]"
 }
-func (t *droneFlightTab) EnablePortal(guid string) {
-	delete(t.disabledPortals, guid)
-	t.portalStateChanged(guid)
+func (t *droneFlightTab) solutionPaths() [][]s2.Point {
+	return [][]s2.Point{portalsToPoints(t.solution)}
 }
-func (t *droneFlightTab) DisablePortal(guid string) {
-	t.disabledPortals[guid] = true
+func (t *droneFlightTab) portalLabel(guid string) string {
 	if t.startPortal == guid {
-		t.startPortal = ""
+		return "Start"
 	}
 	if t.endPortal == guid {
-		t.endPortal = ""
+		return "End"
 	}
-	t.portalStateChanged(guid)
+	return t.baseTab.portalLabel(guid)
+}
+func (t *droneFlightTab) portalColor(guid string) (color.Color, color.Color) {
+	if t.startPortal == guid {
+		return color.NRGBA{0, 128, 0, 128}, t.baseTab.strokeColor(guid)
+	}
+	if t.endPortal == guid {
+		return color.NRGBA{128, 128, 0, 128}, t.baseTab.strokeColor(guid)
+	}
+	return t.baseTab.portalColor(guid)
 }
 
-func (t *droneFlightTab) MakeStart(guid string) {
-	if t.startPortal != "" {
-		oldStartGuid := t.startPortal
-		t.startPortal = ""
-		t.portalStateChanged(oldStartGuid)
+func (t *droneFlightTab) enableSelectedPortals() {
+	for guid := range t.portals.selectedPortals {
+		delete(t.portals.disabledPortals, guid)
 	}
-	t.startPortal = guid
-	if t.endPortal == guid {
-		t.endPortal = ""
-	}
-	t.portalStateChanged(guid)
 }
-func (t *droneFlightTab) UnmakeStart(guid string) {
+
+func (t *droneFlightTab) disableSelectedPortals() {
+	for guid := range t.portals.selectedPortals {
+		t.portals.disabledPortals[guid] = struct{}{}
+		if t.startPortal == guid {
+			t.startPortal = ""
+		}
+		if t.endPortal == guid {
+			t.endPortal = ""
+		}
+	}
+}
+func (t *droneFlightTab) makeSelectedPortalStart() {
+	if len(t.portals.selectedPortals) != 1 {
+		return
+	}
+
+	for guid := range t.portals.selectedPortals {
+		t.startPortal = guid
+		delete(t.portals.disabledPortals, guid)
+	}
+}
+func (t *droneFlightTab) unmakeSelectedPortalStart() {
 	t.startPortal = ""
-	t.portalStateChanged(guid)
 }
-func (t *droneFlightTab) MakeEnd(guid string) {
-	if t.endPortal != "" {
-		oldEndGuid := t.endPortal
-		t.endPortal = ""
-		t.portalStateChanged(oldEndGuid)
+func (t *droneFlightTab) makeSelectedPortalEnd() {
+	if len(t.portals.selectedPortals) != 1 {
+		return
 	}
-	t.endPortal = guid
-	if t.startPortal == guid {
-		t.startPortal = ""
+	for guid := range t.portals.selectedPortals {
+		t.endPortal = guid
+		delete(t.portals.disabledPortals, guid)
 	}
-	t.portalStateChanged(guid)
 }
-func (t *droneFlightTab) UnmakeEnd(guid string) {
+func (t *droneFlightTab) unmakeSelectedPortalEnd() {
 	t.endPortal = ""
-	t.portalStateChanged(guid)
 }
 
-type droneFlightPortalContextMenu struct {
-	*tk.Menu
+func (t *droneFlightTab) contextMenu() *menu {
+	var aSelectedGUID string
+	var isDisabledSelected, isEnabledSelected, isStartSelected, isEndSelected bool
+	numNonStartSelected := 0
+	numNonEndSelected := 0
+	for guid := range t.portals.selectedPortals {
+		aSelectedGUID = guid
+		if _, ok := t.portals.disabledPortals[guid]; ok {
+			isDisabledSelected = true
+		} else {
+			isEnabledSelected = true
+		}
+		if guid == t.startPortal {
+			isStartSelected = true
+		} else {
+			numNonStartSelected++
+		}
+		if guid == t.endPortal {
+			isEndSelected = true
+		} else {
+			numNonEndSelected++
+		}
+	}
+	menu := &menu{}
+	if len(t.portals.selectedPortals) > 1 {
+		menu.header = fmt.Sprintf("%d portals selected", len(t.portals.selectedPortals))
+	} else if len(t.portals.selectedPortals) == 1 {
+		menu.header = t.portals.portalMap[aSelectedGUID].Name
+	}
+	if isDisabledSelected {
+		menu.items = append(menu.items, menuItem{"Enable", t.enableSelectedPortals})
+	}
+	if isEnabledSelected {
+		menu.items = append(menu.items, menuItem{"Disable", t.disableSelectedPortals})
+	}
+	if numNonStartSelected == 1 && t.startPortal == "" {
+		menu.items = append(menu.items, menuItem{"Make start", t.makeSelectedPortalStart})
+	}
+	if isStartSelected {
+		menu.items = append(menu.items, menuItem{"Unmake start", t.unmakeSelectedPortalStart})
+	}
+	if numNonEndSelected == 1 && t.endPortal == "" {
+		menu.items = append(menu.items, menuItem{"Make end", t.makeSelectedPortalEnd})
+	}
+	if isEndSelected {
+		menu.items = append(menu.items, menuItem{"Unmake end", t.unmakeSelectedPortalEnd})
+	}
+	return menu
 }
 
-func NewDroneFlightPortalContextMenu(parent *tk.Window, guid string, t *droneFlightTab) *droneFlightPortalContextMenu {
-	l := &droneFlightPortalContextMenu{}
-	l.Menu = tk.NewMenu(parent)
-	if t.disabledPortals[guid] {
-		enableAction := tk.NewAction("Enable")
-		enableAction.OnCommand(func() { t.EnablePortal(guid) })
-		l.AddAction(enableAction)
-	} else {
-		disableAction := tk.NewAction("Disable")
-		disableAction.OnCommand(func() { t.DisablePortal(guid) })
-		l.AddAction(disableAction)
-	}
-	if t.startPortal == guid {
-		unstartAction := tk.NewAction("Unmake start portal")
-		unstartAction.OnCommand(func() { t.UnmakeStart(guid) })
-		l.AddAction(unstartAction)
-	} else if !t.disabledPortals[guid] {
-		startAction := tk.NewAction("Make start portal")
-		startAction.OnCommand(func() { t.MakeStart(guid) })
-		l.AddAction(startAction)
-	}
-	if t.endPortal == guid {
-		unendAction := tk.NewAction("Unmake end portal")
-		unendAction.OnCommand(func() { t.UnmakeEnd(guid) })
-		l.AddAction(unendAction)
-	} else if !t.disabledPortals[guid] {
-		endAction := tk.NewAction("Make end portal")
-		endAction.OnCommand(func() { t.MakeEnd(guid) })
-		l.AddAction(endAction)
-	}
+type droneFlightState struct {
+	UseLongJumps bool     `json:"useLongJumps"`
+	OptimizeFor  string   `json:"optimizeFor"`
+	Solution     []string `json:"solution"`
+	Keys         []string `json:"keys"`
+	StartPortal  string   `json:"startPortal"`
+	EndPortal    string   `json:"endPortal"`
+	SolutionText string   `json:"solutionText"`
+}
 
-	return l
+func (t *droneFlightTab) state() droneFlightState {
+	state := droneFlightState{
+		UseLongJumps: t.useLongJumps.Value(),
+		StartPortal:  t.startPortal,
+		EndPortal:    t.endPortal,
+		SolutionText: t.solutionText,
+	}
+	switch t.optimizeFor.Value() {
+	case 0:
+		state.OptimizeFor = "LeastKeys"
+	case 1:
+		state.OptimizeFor = "LeastJumps"
+	}
+	for _, solutionPortal := range t.solution {
+		state.Solution = append(state.Solution, solutionPortal.Guid)
+	}
+	for _, keyPortal := range t.keys {
+		state.Keys = append(state.Keys, keyPortal.Guid)
+	}
+	return state
+}
+
+func (t *droneFlightTab) load(state droneFlightState) error {
+	t.useLongJumps.SetValue(state.UseLongJumps)
+	switch state.OptimizeFor {
+	case "LeastKeys":
+		t.optimizeFor.SetValue(0)
+	case "LeastJumps":
+		t.optimizeFor.SetValue(1)
+	default:
+		return fmt.Errorf("invalid droneFlight.optimizeFor value \"%s\"", state.OptimizeFor)
+	}
+	t.solution = nil
+	for _, solutionGUID := range state.Solution {
+		if solutionPortal, ok := t.portals.portalMap[solutionGUID]; !ok {
+			return fmt.Errorf("invalid droneFlight solution portal \"%s\"", solutionGUID)
+		} else {
+			t.solution = append(t.solution, solutionPortal)
+		}
+	}
+	for _, keyGUID := range state.Keys {
+		if keyPortal, ok := t.portals.portalMap[keyGUID]; !ok {
+			return fmt.Errorf("invalid droneFlight key portal \"%s\"", keyGUID)
+		} else {
+			t.keys = append(t.keys, keyPortal)
+		}
+	}
+	if _, ok := t.portals.portalMap[state.StartPortal]; !ok && state.StartPortal != "" {
+		return fmt.Errorf("invalid droneFlight.startPortal \"%s\"", state.StartPortal)
+	}
+	t.startPortal = state.StartPortal
+	if _, ok := t.portals.portalMap[state.EndPortal]; !ok && state.EndPortal != "" {
+		return fmt.Errorf("invalid droneFlight.endPortal \"%s\"", state.EndPortal)
+	}
+	t.endPortal = state.EndPortal
+	t.solutionText = state.SolutionText
+	return nil
 }

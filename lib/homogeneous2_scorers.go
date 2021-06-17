@@ -65,27 +65,6 @@ type clumpPortalsTriangleScorer struct {
 	candidates  [6]portalIndex
 }
 
-// scorer for picking the best midpoint of triangle a,b,c for given depth
-type thickTrianglesDepthTriangleScorer struct {
-	minHeight  []float32
-	numPortals uint
-	depth      uint16
-	a, b, c    portalData
-	abDistance distanceQuery
-	acDistance distanceQuery
-	bcDistance distanceQuery
-	scorePtr   *float32
-	candidate  portalIndex
-}
-type clumpPortalsDepthTriangleScorer struct {
-	minDistance []float32
-	numPortals  uint
-	depth       uint16
-	a, b, c     portalData
-	scorePtr    *float32
-	candidate   portalIndex
-}
-
 func (s *thickTrianglesScorer) newTriangleScorer(maxDepth int) homogeneousTriangleScorer {
 	return &thickTrianglesTriangleScorer{
 		minHeight:  s.minHeight,
