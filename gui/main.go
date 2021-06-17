@@ -479,7 +479,7 @@ type state struct {
 }
 
 func (w *MainWindow) encode(writer io.Writer) error {
-	state := state{
+	s := state{
 		Portals:           w.portals.portals,
 		SelectedTab:       w.selectedTab,
 		Homogeneous:       w.homogeneous.state(),
@@ -491,61 +491,61 @@ func (w *MainWindow) encode(writer io.Writer) error {
 	}
 
 	for disabledGUID := range w.portals.disabledPortals {
-		state.DisabledPortals = append(state.DisabledPortals, disabledGUID)
+		s.DisabledPortals = append(s.DisabledPortals, disabledGUID)
 	}
 	for selectedGUID := range w.portals.selectedPortals {
-		state.SelectedPortals = append(state.SelectedPortals, selectedGUID)
+		s.SelectedPortals = append(s.SelectedPortals, selectedGUID)
 	}
-	return json.NewEncoder(writer).Encode(state)
+	return json.NewEncoder(writer).Encode(s)
 }
 
 func (w *MainWindow) decode(reader io.Reader) error {
-	state := state{}
-	err := json.NewDecoder(reader).Decode(&state)
+	s := state{}
+	err := json.NewDecoder(reader).Decode(&s)
 	if err != nil {
 		return err
 	}
-	w.portals.portals = state.Portals
+	w.portals.portals = s.Portals
 	w.portals.portalMap = make(map[string]lib.Portal)
 	for _, portal := range w.portals.portals {
 		w.portals.portalMap[portal.Guid] = portal
 	}
 	w.portals.disabledPortals = make(map[string]struct{})
-	for _, disabledGUID := range state.DisabledPortals {
+	for _, disabledGUID := range s.DisabledPortals {
 		if _, ok := w.portals.portalMap[disabledGUID]; !ok {
 			return fmt.Errorf("invalid disabled portal %s", disabledGUID)
 		}
 		w.portals.disabledPortals[disabledGUID] = struct{}{}
 	}
 	w.portals.selectedPortals = make(map[string]struct{})
-	for _, selectedGUID := range state.SelectedPortals {
+	for _, selectedGUID := range s.SelectedPortals {
 		if _, ok := w.portals.portalMap[selectedGUID]; !ok {
 			return fmt.Errorf("invalid selected portal %s", selectedGUID)
 		}
 		w.portals.selectedPortals[selectedGUID] = struct{}{}
 	}
-	if err := w.homogeneous.load(state.Homogeneous); err != nil {
+	if err := w.homogeneous.load(s.Homogeneous); err != nil {
 		return err
 	}
-	if err := w.herringbone.load(state.Herringbone); err != nil {
+	if err := w.herringbone.load(s.Herringbone); err != nil {
 		return err
 	}
-	if err := w.doubleHerringbone.load(state.DoubleHerringbone); err != nil {
+	if err := w.doubleHerringbone.load(s.DoubleHerringbone); err != nil {
 		return err
 	}
-	if err := w.cobweb.load(state.Cobweb); err != nil {
+	if err := w.cobweb.load(s.Cobweb); err != nil {
 		return err
 	}
-	if err := w.droneFlight.load(state.DroneFlight); err != nil {
+	if err := w.droneFlight.load(s.DroneFlight); err != nil {
 		return err
 	}
-	if err := w.flipField.load(state.FlipField); err != nil {
+	if err := w.flipField.load(s.FlipField); err != nil {
 		return err
 	}
-	if state.SelectedTab < 0 || state.SelectedTab > 5 {
-		return fmt.Errorf("invalid selected tab %d", state.SelectedTab)
+	if s.SelectedTab < 0 || s.SelectedTab > 5 {
+		return fmt.Errorf("invalid selected tab %d", s.SelectedTab)
 	}
-	w.selectedTab = state.SelectedTab
+	w.selectedTab = s.SelectedTab
 	w.tabs.SetValue(w.selectedTab)
 	w.onPortalsChanged()
 	w.onTabSelected(w.selectedTab)
