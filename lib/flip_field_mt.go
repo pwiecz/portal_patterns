@@ -48,7 +48,7 @@ func bestFlipFieldWorker(
 			if q.maxFlipPortals > 0 && numFlipPortals > q.maxFlipPortals {
 				numFlipPortals = q.maxFlipPortals
 			}
-			numFields := numFlipPortals * (2*len(b) - 3)
+			numFields := numFlipFields(numFlipPortals, len(b))
 			if numFields > localBestNumFields {
 				localBestNumFields = numFields
 			}
@@ -130,7 +130,7 @@ func LargestFlipFieldMT(portals []Portal, params flipFieldParams) ([]Portal, []P
 			if params.maxFlipPortals > 0 && numFlipPortals > params.maxFlipPortals {
 				numFlipPortals = params.maxFlipPortals
 			}
-			numFields := numFlipPortals * (2*len(resp.backbone) - 3)
+			numFields := numFlipFields(numFlipPortals, len(resp.backbone))
 			if numFields > bestNumFields || (numFields == bestNumFields && resp.backboneLength < bestBackboneLength) {
 				bestNumFields = numFields
 				bestBackbone = append(bestBackbone[:0], resp.backbone...)

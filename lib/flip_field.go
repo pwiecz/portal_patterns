@@ -102,6 +102,9 @@ func partitionPortalsLeftOfLine(portals []portalData, a, b portalData) []portalD
 	return portals[:length]
 }
 
+func numFlipFields(numFlipPortals, numBackbonePortals int) int {
+	return numFlipPortals * (2*numBackbonePortals - 3)
+}
 func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]portalData, []portalData, float64) {
 	if ccw {
 		f.candidates = portalsLeftOfLine(f.portals, p0, p1, f.candidates[:0])
@@ -115,10 +118,10 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 		if len(f.backbone) >= f.maxBackbonePortals {
 			break
 		}
-		if len(f.flipPortals)*(2*f.maxBackbonePortals-1) < f.bestSolution {
+		if numFlipFields(len(f.flipPortals), f.maxBackbonePortals) < f.bestSolution {
 			break
 		}
-		bestNumFields := len(f.flipPortals) * (2*len(f.backbone) - 3)
+		bestNumFields := numFlipFields(len(f.flipPortals), len(f.backbone))
 		bestBackboneLength := backboneLength
 		if f.numPortalLimit == EQUAL {
 			bestNumFields = 0
@@ -139,7 +142,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					}
 				}
 				var numFlipPortals int
-				// Don't consider candidates "behind" the backbone, they don't tend to bring any benefit,
+				// Don't consider candidates "behind" the backbone, they tend not to bring any benefit,
 				// and it takes time to check them.
 				if ccw != segCCW.IsCCW(candidate.LatLng) {
 					continue
@@ -149,10 +152,10 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				} else {
 					numFlipPortals = numPortalsLeftOfTwoLines(f.flipPortals, f.backbone[pos], candidate, f.backbone[pos-1])
 				}
-				if numFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
+				if numFlipFields(numFlipPortals, f.maxBackbonePortals) < f.bestSolution {
 					continue
 				}
-				numFields := numFlipPortals * (2*len(f.backbone) - 1)
+				numFields := numFlipFields(numFlipPortals, len(f.backbone)+1)
 				if numFields > bestNumFields {
 					bestNumFields = numFields
 					bestCandidate = i
@@ -169,6 +172,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				}
 			}
 		}
+		// Couldn't find portal insert position between the backbone portals. Check if appending a new backbone portal would help.
 		if bestCandidate < 0 {
 			pos := len(f.backbone) - 1
 			zeroLast := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos].LatLng)
@@ -185,10 +189,10 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				} else {
 					numFlipPortals = numPortalsLeftOfLine(f.flipPortals, candidate, f.backbone[pos])
 				}
-				if numFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
+				if numFlipFields(numFlipPortals, f.maxBackbonePortals) < f.bestSolution {
 					continue
 				}
-				numFields := numFlipPortals * (2*len(f.backbone) - 1)
+				numFields := numFlipFields(numFlipPortals, len(f.backbone)+1)
 				if numFields > bestNumFields {
 					bestNumFields = numFields
 					bestCandidate = i
@@ -205,6 +209,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				}
 			}
 		}
+		// Couldn't find portal insert position between or after the backbone portals. Check if prepending a new backbone portal would help.
 		if bestCandidate < 0 {
 			zeroLast := newCCWQuery(f.backbone[0].LatLng, f.backbone[len(f.backbone)-1].LatLng)
 			for i, candidate := range f.portals {
@@ -232,10 +237,10 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				} else {
 					numFlipPortals = numPortalsLeftOfLine(f.flipPortals, f.backbone[0], candidate)
 				}
-				if numFlipPortals*(2*f.maxBackbonePortals-1) < f.bestSolution {
+				if numFlipFields(numFlipPortals, f.maxBackbonePortals) < f.bestSolution {
 					continue
 				}
-				numFields := numFlipPortals * (2*len(f.backbone) - 1)
+				numFields := numFlipFields(numFlipPortals, len(f.backbone)+1)
 				if numFields > bestNumFields {
 					bestNumFields = numFields
 					bestCandidate = i
@@ -318,7 +323,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 		if f.maxFlipPortals > 0 && numFlipPortals > f.maxFlipPortals {
 			numFlipPortals = f.maxFlipPortals
 		}
-		numFields := numFlipPortals * (2*len(f.backbone) - 3)
+		numFields := numFlipFields(numFlipPortals, len(f.backbone))
 		if numFields > f.bestSolution {
 			f.bestSolution = numFields
 		}
@@ -357,7 +362,7 @@ func LargestFlipFieldST(portals []Portal, params flipFieldParams) ([]Portal, []P
 					if params.maxFlipPortals > 0 && numFlipPortals > params.maxFlipPortals {
 						numFlipPortals = params.maxFlipPortals
 					}
-					numFields := numFlipPortals * (2*len(b) - 3)
+					numFields := numFlipFields(numFlipPortals, len(b))
 					if numFields > bestNumFields || (numFields == bestNumFields && bl < bestBackboneLength) {
 						bestNumFields = numFields
 						bestBackbone = append(bestBackbone[:0], b...)
