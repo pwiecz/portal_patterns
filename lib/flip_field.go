@@ -105,6 +105,10 @@ func partitionPortalsLeftOfLine(portals []portalData, a, b portalData) []portalD
 func numFlipFields(numFlipPortals, numBackbonePortals int) int {
 	return numFlipPortals * (2*numBackbonePortals - 3)
 }
+type indexTriple struct {
+	i0, i1, i2 portalIndex
+}
+
 func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]portalData, []portalData, float64) {
 	if ccw {
 		f.candidates = portalsLeftOfLine(f.portals, p0, p1, f.candidates[:0])
@@ -114,6 +118,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 	f.flipPortals = append(f.flipPortals[:0], f.candidates...)
 	f.backbone = append(f.backbone[:0], p0, p1)
 	backboneLength := distance(p0, p1)
+	nonBeneficialTriples := make(map[indexTriple]struct{})
 	for {
 		if len(f.backbone) >= f.maxBackbonePortals {
 			break
@@ -133,6 +138,10 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			prevPosCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos-1].LatLng)
 			segCCW := newCCWQuery(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng)
 			for i, candidate := range f.candidates {
+				triple := indexTriple{f.backbone[pos-1].Index, candidate.Index, f.backbone[pos].Index}
+				if _, ok := nonBeneficialTriples[triple]; ok {
+					continue
+				}
 				if f.simpleBackbone {
 					if ccw != posCCW.IsCCW(candidate.LatLng) {
 						continue
@@ -153,6 +162,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					numFlipPortals = numPortalsLeftOfTwoLines(f.flipPortals, f.backbone[pos], candidate, f.backbone[pos-1])
 				}
 				if numFlipFields(numFlipPortals, f.maxBackbonePortals) < f.bestSolution {
+					nonBeneficialTriples[triple] = struct{}{}
 					continue
 				}
 				numFields := numFlipFields(numFlipPortals, len(f.backbone)+1)
