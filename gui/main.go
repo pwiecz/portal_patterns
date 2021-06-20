@@ -49,6 +49,7 @@ type MainWindow struct {
 	cobweb            *cobwebTab
 	flipField         *flipFieldTab
 	droneFlight       *droneFlightTab
+	threeCorners      *threeCornersTab
 	selectedTab       int
 }
 
@@ -112,12 +113,14 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	w.cobweb = newCobwebTab(w.portals)
 	w.droneFlight = newDroneFlightTab(w.portals)
 	w.flipField = newFlipFieldTab(w.portals)
+	w.threeCorners = newThreeCornersTab(w.portals)
 	w.tabs.Add(w.homogeneous)
 	w.tabs.Add(w.herringbone)
 	w.tabs.Add(w.doubleHerringbone)
 	w.tabs.Add(w.cobweb)
 	w.tabs.Add(w.droneFlight)
 	w.tabs.Add(w.flipField)
+	w.tabs.Add(w.threeCorners)
 	w.tabs.SetCallback(func() { w.onTabSelected(w.tabs.Value()) })
 	w.tabs.End()
 	// Mark one random tab as resizable, as per www.fltk.org/doc-1.3/classFl__Tabs.html - "resizing caveats"
@@ -172,6 +175,8 @@ func (w *MainWindow) selectedPattern() pattern {
 		return w.droneFlight
 	case 5:
 		return w.flipField
+	case 6:
+		return w.threeCorners
 	}
 	return nil
 }
@@ -404,6 +409,7 @@ func (w *MainWindow) onResetPortalsPressed() {
 	w.cobweb.onReset()
 	w.droneFlight.onReset()
 	w.flipField.onReset()
+	w.threeCorners.onReset()
 	w.SetLabel("")
 }
 
@@ -418,14 +424,14 @@ func (w *MainWindow) onSearchPressed() {
 	selectedPattern.onSearch(w.progressCallback, w.onSearchDone)
 }
 func (w *MainWindow) progressCallback(val, max int) {
-	if (fltk.Lock()) {
+	if fltk.Lock() {
 		defer fltk.Unlock()
 		w.progress.SetMaximum(float64(max))
 		w.progress.SetValue(float64(val))
 	}
 }
 func (w *MainWindow) onSearchDone() {
-	if (fltk.Lock()) {
+	if fltk.Lock() {
 		defer fltk.Unlock()
 		w.add.Activate()
 		w.reset.Activate()
@@ -476,6 +482,7 @@ type state struct {
 	Cobweb            cobwebState            `json:"cobweb"`
 	DroneFlight       droneFlightState       `json:"droneFlight"`
 	FlipField         flipFieldState         `json:"flipField"`
+	ThreeCorners      threeCornersState      `json:"threeCorners"`
 }
 
 func (w *MainWindow) encode(writer io.Writer) error {
@@ -488,6 +495,7 @@ func (w *MainWindow) encode(writer io.Writer) error {
 		Cobweb:            w.cobweb.state(),
 		DroneFlight:       w.droneFlight.state(),
 		FlipField:         w.flipField.state(),
+		ThreeCorners:      w.threeCorners.state(),
 	}
 
 	for disabledGUID := range w.portals.disabledPortals {
@@ -542,7 +550,10 @@ func (w *MainWindow) decode(reader io.Reader) error {
 	if err := w.flipField.load(s.FlipField); err != nil {
 		return err
 	}
-	if s.SelectedTab < 0 || s.SelectedTab > 5 {
+	if err := w.threeCorners.load(s.ThreeCorners); err != nil {
+		return err
+	}
+	if s.SelectedTab < 0 || s.SelectedTab > 6 {
 		return fmt.Errorf("invalid selected tab %d", s.SelectedTab)
 	}
 	w.selectedTab = s.SelectedTab

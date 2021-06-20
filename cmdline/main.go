@@ -205,23 +205,7 @@ func main() {
 		for i, indexedPortal := range result {
 			fmt.Fprintf(outputWriter, "%d: %s\n", i, indexedPortal.Portal.Name)
 		}
-		indexedPortalList := []lib.IndexedPortal{result[0], result[1]}
-		lastIndexPortal := [3]lib.IndexedPortal{result[0], result[1], {}}
-		for _, indexedPortal := range result[2:] {
-			lastIndex := indexedPortalList[len(indexedPortalList)-1].Index
-			if indexedPortal.Index == lastIndex {
-				lastIndex = (lastIndex + 1) % 3
-				indexedPortalList = append(indexedPortalList, lastIndexPortal[lastIndex])
-			}
-			nextIndex := 3 - indexedPortal.Index - lastIndex
-			indexedPortalList = append(indexedPortalList, indexedPortal, lastIndexPortal[nextIndex])
-			lastIndexPortal[indexedPortal.Index] = indexedPortal
-		}
-		portalList := make([]lib.Portal, 0, len(indexedPortalList))
-		for _, indexedPortal := range indexedPortalList {
-			portalList = append(portalList, indexedPortal.Portal)
-		}
-		fmt.Fprintf(outputWriter, "\n[%s]\n", lib.PolylineFromPortalList(portalList))
+		fmt.Fprintf(outputWriter, "\n%s\n", lib.ThreeCornersDrawToolsString(result))
 	case "homogeneous":
 		fallthrough
 	case "homogenous":

@@ -212,3 +212,27 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal, progressFunc func
 	}
 	return result
 }
+
+func ThreeCornersPolyline(result []IndexedPortal) []Portal {
+	indexedPortalList := []IndexedPortal{result[0], result[1]}
+	lastIndexPortal := [3]IndexedPortal{result[0], result[1], {}}
+	for _, indexedPortal := range result[2:] {
+		lastIndex := indexedPortalList[len(indexedPortalList)-1].Index
+		if indexedPortal.Index == lastIndex {
+			lastIndex = (lastIndex + 1) % 3
+			indexedPortalList = append(indexedPortalList, lastIndexPortal[lastIndex])
+		}
+		nextIndex := 3 - indexedPortal.Index - lastIndex
+		indexedPortalList = append(indexedPortalList, indexedPortal, lastIndexPortal[nextIndex])
+		lastIndexPortal[indexedPortal.Index] = indexedPortal
+	}
+	portalList := make([]Portal, 0, len(indexedPortalList))
+	for _, indexedPortal := range indexedPortalList {
+		portalList = append(portalList, indexedPortal.Portal)
+	}
+	return portalList
+}
+
+func ThreeCornersDrawToolsString(result []IndexedPortal) string {
+	return "[\n" + PolylineFromPortalList(ThreeCornersPolyline(result)) + "\n]"
+}
