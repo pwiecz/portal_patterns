@@ -156,24 +156,20 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					continue
 				}
 				numFields := numFlipFields(numFlipPortals, len(f.backbone)+1)
-				if numFields > bestNumFields {
+				if numFields < bestNumFields {
+					continue
+				}
+				newBackboneLength := backboneLength - distance(f.backbone[pos-1], f.backbone[pos]) + distance(f.backbone[pos-1], candidate) + distance(candidate, f.backbone[pos])
+				if numFields > bestNumFields || (numFields == bestNumFields && newBackboneLength < bestBackboneLength) {
 					bestNumFields = numFields
 					bestCandidate = i
 					bestInsertPosition = pos
-					bestBackboneLength = backboneLength - distance(f.backbone[pos-1], f.backbone[pos]) + distance(f.backbone[pos-1], candidate) + distance(candidate, f.backbone[pos])
-				} else if numFields == bestNumFields {
-					newBackboneLength := backboneLength - distance(f.backbone[pos-1], f.backbone[pos]) + distance(f.backbone[pos-1], candidate) + distance(candidate, f.backbone[pos])
-					if newBackboneLength < bestBackboneLength {
-						bestNumFields = numFields
-						bestCandidate = i
-						bestInsertPosition = pos
-						bestBackboneLength = newBackboneLength
-					}
+					bestBackboneLength = newBackboneLength
 				}
 			}
 		}
-		// Couldn't find portal insert position between the backbone portals. Check if appending a new backbone portal would help.
-		if bestCandidate < 0 {
+		// Check if appending a new backbone portal would improve the solution.
+		{
 			pos := len(f.backbone) - 1
 			zeroLast := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos].LatLng)
 			for i, candidate := range f.portals {
@@ -193,24 +189,20 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					continue
 				}
 				numFields := numFlipFields(numFlipPortals, len(f.backbone)+1)
-				if numFields > bestNumFields {
+				if numFields < bestNumFields {
+					continue
+				}
+				newBackboneLength := backboneLength + distance(f.backbone[pos], candidate)
+				if numFields > bestNumFields || (numFields == bestNumFields && newBackboneLength < bestBackboneLength) {
 					bestNumFields = numFields
 					bestCandidate = i
 					bestInsertPosition = len(f.backbone)
-					bestBackboneLength = backboneLength + distance(f.backbone[pos], candidate)
-				} else if numFields == bestNumFields {
-					newBackboneLength := backboneLength + distance(f.backbone[pos], candidate)
-					if newBackboneLength < bestBackboneLength {
-						bestNumFields = numFields
-						bestCandidate = i
-						bestInsertPosition = len(f.backbone)
-						bestBackboneLength = newBackboneLength
-					}
+					bestBackboneLength = newBackboneLength
 				}
 			}
 		}
-		// Couldn't find portal insert position between or after the backbone portals. Check if prepending a new backbone portal would help.
-		if bestCandidate < 0 {
+		// Check if prepending a new backbone portal would improve the solution.
+		{
 			zeroLast := newCCWQuery(f.backbone[0].LatLng, f.backbone[len(f.backbone)-1].LatLng)
 			for i, candidate := range f.portals {
 				if f.backbone[len(f.backbone)-1].Index == candidate.Index || f.backbone[0].Index == candidate.Index {
@@ -241,19 +233,15 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 					continue
 				}
 				numFields := numFlipFields(numFlipPortals, len(f.backbone)+1)
-				if numFields > bestNumFields {
+				if numFields < bestNumFields {
+					continue
+				}
+				newBackboneLength := backboneLength + distance(f.backbone[0], candidate)
+				if numFields > bestNumFields || (numFields == bestNumFields && newBackboneLength < bestBackboneLength) {
 					bestNumFields = numFields
 					bestCandidate = i
 					bestInsertPosition = 0
-					bestBackboneLength = backboneLength + distance(f.backbone[0], candidate)
-				} else if numFields == bestNumFields {
-					newBackboneLength := backboneLength + distance(f.backbone[0], candidate)
-					if newBackboneLength < bestBackboneLength {
-						bestNumFields = numFields
-						bestCandidate = i
-						bestInsertPosition = 0
-						bestBackboneLength = newBackboneLength
-					}
+					bestBackboneLength = newBackboneLength
 				}
 
 			}
