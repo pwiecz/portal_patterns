@@ -128,7 +128,6 @@ func (t *threeCornersTab) enableSelectedPortals() {
 func (t *threeCornersTab) disableSelectedPortals() {
 	for guid := range t.portals.selectedPortals {
 		t.portals.disabledPortals[guid] = struct{}{}
-		//		delete(t.cornerPortals, guid)
 	}
 }
 func (t *threeCornersTab) setSelectedGroup(groups []int) {
@@ -163,6 +162,9 @@ func (t *threeCornersTab) contextMenu() *menu {
 		aSelectedGUID = guid
 		if _, ok := t.portals.disabledPortals[guid]; ok {
 			numSelectedDisabled++
+			numNot0++
+			numNot1++
+			numNot2++
 		} else {
 			numSelectedEnabled++
 		}
@@ -213,7 +215,7 @@ func (t *threeCornersTab) contextMenu() *menu {
 		if len(t.portals.selectedPortals) == 1 {
 			menu.items = append(menu.items, menuItem{"Set group 1", func() { t.setSelectedGroup([]int{1}) }})
 		} else {
-			menu.items = append(menu.items, menuItem{"Set all group 0", func() { t.setSelectedGroup([]int{1}) }})
+			menu.items = append(menu.items, menuItem{"Set all group 1", func() { t.setSelectedGroup([]int{1}) }})
 		}
 	}
 	if numNot2 > 0 || num0 > 0 || num1 > 0 {
@@ -305,7 +307,7 @@ func (t *threeCornersTab) load(state threeCornersState) error {
 		if _, ok := t.portals.portalMap[portal2GUID]; !ok {
 			return fmt.Errorf("unknown three corners portal2 %s", portal2GUID)
 		}
-		t.portalsNot0[portal2GUID] = struct{}{}
+		t.portalsNot2[portal2GUID] = struct{}{}
 	}
 	t.solution = nil
 	for _, solutionPortal := range state.Solution {
