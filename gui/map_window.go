@@ -19,6 +19,7 @@ type MapWindow struct {
 	addedToSelectionCallback func(map[string]struct{})
 	windowClosedCallback     func()
 	rightClickCallback       func(string, int, int)
+	selectionMode            SelectionMode
 }
 
 func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
@@ -33,7 +34,7 @@ func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
 }
 
 func (w *MapWindow) redraw() {
-	if (fltk.Lock()) {
+	if fltk.Lock() {
 		defer fltk.Unlock()
 		w.Redraw()
 	}
@@ -43,6 +44,14 @@ func (w *MapWindow) Destroy() {
 	w.GlWindow.Destroy()
 }
 
+type SelectionMode int
+
+var NoSelection SelectionMode = 0
+var RectangularSelection SelectionMode = 1
+
+func (w *MapWindow) SetSelectionMode(selectionMode SelectionMode) {
+	w.selectionMode = selectionMode
+}
 func (w *MapWindow) SetSelectionChangeCallback(callback func(map[string]struct{})) {
 	w.selectionChangedCallback = callback
 }
@@ -110,7 +119,7 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 		// return true to receive keyboard events
 		return true
 	case fltk.RELEASE:
-		if fltk.EventButton() == fltk.LeftMouse && fltk.EventIsClick() {
+		if w.selectionMode == NoSelection && fltk.EventButton() == fltk.LeftMouse && fltk.EventIsClick() {
 			if w.mapDrawer.portalUnderMouse >= 0 {
 				selection := make(map[string]struct{})
 				selection[w.mapDrawer.portals[w.mapDrawer.portalUnderMouse].guid] = struct{}{}
@@ -138,14 +147,34 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 					w.rightClickCallback("", fltk.EventX(), fltk.EventY())
 				}
 			}
+		} else if w.selectionMode == RectangularSelection {
+			selection := w.mapDrawer.PortalsInsideSelection()
+			w.mapDrawer.ShowRectangularSelection(0, 0, 0, 0)
+			if fltk.EventState()&fltk.CTRL != 0 {
+				if w.addedToSelectionCallback != nil {
+					w.addedToSelectionCallback(selection)
+				}
+			} else {
+				if w.selectionChangedCallback != nil {
+					w.selectionChangedCallback(selection)
+				}
+			}
+			return true
 		}
 	case fltk.DRAG:
 		if fltk.EventButton1() {
 			currX, currY := fltk.EventX(), fltk.EventY()
-			w.mapDrawer.Drag(w.prevX-currX, w.prevY-currY)
-			w.prevX, w.prevY = currX, currY
-			w.redraw()
-			return true
+			switch w.selectionMode {
+			case NoSelection:
+				w.mapDrawer.Drag(w.prevX-currX, w.prevY-currY)
+				w.prevX, w.prevY = currX, currY
+				w.redraw()
+				return true
+			case RectangularSelection:
+				w.mapDrawer.ShowRectangularSelection(w.prevX, w.prevY, currX, currY)
+				w.redraw()
+				return true
+			}
 		}
 	case fltk.MOUSEWHEEL:
 		dy := fltk.EventDY()

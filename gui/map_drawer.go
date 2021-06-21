@@ -24,8 +24,13 @@ import (
 const PortalCircleRadius = 7
 
 var projection = s2.NewMercatorProjection(180)
+var black = imgui.Packed(color.NRGBA{0, 0, 0, 255})
+var white = imgui.Packed(color.NRGBA{255, 255, 255, 255})
+var purple = imgui.Packed(color.NRGBA{100, 50, 225, 175})
+var transparent = imgui.Packed(color.NRGBA{0, 0, 0, 0})
 
 type mapPortal struct {
+	latLng      s2.LatLng
 	coords      r2.Point
 	fillColor   imgui.PackedColor
 	strokeColor imgui.PackedColor
@@ -95,28 +100,28 @@ func (c *lockedTileCache) Add(coord osm.TileCoord, img image.Image) {
 
 type glTexture uint32
 type MapDrawer struct {
-	imguiContext          *imgui.Context
-	imguiRenderer         *guigl.OpenGL2
-	initialized           bool
-	tileCache             *lockedTileCache
-	mapTiles              map[osm.TileCoord]glTexture
-	missingTiles          *lockedCoordSet
-	portals               []mapPortal
-	portalShapeIndex      *s2.ShapeIndex
-	shapeIndexIDToPortal  map[int32]int
-	paths                 [][]r2.Point
-	portalIndices         map[string]int
-	portalDrawOrder       []int
-	defaultPortalColor    imgui.PackedColor
-	taskQueue             TaskQueue
-	tileFetcher           *osm.MapTiles
-	width, height         float32
-	zoom                  int
-	zoomPow               float64
-	x0, y0                float64
-	mouseX, mouseY        int
-	portalUnderMouse      int
-	onMapChangedCallbacks []func()
+	imguiContext               *imgui.Context
+	imguiRenderer              *guigl.OpenGL2
+	initialized                bool
+	tileCache                  *lockedTileCache
+	mapTiles                   map[osm.TileCoord]glTexture
+	missingTiles               *lockedCoordSet
+	portals                    []mapPortal
+	portalIndex                *PortalIndex
+	paths                      [][]r2.Point
+	portalIndices              map[string]int
+	portalDrawOrder            []int
+	defaultPortalColor         imgui.PackedColor
+	taskQueue                  TaskQueue
+	tileFetcher                *osm.MapTiles
+	width, height              float32
+	zoom                       int
+	zoomPow                    float64
+	x0, y0                     float64
+	selX0, selY0, selX1, selY1 float32
+	mouseX, mouseY             int
+	portalUnderMouse           int
+	onMapChangedCallbacks      []func()
 }
 
 func NewMapDrawer(width, height int, tileFetcher *osm.MapTiles) *MapDrawer {
@@ -217,6 +222,33 @@ func (w *MapDrawer) Drag(dx, dy int) {
 		w.redrawTiles()
 	})
 }
+func minMax(v0, v1 int) (float32, float32) {
+	if v0 < v1 {
+		return float32(v0), float32(v1)
+	}
+	return float32(v1), float32(v0)
+}
+func (w *MapDrawer) ShowRectangularSelection(x0, y0, x1, y1 int) {
+	w.Async(func() {
+		w.selX0, w.selX1 = minMax(x0, x1)
+		w.selY0, w.selY1 = minMax(y0, y1)
+		w.MapChanged()
+	})
+}
+func (w *MapDrawer) PortalsInsideSelection() map[string]struct{} {
+	p0 := w.screenPointToGeoPoint(int(w.selX0), int(w.selY0))
+	p1 := w.screenPointToGeoPoint(int(w.selX1), int(w.selY1))
+	rect := s2.RectFromLatLng(s2.LatLngFromPoint(p0))
+	rect = rect.AddPoint(s2.LatLngFromPoint(p1))
+	portals := make(map[string]struct{})
+	for _, portal := range w.portals {
+		if rect.ContainsPoint(s2.PointFromLatLng(portal.latLng)) {
+			portals[portal.guid] = struct{}{}
+		}
+	}
+	return portals
+
+}
 func (w *MapDrawer) ZoomIn(x, y int) {
 	w.Async(func() {
 		if w.zoom < osm.MAX_ZOOM_LEVEL {
@@ -239,30 +271,29 @@ func (w *MapDrawer) ZoomOut(x, y int) {
 		}
 	})
 }
+
+func (w *MapDrawer) screenPointToGeoPoint(x, y int) s2.Point {
+	mapX := (float64(x) + w.x0) / 256 / w.zoomPow
+	mapY := (float64(y) + w.y0) / 256 / w.zoomPow
+	projectedX := mapX*360 - 180
+	projectedY := 180 - mapY*360
+	return projection.Unproject(r2.Point{X: projectedX, Y: projectedY})
+
+}
+
 func (w *MapDrawer) Hover(x, y int) {
 	w.Async(func() {
 		w.mouseX, w.mouseY = x, y
 		if len(w.portals) == 0 {
 			return
 		}
-		mapX := (float64(x) + w.x0) / 256 / w.zoomPow
-		mapY := (float64(y) + w.y0) / 256 / w.zoomPow
-		projectedX := mapX*360 - 180
-		projectedY := 180 - mapY*360
-		point := projection.Unproject(r2.Point{X: projectedX, Y: projectedY})
-		opts := s2.NewClosestEdgeQueryOptions().MaxResults(1)
-		query := s2.NewClosestEdgeQuery(w.portalShapeIndex, opts)
-		target := s2.NewMinDistanceToPointTarget(point)
-		result := query.FindEdges(target)
-		if len(result) == 0 {
-			return
-		}
-		shapeID := result[0].ShapeID()
-		portalIx, ok := w.shapeIndexIDToPortal[shapeID]
+		portalIx, ok := w.portalIndex.ClosestPortal(w.screenPointToGeoPoint(x, y))
 		if !ok {
 			return
 		}
 		closestPortal := w.portals[portalIx]
+		mapX := (float64(x) + w.x0) / 256 / w.zoomPow
+		mapY := (float64(y) + w.y0) / 256 / w.zoomPow
 		dx, dy := mapX-closestPortal.coords.X, mapY-closestPortal.coords.Y
 		dx, dy = dx*256*w.zoomPow, dy*256*w.zoomPow
 		portalUnderMouse := -1
@@ -331,6 +362,7 @@ func (w *MapDrawer) Update() {
 	w.drawAllPortalsImgui()
 	w.drawAllPathsImgui()
 	w.drawPortalLabelImgui()
+	w.drawSelection()
 	w.drawCopyrightLabel()
 }
 
@@ -362,8 +394,7 @@ func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
 	w.x0 = (maxX+minX)*w.zoomPow*0.5*256.0 - float64(w.width)*0.5
 	w.y0 = (maxY+minY)*w.zoomPow*0.5*256.0 - float64(w.height)*0.5
 	w.portals = make([]mapPortal, 0, len(portals))
-	w.portalShapeIndex = s2.NewShapeIndex()
-	w.shapeIndexIDToPortal = make(map[int32]int)
+	w.portalIndex = NewPortalIndex(portals)
 	w.portalDrawOrder = w.portalDrawOrder[:0]
 	if len(portals) == 0 {
 		w.zoom = 0
@@ -376,21 +407,14 @@ func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
 		return
 	}
 	for i, portal := range portals {
-		portalPoint := s2.PointFromLatLng(portal.LatLng)
-		portalCells := s2.SimpleRegionCovering(portalPoint, portalPoint, 30)
-		if len(portalCells) != 1 {
-			panic(portalCells)
-		}
-		cell := s2.CellFromCellID(portalCells[0])
-		portalID := w.portalShapeIndex.Add(s2.PolygonFromCell(cell))
-		w.shapeIndexIDToPortal[portalID] = i
 		mapCoords := projection.FromLatLng(portal.LatLng)
 		mapCoords.X = (mapCoords.X + 180) / 360
 		mapCoords.Y = (180 - mapCoords.Y) / 360
 		w.portals = append(w.portals, mapPortal{
+			latLng:      portal.LatLng,
 			coords:      mapCoords,
 			fillColor:   w.defaultPortalColor,
-			strokeColor: imgui.Packed(color.NRGBA{0, 0, 0, 0}),
+			strokeColor: transparent,
 			name:        portal.Name,
 			guid:        portal.Guid,
 			drawOrder:   i,
@@ -413,7 +437,6 @@ func (w *MapDrawer) drawCopyrightLabel() {
 	posX, posY := w.width-textSize.X-5, w.height-textSize.Y-5
 	textPos := imgui.Vec2{X: posX, Y: posY}
 	drawList := imgui.BackgroundDrawList()
-	black := imgui.Packed(color.NRGBA{0, 0, 0, 255})
 	drawList.AddText(textPos, black, label)
 	imgui.Render()
 	size := [2]float32{w.width, w.height}
@@ -442,7 +465,6 @@ func (w *MapDrawer) drawPortalLabelImgui() {
 	labelPos := imgui.Vec2{X: labelPosX, Y: labelPosY - 20}
 	white := imgui.Packed(color.NRGBA{255, 255, 255, 255})
 	drawList.AddRectFilled(labelPos, labelPos.Plus(imgui.Vec2{X: textSize.X + 2*LabelXMargin, Y: textSize.Y}), white)
-	black := imgui.Packed(color.NRGBA{0, 0, 0, 255})
 	textPos := labelPos.Plus(imgui.Vec2{X: LabelXMargin, Y: 0})
 	drawList.AddText(textPos, black, portal.name)
 	imgui.Render()
@@ -484,7 +506,6 @@ func (w *MapDrawer) drawAllPortalsImgui() {
 }
 func (w *MapDrawer) drawAllPathsImgui() {
 	imgui.NewFrame()
-	purple := imgui.Packed(color.NRGBA{100, 50, 225, 175})
 	drawList := imgui.BackgroundDrawList()
 	for _, path := range w.paths {
 		for i := 1; i < len(path); i++ {
@@ -495,6 +516,17 @@ func (w *MapDrawer) drawAllPathsImgui() {
 			drawList.AddLineV(imgui.Vec2{X: x0, Y: y0}, imgui.Vec2{X: x1, Y: y1}, purple, 3)
 		}
 	}
+	imgui.Render()
+	size := [2]float32{w.width, w.height}
+	w.imguiRenderer.Render(size, size, imgui.RenderedDrawData())
+}
+func (w *MapDrawer) drawSelection() {
+	if w.selX0 >= w.selX1 || w.selY0 >= w.selY1 {
+		return
+	}
+	imgui.NewFrame()
+	drawList := imgui.BackgroundDrawList()
+	drawList.AddRect(imgui.Vec2{X: w.selX0, Y: w.selY0}, imgui.Vec2{X: w.selX1, Y: w.selY1}, black)
 	imgui.Render()
 	size := [2]float32{w.width, w.height}
 	w.imguiRenderer.Render(size, size, imgui.RenderedDrawData())
