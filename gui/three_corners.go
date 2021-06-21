@@ -206,51 +206,51 @@ func (t *threeCornersTab) contextMenu() *menu {
 	}
 	if numNot0 > 0 || num1 > 0 || num2 > 0 {
 		if len(t.portals.selectedPortals) == 1 {
-			menu.items = append(menu.items, menuItem{"Set group 0", func() { t.setSelectedGroup([]int{0}) }})
+			menu.items = append(menu.items, menuItem{"Set group 1", func() { t.setSelectedGroup([]int{0}) }})
 		} else {
-			menu.items = append(menu.items, menuItem{"Set all group 0", func() { t.setSelectedGroup([]int{0}) }})
+			menu.items = append(menu.items, menuItem{"Set all group 1", func() { t.setSelectedGroup([]int{0}) }})
 		}
 	}
 	if numNot1 > 0 || num0 > 0 || num2 > 0 {
 		if len(t.portals.selectedPortals) == 1 {
-			menu.items = append(menu.items, menuItem{"Set group 1", func() { t.setSelectedGroup([]int{1}) }})
+			menu.items = append(menu.items, menuItem{"Set group 2", func() { t.setSelectedGroup([]int{1}) }})
 		} else {
-			menu.items = append(menu.items, menuItem{"Set all group 1", func() { t.setSelectedGroup([]int{1}) }})
+			menu.items = append(menu.items, menuItem{"Set all group 2", func() { t.setSelectedGroup([]int{1}) }})
 		}
 	}
 	if numNot2 > 0 || num0 > 0 || num1 > 0 {
 		if len(t.portals.selectedPortals) == 1 {
-			menu.items = append(menu.items, menuItem{"Set group 2", func() { t.setSelectedGroup([]int{2}) }})
+			menu.items = append(menu.items, menuItem{"Set group 3", func() { t.setSelectedGroup([]int{2}) }})
 		} else {
-			menu.items = append(menu.items, menuItem{"Set all group 2", func() { t.setSelectedGroup([]int{2}) }})
+			menu.items = append(menu.items, menuItem{"Set all group 3", func() { t.setSelectedGroup([]int{2}) }})
 		}
 	}
 	if numNot0 > 0 || numNot1 > 0 || num2 > 0 {
 		if len(t.portals.selectedPortals) == 1 {
-			menu.items = append(menu.items, menuItem{"Set group 0,1", func() { t.setSelectedGroup([]int{0, 1}) }})
+			menu.items = append(menu.items, menuItem{"Set group 1,2", func() { t.setSelectedGroup([]int{0, 1}) }})
 		} else {
-			menu.items = append(menu.items, menuItem{"Set all group 0,1", func() { t.setSelectedGroup([]int{0, 1}) }})
+			menu.items = append(menu.items, menuItem{"Set all group 1,2", func() { t.setSelectedGroup([]int{0, 1}) }})
 		}
 	}
 	if numNot0 > 0 || numNot2 > 0 || num1 > 0 {
 		if len(t.portals.selectedPortals) == 1 {
-			menu.items = append(menu.items, menuItem{"Set group 0,2", func() { t.setSelectedGroup([]int{0, 2}) }})
+			menu.items = append(menu.items, menuItem{"Set group 1,3", func() { t.setSelectedGroup([]int{0, 2}) }})
 		} else {
-			menu.items = append(menu.items, menuItem{"Set all group 0,2", func() { t.setSelectedGroup([]int{0, 2}) }})
+			menu.items = append(menu.items, menuItem{"Set all group 1,3", func() { t.setSelectedGroup([]int{0, 2}) }})
 		}
 	}
 	if numNot1 > 0 || numNot2 > 0 || num0 > 0 {
 		if len(t.portals.selectedPortals) == 1 {
-			menu.items = append(menu.items, menuItem{"Set group 1,2", func() { t.setSelectedGroup([]int{1, 2}) }})
+			menu.items = append(menu.items, menuItem{"Set group 2,3", func() { t.setSelectedGroup([]int{1, 2}) }})
 		} else {
-			menu.items = append(menu.items, menuItem{"Set all group 1,2", func() { t.setSelectedGroup([]int{1, 2}) }})
+			menu.items = append(menu.items, menuItem{"Set all group 2,3", func() { t.setSelectedGroup([]int{1, 2}) }})
 		}
 	}
 	if numNot0 > 0 || numNot1 > 0 || numNot2 > 0 {
 		if len(t.portals.selectedPortals) == 1 {
-			menu.items = append(menu.items, menuItem{"Set group 0,1,2", func() { t.setSelectedGroup([]int{0, 1, 2}) }})
+			menu.items = append(menu.items, menuItem{"Set group 1,2,3", func() { t.setSelectedGroup([]int{0, 1, 2}) }})
 		} else {
-			menu.items = append(menu.items, menuItem{"Set all group 0,1,2", func() { t.setSelectedGroup([]int{0, 1, 2}) }})
+			menu.items = append(menu.items, menuItem{"Set all group 1,2,3", func() { t.setSelectedGroup([]int{0, 1, 2}) }})
 		}
 	}
 	return menu
