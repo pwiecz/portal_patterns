@@ -13,7 +13,9 @@ import (
 
 type MapWindow struct {
 	*fltk.GlWindow
+	parent                   *fltk.Window
 	mapDrawer                *MapDrawer
+	isMouseIn                bool
 	prevX, prevY             int
 	selectionChangedCallback func(map[string]struct{})
 	addedToSelectionCallback func(map[string]struct{})
@@ -22,11 +24,12 @@ type MapWindow struct {
 	selectionMode            SelectionMode
 }
 
-func NewMapWindow(title string, tileFetcher *osm.MapTiles) *MapWindow {
+func NewMapWindow(title string, tileFetcher *osm.MapTiles, parent *fltk.Window) *MapWindow {
 	w := &MapWindow{}
 	w.GlWindow = fltk.NewGlWindow(0, 0, 900, 870, w.drawMap)
 	w.GlWindow.SetEventHandler(w.handleEvent)
 	w.GlWindow.SetResizeHandler(w.onGlWindowResized)
+	w.parent = parent
 	w.mapDrawer = NewMapDrawer(900, 870, tileFetcher)
 	w.mapDrawer.OnMapChanged(w.redraw)
 	w.Resizable(w.GlWindow)
@@ -51,6 +54,7 @@ var RectangularSelection SelectionMode = 1
 
 func (w *MapWindow) SetSelectionMode(selectionMode SelectionMode) {
 	w.selectionMode = selectionMode
+	w.setCursor()
 }
 func (w *MapWindow) SetSelectionChangeCallback(callback func(map[string]struct{})) {
 	w.selectionChangedCallback = callback
@@ -109,6 +113,18 @@ func (w *MapWindow) ZoomIn() {
 func (w *MapWindow) ZoomOut() {
 	w.mapDrawer.ZoomOut(int(w.mapDrawer.width/2), int(w.mapDrawer.height/2))
 }
+func (w *MapWindow) setCursor() {
+	if !w.isMouseIn {
+		w.parent.SetCursor(fltk.CURSOR_DEFAULT)
+		return
+	}
+	switch w.selectionMode {
+	case NoSelection:
+		w.parent.SetCursor(fltk.CURSOR_ARROW)
+	case RectangularSelection:
+		w.parent.SetCursor(fltk.CURSOR_CROSS)
+	}
+}
 func (w *MapWindow) handleEvent(event fltk.Event) bool {
 	switch event {
 	case fltk.PUSH:
@@ -159,6 +175,8 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 					w.selectionChangedCallback(selection)
 				}
 			}
+			w.selectionMode = NoSelection
+			w.setCursor()
 			return true
 		}
 	case fltk.DRAG:
@@ -199,9 +217,16 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 			return true
 		}
 	case fltk.MOVE:
+		w.isMouseIn = true
+		w.setCursor()
 		w.mapDrawer.Hover(fltk.EventX(), fltk.EventY())
+	case fltk.ENTER:
+		w.isMouseIn = true
+		w.setCursor()
 	case fltk.LEAVE:
 		w.mapDrawer.Leave()
+		w.isMouseIn = false
+		w.setCursor()
 	}
 	return false
 }

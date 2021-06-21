@@ -64,12 +64,14 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	menuBar := fltk.NewMenuBar(0, 0, 1600, 30)
 	menuBar.AddEx("&File/&Load", fltk.CTRL+int('o'), w.onLoadPressed, 0)
 	menuBar.AddEx("&File/&Save", fltk.CTRL+int('s'), w.onSavePressed, 0)
+	menuBar.AddEx("&Edit/Select &All", fltk.CTRL+int('a'), w.onSelectAll, 0)
+	menuBar.AddEx("&Edit/&Rectangular Selection", fltk.ALT+int('r'), w.onRectangularSelection, 0)
 	menuBar.AddEx("&View/Zoom &In", fltk.CTRL+int('+'), w.onZoomIn, 0)
 	menuBar.AddEx("&View/Zoom &Out", fltk.CTRL+int('-'), w.onZoomOut, 0)
 	pack := fltk.NewPack(0, 0, 1600, 870)
 	pack.SetType(fltk.HORIZONTAL)
 	tileFetcher := osm.NewMapTiles()
-	w.mapWindow = NewMapWindow("", tileFetcher)
+	w.mapWindow = NewMapWindow("", tileFetcher, w.Window)
 	w.mapWindow.SetSelectionChangeCallback(w.OnSelectionChanged)
 	w.mapWindow.SetAddedToSelectionCallback(func(selection map[string]struct{}) {
 		selectionCopy := make(map[string]struct{})
@@ -91,7 +93,6 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 		}
 		w.onContextMenu(x, y)
 	})
-
 	rightPack := fltk.NewPack(0, 0, 700, 870)
 	rightPack.SetType(fltk.VERTICAL)
 	topButtonPack := fltk.NewPack(0, 0, 700, 30)
@@ -200,6 +201,17 @@ func (w *MainWindow) onTabSelected(selectedIx int) {
 		w.export.Deactivate()
 		w.copy.Deactivate()
 	}
+}
+
+func (w *MainWindow) onRectangularSelection() {
+	w.mapWindow.SetSelectionMode(RectangularSelection)
+}
+func (w *MainWindow) onSelectAll() {
+	selection := make(map[string]struct{})
+	for _, portal := range w.portals.portals {
+		selection[portal.Guid] = struct{}{}
+	}
+	w.OnSelectionChanged(selection)
 }
 
 func (w *MainWindow) OnSelectionChanged(selectedPortals map[string]struct{}) {
