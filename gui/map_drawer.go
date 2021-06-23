@@ -26,6 +26,7 @@ const PortalCircleRadius = 7
 var projection = s2.NewMercatorProjection(180)
 var black = imgui.Packed(color.NRGBA{0, 0, 0, 255})
 var white = imgui.Packed(color.NRGBA{255, 255, 255, 255})
+var gray = imgui.Packed(color.NRGBA{128, 128, 128, 255})
 var purple = imgui.Packed(color.NRGBA{100, 50, 225, 175})
 var transparent = imgui.Packed(color.NRGBA{0, 0, 0, 0})
 
@@ -118,9 +119,12 @@ type MapDrawer struct {
 	zoom                       int
 	zoomPow                    float64
 	x0, y0                     float64
+	selectionMode              SelectionMode
 	selX0, selY0, selX1, selY1 float32
 	mouseX, mouseY             int
 	portalUnderMouse           int
+	tooltip                    string
+	tooltipX, tooltipY         float32
 	onMapChangedCallbacks      []func()
 }
 
@@ -200,6 +204,7 @@ func (w *MapDrawer) Raise(guid string) {
 		for ord, portalIndex := range w.portalDrawOrder {
 			w.portals[portalIndex].drawOrder = ord
 		}
+		w.MapChanged()
 	})
 }
 func (w *MapDrawer) Resize(width, height int) {
@@ -272,6 +277,12 @@ func (w *MapDrawer) ZoomOut(x, y int) {
 	})
 }
 
+func (w *MapDrawer) SetSelectionMode(selectionMode SelectionMode) {
+	w.Async(func() {
+		w.selectionMode = selectionMode
+		w.MapChanged()
+	})
+}
 func (w *MapDrawer) screenPointToGeoPoint(x, y int) s2.Point {
 	mapX := (float64(x) + w.x0) / 256 / w.zoomPow
 	mapY := (float64(y) + w.y0) / 256 / w.zoomPow
@@ -283,6 +294,20 @@ func (w *MapDrawer) screenPointToGeoPoint(x, y int) s2.Point {
 
 func (w *MapDrawer) Hover(x, y int) {
 	w.Async(func() {
+		if x >= 20 && x < 60 && y >= 20 && y < 60 {
+			if w.portalUnderMouse != -1 {
+				w.portalUnderMouse = 1
+			}
+			w.tooltip = "Rectangular selection"
+			w.tooltipX, w.tooltipY = 65, 30
+			w.MapChanged()
+			return
+		} else {
+			if w.tooltip != "" {
+				w.tooltip = ""
+				w.MapChanged()
+			}
+		}
 		w.mouseX, w.mouseY = x, y
 		if len(w.portals) == 0 {
 			return
@@ -354,6 +379,7 @@ func (w *MapDrawer) Update() {
 		callback := w.taskQueue.Dequeue()
 		callback()
 	}
+	gl.ClearColor(0.75, 0.75, 0.75, 1.0)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	if err := gl.GetError(); err != gl.NO_ERROR {
 		log.Fatalln("error on start", err)
@@ -362,7 +388,9 @@ func (w *MapDrawer) Update() {
 	w.drawAllPortalsImgui()
 	w.drawAllPathsImgui()
 	w.drawPortalLabelImgui()
+	w.drawTooltip()
 	w.drawSelection()
+	w.drawSelectionButton()
 	w.drawCopyrightLabel()
 }
 
@@ -463,10 +491,24 @@ func (w *MapDrawer) drawPortalLabelImgui() {
 		labelPosY = y + 5 + textSize.Y + 4
 	}
 	labelPos := imgui.Vec2{X: labelPosX, Y: labelPosY - 20}
-	white := imgui.Packed(color.NRGBA{255, 255, 255, 255})
 	drawList.AddRectFilled(labelPos, labelPos.Plus(imgui.Vec2{X: textSize.X + 2*LabelXMargin, Y: textSize.Y}), white)
 	textPos := labelPos.Plus(imgui.Vec2{X: LabelXMargin, Y: 0})
 	drawList.AddText(textPos, black, portal.name)
+	imgui.Render()
+	size := [2]float32{w.width, w.height}
+	w.imguiRenderer.Render(size, size, imgui.RenderedDrawData())
+}
+func (w *MapDrawer) drawTooltip() {
+	if w.tooltip == "" {
+		return
+	}
+	imgui.NewFrame()
+	drawList := imgui.BackgroundDrawList()
+	textSize := imgui.CalcTextSize(w.tooltip, false, 0)
+	tooltipPos := imgui.Vec2{X: w.tooltipX, Y: w.tooltipY}
+	drawList.AddRectFilled(tooltipPos, tooltipPos.Plus(imgui.Vec2{X: textSize.X + 10, Y: textSize.Y + 6}), gray)
+	textPos := tooltipPos.Plus(imgui.Vec2{X: 5, Y: 3})
+	drawList.AddText(textPos, black, w.tooltip)
 	imgui.Render()
 	size := [2]float32{w.width, w.height}
 	w.imguiRenderer.Render(size, size, imgui.RenderedDrawData())
@@ -515,6 +557,22 @@ func (w *MapDrawer) drawAllPathsImgui() {
 			y1 := float32(path[i].Y*w.zoomPow*256 - w.y0)
 			drawList.AddLineV(imgui.Vec2{X: x0, Y: y0}, imgui.Vec2{X: x1, Y: y1}, purple, 3)
 		}
+	}
+	imgui.Render()
+	size := [2]float32{w.width, w.height}
+	w.imguiRenderer.Render(size, size, imgui.RenderedDrawData())
+}
+func (w *MapDrawer) drawSelectionButton() {
+	imgui.NewFrame()
+	drawList := imgui.BackgroundDrawList()
+	if w.selectionMode == RectangularSelection {
+		drawList.AddRectFilledV(imgui.Vec2{X: 20, Y: 20}, imgui.Vec2{X: 60, Y: 60}, black, 5, imgui.DrawCornerFlagsAll)
+		drawList.AddRectV(imgui.Vec2{X: 30, Y: 30}, imgui.Vec2{X: 50, Y: 50}, white, 0, imgui.DrawCornerFlagsAll, 2)
+		drawList.AddRectFilled(imgui.Vec2{X: 33, Y: 33}, imgui.Vec2{X: 47, Y: 47}, white)
+	} else {
+		drawList.AddRectFilledV(imgui.Vec2{X: 20, Y: 20}, imgui.Vec2{X: 60, Y: 60}, white, 5, imgui.DrawCornerFlagsAll)
+		drawList.AddRectV(imgui.Vec2{X: 30, Y: 30}, imgui.Vec2{X: 50, Y: 50}, black, 0, imgui.DrawCornerFlagsAll, 2)
+		drawList.AddRectFilled(imgui.Vec2{X: 33, Y: 33}, imgui.Vec2{X: 47, Y: 47}, black)
 	}
 	imgui.Render()
 	size := [2]float32{w.width, w.height}

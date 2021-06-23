@@ -54,6 +54,7 @@ var RectangularSelection SelectionMode = 1
 
 func (w *MapWindow) SetSelectionMode(selectionMode SelectionMode) {
 	w.selectionMode = selectionMode
+	w.mapDrawer.SetSelectionMode(selectionMode)
 	w.setCursor()
 }
 func (w *MapWindow) SetSelectionChangeCallback(callback func(map[string]struct{})) {
@@ -136,6 +137,11 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 		return true
 	case fltk.RELEASE:
 		if w.selectionMode == NoSelection && fltk.EventButton() == fltk.LeftMouse && fltk.EventIsClick() {
+			x, y := fltk.EventX(), fltk.EventY()
+	 		if x >= 20 && x < 60 && y >= 20 && y < 60 {
+				w.SetSelectionMode(RectangularSelection)
+				return true
+			}
 			if w.mapDrawer.portalUnderMouse >= 0 {
 				selection := make(map[string]struct{})
 				selection[w.mapDrawer.portals[w.mapDrawer.portalUnderMouse].guid] = struct{}{}
@@ -175,8 +181,7 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 					w.selectionChangedCallback(selection)
 				}
 			}
-			w.selectionMode = NoSelection
-			w.setCursor()
+			w.SetSelectionMode(NoSelection)
 			return true
 		}
 	case fltk.DRAG:
