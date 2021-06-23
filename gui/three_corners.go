@@ -92,7 +92,7 @@ func (t *threeCornersTab) portalLabel(guid string) string {
 	groups := t.portalGroups(guid)
 	groupStrs := []string{}
 	for _, group := range groups {
-		groupStrs = append(groupStrs, strconv.Itoa(group))
+		groupStrs = append(groupStrs, strconv.Itoa(group+1))
 	}
 	return "Groups: " + strings.Join(groupStrs, ",")
 }
@@ -134,6 +134,8 @@ func (t *threeCornersTab) setSelectedGroup(groups []int) {
 	for guid := range t.portals.selectedPortals {
 		if len(groups) > 0 {
 			delete(t.portals.disabledPortals, guid)
+		} else {
+			t.portals.disabledPortals[guid] = struct{}{}
 		}
 		t.portalsNot0[guid] = struct{}{}
 		t.portalsNot1[guid] = struct{}{}
@@ -152,11 +154,26 @@ func (t *threeCornersTab) setSelectedGroup(groups []int) {
 	}
 }
 
+func (t *threeCornersTab) disableSelectedIn0123() {
+	for guid := range t.portals.selectedPortals {
+		_, isNot0 := t.portalsNot0[guid]
+		_, isNot1 := t.portalsNot1[guid]
+		_, isNot2 := t.portalsNot2[guid]
+		if !isNot0 && !isNot1 && !isNot2 {
+			t.portalsNot0[guid] = struct{}{}
+			t.portalsNot1[guid] = struct{}{}
+			t.portalsNot2[guid] = struct{}{}
+			t.portals.disabledPortals[guid] = struct{}{}
+		}
+	}
+}
+
 func (t *threeCornersTab) contextMenu() *menu {
 	var aSelectedGUID string
 	numSelectedEnabled := 0
 	numSelectedDisabled := 0
 	num0, num1, num2 := 0, 0, 0
+	num012 := 0
 	numNot0, numNot1, numNot2 := 0, 0, 0
 	for guid := range t.portals.selectedPortals {
 		aSelectedGUID = guid
@@ -168,20 +185,26 @@ func (t *threeCornersTab) contextMenu() *menu {
 		} else {
 			numSelectedEnabled++
 		}
-		if _, ok := t.portalsNot0[guid]; ok {
+		_, isNot0 := t.portalsNot0[guid]
+		_, isNot1 := t.portalsNot1[guid]
+		_, isNot2 := t.portalsNot2[guid]
+		if isNot0 {
 			numNot0++
 		} else {
 			num0++
 		}
-		if _, ok := t.portalsNot1[guid]; ok {
+		if isNot1 {
 			numNot1++
 		} else {
 			num1++
 		}
-		if _, ok := t.portalsNot2[guid]; ok {
+		if isNot2 {
 			numNot2++
 		} else {
 			num2++
+		}
+		if !isNot0 && !isNot1 && !isNot2 {
+			num012++
 		}
 	}
 	menu := &menu{}
@@ -251,6 +274,11 @@ func (t *threeCornersTab) contextMenu() *menu {
 			menu.items = append(menu.items, menuItem{"Set group 1,2,3", func() { t.setSelectedGroup([]int{0, 1, 2}) }})
 		} else {
 			menu.items = append(menu.items, menuItem{"Set all group 1,2,3", func() { t.setSelectedGroup([]int{0, 1, 2}) }})
+		}
+	}
+	if num012 > 0 {
+		if len(t.portals.selectedPortals) > 1 {
+			menu.items = append(menu.items, menuItem{"Disable all in group 1,2,3", t.disableSelectedIn0123})
 		}
 	}
 	return menu
