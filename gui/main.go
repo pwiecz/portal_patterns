@@ -58,6 +58,7 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	w.Window = fltk.NewWindow(1600, 900)
 	w.configuration = conf
 	w.portals = NewPortals()
+	w.SetCallback(w.onClose)
 	w.Begin()
 	mainPack := fltk.NewPack(0, 0, 1600, 900)
 	mainPack.SetType(fltk.VERTICAL)
@@ -160,6 +161,14 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	w.End()
 	w.Resizable(mainPack)
 	return w
+}
+
+func (w *MainWindow) onClose() {
+	if fltk.EventType() == fltk.SHORTCUT && fltk.EventKey() == fltk.ESCAPE {
+		// Don't close the main window when user just presses Escape.
+		return
+	}
+	w.Hide()
 }
 
 func (w *MainWindow) selectedPattern() pattern {
