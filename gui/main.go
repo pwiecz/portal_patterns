@@ -275,7 +275,7 @@ func (w *MainWindow) onZoomOut() {
 	w.mapWindow.ZoomOut()
 }
 func (w *MainWindow) onLoadPressed() {
-	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "PP files (*.pp)", fltk.SINGLE, "Select project file")
+	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "PP files (*.pp)", fltk.FileChooser_SINGLE, "Select project file")
 	fileChooser.SetPreview(false)
 	defer fileChooser.Destroy()
 	fileChooser.Popup()
@@ -298,7 +298,7 @@ func (w *MainWindow) onLoadPressed() {
 	w.SetLabel(filepath.Base(filename))
 }
 func (w *MainWindow) onSavePressed() {
-	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "PP files (*.pp)", fltk.CREATE, "Select project file")
+	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "PP files (*.pp)", fltk.FileChooser_CREATE, "Select project file")
 	fileChooser.SetPreview(false)
 	defer fileChooser.Destroy()
 	fileChooser.Popup()
@@ -333,7 +333,7 @@ func (w *MainWindow) onSavePressed() {
 	w.SetLabel(filepath.Base(filename))
 }
 func (w *MainWindow) onAddPortalsPressed() {
-	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "JSON files (*.json)\tCSV files (*.csv)", fltk.MULTI, "Select portals file")
+	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "JSON files (*.json)\tCSV files (*.csv)", fltk.FileChooser_MULTI, "Select portals file")
 	fileChooser.SetPreview(false)
 	defer fileChooser.Destroy()
 	fileChooser.Popup()
@@ -468,7 +468,7 @@ func (w *MainWindow) onSearchDone() {
 	}
 }
 func (w *MainWindow) onExportPressed() {
-	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "JSON files (*.json)", fltk.CREATE, "Select draw tools file")
+	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "JSON files (*.json)", fltk.FileChooser_CREATE, "Select draw tools file")
 	fileChooser.SetPreview(false)
 	defer fileChooser.Destroy()
 	fileChooser.Popup()

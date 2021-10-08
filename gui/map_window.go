@@ -29,6 +29,7 @@ func NewMapWindow(title string, tileFetcher *osm.MapTiles, parent *fltk.Window) 
 	w.GlWindow = fltk.NewGlWindow(0, 0, 900, 870, w.drawMap)
 	w.GlWindow.SetEventHandler(w.handleEvent)
 	w.GlWindow.SetResizeHandler(w.onGlWindowResized)
+	w.GlWindow.SetMode(fltk.ALPHA | fltk.MULTISAMPLE | fltk.OPENGL3)
 	w.parent = parent
 	w.mapDrawer = NewMapDrawer(900, 870, tileFetcher)
 	w.mapDrawer.OnMapChanged(w.redraw)
