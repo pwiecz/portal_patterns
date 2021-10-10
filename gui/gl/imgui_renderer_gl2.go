@@ -60,9 +60,6 @@ func (renderer *OpenGL2s) Dispose() {
 func (renderer *OpenGL2s) PreRender(clearColor [3]float32) {
 	gl.ClearColor(clearColor[0], clearColor[1], clearColor[2], 1.0)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
-	if glerror := gl.GetError(); glerror != gl.NO_ERROR {
-		panic(glerror)
-	}
 }
 
 // Render translates the ImGui draw data to OpenGL3 commands.
@@ -222,10 +219,6 @@ func (renderer *OpenGL2s) Render(displaySize [2]float32, framebufferSize [2]floa
 	gl.PolygonMode(gl.FRONT_AND_BACK, uint32(lastPolygonMode[0]))
 	gl.Viewport(lastViewport[0], lastViewport[1], lastViewport[2], lastViewport[3])
 	gl.Scissor(lastScissorBox[0], lastScissorBox[1], lastScissorBox[2], lastScissorBox[3])
-
-	if glerror := gl.GetError(); glerror != gl.NO_ERROR {
-		panic(glerror)
-	}
 }
 
 func (renderer *OpenGL2s) createDeviceObjects() {
@@ -360,9 +353,6 @@ func (renderer *OpenGL2s) destroyFontsTexture() {
 		gl.DeleteTextures(1, &renderer.fontTexture)
 		imgui.CurrentIO().Fonts().SetTextureID(0)
 		renderer.fontTexture = 0
-	}
-	if glerror := gl.GetError(); glerror != gl.NO_ERROR {
-		panic(glerror)
 	}
 }
 
