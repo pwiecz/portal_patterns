@@ -442,14 +442,16 @@ func (w *MainWindow) onSearchPressed() {
 	w.export.Deactivate()
 	w.copy.Deactivate()
 	w.portalList.Deactivate()
+	w.progress.SetValue(0)
 	selectedPattern := w.selectedPattern()
 	selectedPattern.onSearch(w.progressCallback, w.onSearchDone)
 }
 func (w *MainWindow) progressCallback(val, max int) {
 	if fltk.Lock() {
-		defer fltk.Unlock()
 		w.progress.SetMaximum(float64(max))
 		w.progress.SetValue(float64(val))
+		fltk.Unlock()
+		fltk.AwakeNullMessage()
 	}
 }
 func (w *MainWindow) onSearchDone() {
