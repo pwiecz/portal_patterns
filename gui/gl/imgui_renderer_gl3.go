@@ -311,7 +311,7 @@ func (renderer *OpenGL3) createFontsTexture() {
 	glyphRangesBuilder.Add(0x100, 0x17f)
 	glyphRanges := glyphRangesBuilder.Build()
 	fonts.AddFontFromFileTTFV(font.Filename, 20, imgui.DefaultFontConfig, glyphRanges.GlyphRanges)
-	image := fonts.TextureDataAlpha8()
+	image := fonts.TextureDataRGBA32()
 
 	// Upload texture to graphics system
 	var lastTexture int32
@@ -321,8 +321,8 @@ func (renderer *OpenGL3) createFontsTexture() {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RED, int32(image.Width), int32(image.Height),
-		0, gl.RED, gl.UNSIGNED_BYTE, image.Pixels)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(image.Width), int32(image.Height),
+		0, gl.RGBA, gl.UNSIGNED_BYTE, image.Pixels)
 
 	// Store our identifier
 	fonts.SetTextureID(imgui.TextureID(renderer.fontTexture))

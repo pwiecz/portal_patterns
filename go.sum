@@ -17,8 +17,6 @@ github.com/inkyblackness/imgui-go/v4 v4.3.0 h1:iyAzqWXq/dG5+6ckDPhGivtrIo6AywGQM
 github.com/inkyblackness/imgui-go/v4 v4.3.0/go.mod h1:g8SAGtOYUP7rYaOB2AsVKCEHmPMDmJKgt4z6d+flhb0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/pwiecz/go-fltk v0.0.0-20211008195724-3bcf5900b087 h1:s/0XbwbpasEVaPTmA9O43pWDrd9KszhvRApikEsZ5X4=
-github.com/pwiecz/go-fltk v0.0.0-20211008195724-3bcf5900b087/go.mod h1:uMK5daOr9p+ba2BPs5QadbfaqqrHR5TGj13yWGsAsmw=
 github.com/pwiecz/go-fltk v0.0.0-20211010195722-22bed8a7e173 h1:S5erlPNMYAGEbGExzSrBLMFRgPsJVWlLlhkIWwy6eps=
 github.com/pwiecz/go-fltk v0.0.0-20211010195722-22bed8a7e173/go.mod h1:uMK5daOr9p+ba2BPs5QadbfaqqrHR5TGj13yWGsAsmw=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
