@@ -4,7 +4,7 @@ import (
 	"image/color"
 	"log"
 
-	"github.com/go-gl/gl/v2.1/gl"
+	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
 	"github.com/pwiecz/portal_patterns/gui/osm"
@@ -22,6 +22,7 @@ type MapWindow struct {
 	windowClosedCallback     func()
 	rightClickCallback       func(string, int, int)
 	selectionMode            SelectionMode
+	firstShow                bool
 }
 
 func NewMapWindow(title string, tileFetcher *osm.MapTiles, parent *fltk.Window) *MapWindow {
@@ -29,10 +30,11 @@ func NewMapWindow(title string, tileFetcher *osm.MapTiles, parent *fltk.Window) 
 	w.GlWindow = fltk.NewGlWindow(0, 0, 900, 870, w.drawMap)
 	w.GlWindow.SetEventHandler(w.handleEvent)
 	w.GlWindow.SetResizeHandler(w.onGlWindowResized)
-	w.GlWindow.SetMode(fltk.ALPHA | fltk.MULTISAMPLE | fltk.OPENGL3)
+	w.GlWindow.SetMode(fltk.ALPHA | fltk.DOUBLE | fltk.MULTISAMPLE | fltk.OPENGL3)
 	w.parent = parent
 	w.mapDrawer = NewMapDrawer(900, 870, tileFetcher)
 	w.mapDrawer.OnMapChanged(w.redraw)
+	w.firstShow = true
 	w.Resizable(w.GlWindow)
 	return w
 }
@@ -96,16 +98,10 @@ func (w *MapWindow) ScrollToPortal(guid string) {
 	w.mapDrawer.ScrollToPortal(guid)
 }
 func (w *MapWindow) drawMap() {
-	if !w.Valid() {
-		if err := gl.Init(); err != nil {
-			log.Fatal("Cannot initialize OpenGL", err)
-		}
-	}
 	if !w.ContextValid() {
 		_, _, width, height := fltk.ScreenWorkArea(0 /* main screen */)
 		w.mapDrawer.Init(width, height)
 	}
-
 	w.mapDrawer.Update()
 }
 
@@ -139,7 +135,7 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 	case fltk.RELEASE:
 		if w.selectionMode == NoSelection && fltk.EventButton() == fltk.LeftMouse && fltk.EventIsClick() {
 			x, y := fltk.EventX(), fltk.EventY()
-	 		if x >= 20 && x < 60 && y >= 20 && y < 60 {
+			if x >= 20 && x < 60 && y >= 20 && y < 60 {
 				w.SetSelectionMode(RectangularSelection)
 				return true
 			}
@@ -233,6 +229,14 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 		w.mapDrawer.Leave()
 		w.isMouseIn = false
 		w.setCursor()
+	case fltk.SHOW:
+		if w.firstShow && w.IsShown() {
+			w.firstShow = false
+			w.MakeCurrent()
+			if err := gl.Init(); err != nil {
+				log.Fatal("Cannot initialize OpenGL", err)
+			}
+		}
 	}
 	return false
 }
