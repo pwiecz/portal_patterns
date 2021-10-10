@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"log"
 	"math"
 	"sync"
 	"time"
 
-	"github.com/go-gl/gl/v2.1/gl"
+	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/golang/geo/r2"
 	"github.com/golang/geo/s2"
 	"github.com/golang/groupcache/lru"
@@ -102,7 +101,7 @@ func (c *lockedTileCache) Add(coord osm.TileCoord, img image.Image) {
 type glTexture uint32
 type MapDrawer struct {
 	imguiContext               *imgui.Context
-	imguiRenderer              *guigl.OpenGL2
+	imguiRenderer              *guigl.OpenGL3
 	initialized                bool
 	tileCache                  *lockedTileCache
 	mapTiles                   map[osm.TileCoord]glTexture
@@ -363,14 +362,13 @@ func (w *MapDrawer) Init(screenWidth, screenHeight int) {
 	}
 	context := imgui.CreateContext(nil)
 	imgui.CurrentIO().SetDisplaySize(imgui.Vec2{X: float32(screenWidth), Y: float32(screenHeight)})
-	renderer, err := guigl.NewOpenGL2(imgui.CurrentIO())
+	renderer, err := guigl.NewOpenGL3(imgui.CurrentIO())
 	if err != nil {
 		panic(err)
 	}
 
 	w.imguiContext = context
 	w.imguiRenderer = renderer
-	//	w.InitOpenGL()
 	w.onNewPortals(nil)
 	w.initialized = true
 }
@@ -381,9 +379,6 @@ func (w *MapDrawer) Update() {
 	}
 	gl.ClearColor(0.75, 0.75, 0.75, 1.0)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	if err := gl.GetError(); err != gl.NO_ERROR {
-		log.Fatalln("error on start", err)
-	}
 	w.drawAllTilesImgui()
 	w.drawAllPortalsImgui()
 	w.drawAllPathsImgui()
@@ -731,15 +726,12 @@ func newTexture(img image.Image) glTexture {
 	draw.Draw(rgba, rgba.Bounds(), img, image.Point{0, 0}, draw.Src)
 
 	var texture uint32
-	gl.Enable(gl.TEXTURE_2D)
 	gl.GenTextures(1, &texture)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
-
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
 		0,
