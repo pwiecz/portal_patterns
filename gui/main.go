@@ -349,6 +349,7 @@ func (w *MainWindow) onAddPortalsPressed() {
 func (w *MainWindow) onPortalsFileSelected(filename string) {
 	portalsDir, _ := filepath.Split(filename)
 	w.configuration.PortalsDirectory = portalsDir
+	configuration.SaveConfiguration(w.configuration)
 	portals, err := lib.ParseFile(filename)
 	if err != nil {
 		fltk.MessageBox("Error loading", "Couldn't read portals from file "+filename+"\n"+err.Error())
