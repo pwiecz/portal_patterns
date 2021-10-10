@@ -337,9 +337,6 @@ func (renderer *OpenGL3) destroyFontsTexture() {
 		imgui.CurrentIO().Fonts().SetTextureID(0)
 		renderer.fontTexture = 0
 	}
-	if glerror := gl.GetError(); glerror != gl.NO_ERROR {
-		panic(glerror)
-	}
 }
 
 func (renderer *OpenGL3) invalidateDeviceObjects() {
