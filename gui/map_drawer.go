@@ -663,9 +663,7 @@ func (w *MapDrawer) fetchTile(coord osm.TileCoord) {
 			return
 		}
 		if !errors.Is(err, osm.ErrBusy) {
-			if !errors.Is(err, osm.ErrAlreadyRequested) {
-				fmt.Println("fetching error:", err)
-			}
+			fmt.Println("fetching error:", err)
 			return
 		}
 		if !w.missingTiles.Contains(coord) {

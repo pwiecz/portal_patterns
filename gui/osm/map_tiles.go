@@ -20,10 +20,13 @@ const (
 )
 
 var ErrBusy = errors.New("Too many simultaneous requests")
-var ErrAlreadyRequested = errors.New("Tile already requested")
 
 type TileCoord struct {
 	X, Y, Zoom int
+}
+type requestResult struct {
+	img image.Image
+	err error
 }
 
 type empty struct{}
@@ -31,7 +34,10 @@ type MapTiles struct {
 	cacheDir              string
 	fetchSemaphore        chan empty
 	requestsInFlightMutex sync.Mutex
+	requestsInFlightCond  *sync.Cond
 	requestsInFlight      map[TileCoord]empty
+	requestResults        map[TileCoord]requestResult
+	numWaitingForResult   map[TileCoord]int
 }
 
 func NewMapTiles() *MapTiles {
@@ -48,11 +54,14 @@ func NewMapTiles() *MapTiles {
 	for i := 0; i < MAX_DOWNLOAD_THREADS; i++ {
 		semaphore <- e
 	}
-	requestsInFlight := make(map[TileCoord]empty)
-	return &MapTiles{
-		cacheDir:         cacheDir,
-		fetchSemaphore:   semaphore,
-		requestsInFlight: requestsInFlight}
+	mapTiles := &MapTiles{
+		cacheDir:            cacheDir,
+		fetchSemaphore:      semaphore,
+		requestsInFlight:    make(map[TileCoord]empty),
+		requestResults:      make(map[TileCoord]requestResult),
+		numWaitingForResult: make(map[TileCoord]int)}
+	mapTiles.requestsInFlightCond = sync.NewCond(&mapTiles.requestsInFlightMutex)
+	return mapTiles
 }
 
 func (m *MapTiles) GetTile(coord TileCoord) (image.Image, error) {
@@ -74,8 +83,19 @@ func (m *MapTiles) GetTile(coord TileCoord) (image.Image, error) {
 
 	m.requestsInFlightMutex.Lock()
 	if _, ok := m.requestsInFlight[coord]; ok {
-		m.requestsInFlightMutex.Unlock()
-		return nil, ErrAlreadyRequested
+		m.numWaitingForResult[coord] += 1
+		for {
+			m.requestsInFlightCond.Wait()
+			if result, ok := m.requestResults[coord]; ok {
+				m.numWaitingForResult[coord] -= 1
+				if m.numWaitingForResult[coord] == 0 {
+					delete(m.numWaitingForResult, coord)
+					delete(m.requestResults, coord)
+				}
+				defer m.requestsInFlightMutex.Unlock()
+				return result.img, result.err
+			}
+		}
 	}
 	m.requestsInFlight[coord] = empty{}
 	m.requestsInFlightMutex.Unlock()
@@ -83,6 +103,10 @@ func (m *MapTiles) GetTile(coord TileCoord) (image.Image, error) {
 	img, err := m.getTileSlow(coord)
 
 	m.requestsInFlightMutex.Lock()
+	if m.numWaitingForResult[coord] > 0 {
+		m.requestResults[coord] = requestResult{img: img, err: err}
+		m.requestsInFlightCond.Broadcast()
+	}
 	delete(m.requestsInFlight, coord)
 	m.requestsInFlightMutex.Unlock()
 
