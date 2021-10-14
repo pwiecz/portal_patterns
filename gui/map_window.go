@@ -43,6 +43,7 @@ func (w *MapWindow) redraw() {
 	if fltk.Lock() {
 		defer fltk.Unlock()
 		w.Redraw()
+		fltk.AwakeNullMessage()
 	}
 }
 func (w *MapWindow) Destroy() {
@@ -197,13 +198,16 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 			}
 		}
 	case fltk.MOUSEWHEEL:
+		// For some reason on Windows that's the most precise way
+		// to get the actual mouse position for this event.
+		x, y := fltk.EventXRoot()-w.XRoot(), fltk.EventYRoot()-w.YRoot()
 		dy := fltk.EventDY()
 		if dy < 0 {
-			w.mapDrawer.ZoomIn(fltk.EventX(), fltk.EventY())
+			w.mapDrawer.ZoomIn(x, y)
 			w.redraw()
 			return true
 		} else if dy > 0 {
-			w.mapDrawer.ZoomOut(fltk.EventX(), fltk.EventY())
+			w.mapDrawer.ZoomOut(x, y)
 			w.redraw()
 			return true
 		}
