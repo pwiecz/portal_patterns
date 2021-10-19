@@ -104,6 +104,10 @@ func (t *homogeneousTab) onSearch(progressFunc func(int, int), onSearchDone func
 		options = append(options, lib.HomogeneousRandom{Rand: rand})
 	}
 	portals := t.enabledPortals()
+	disabledPortals := t.disabledPortals()
+	if len(disabledPortals) > 0 {
+		options = append(options, lib.HomogeneousDisabledPortals(disabledPortals))
+	}
 	corners := []int{}
 	for i, portal := range portals {
 		if _, ok := t.cornerPortals[portal.Guid]; ok {

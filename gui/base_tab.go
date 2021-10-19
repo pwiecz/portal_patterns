@@ -81,6 +81,16 @@ func (t *baseTab) enabledPortals() []lib.Portal {
 	return portals
 }
 
+func (t *baseTab) disabledPortals() []lib.Portal {
+	portals := []lib.Portal{}
+	for _, portal := range t.portals.portals {
+		if _, ok := t.portals.disabledPortals[portal.Guid]; ok {
+			portals = append(portals, portal)
+		}
+	}
+	return portals
+}
+
 func portalsToPoints(portals []lib.Portal) []s2.Point {
 	points := make([]s2.Point, 0, len(portals))
 	for _, portal := range portals {

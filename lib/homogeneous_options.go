@@ -160,6 +160,15 @@ func (h HomogeneousPure) apply2(params *homogeneous2Params) {
 }
 func (h HomogeneousPure) applyPure(params *homogeneousPureParams) {}
 
+type HomogeneousDisabledPortals []Portal
+
+func (h HomogeneousDisabledPortals) requires2() bool { return false }
+func (h HomogeneousDisabledPortals) apply(params *homogeneousParams) {}
+func (h HomogeneousDisabledPortals) apply2(params* homogeneous2Params) {}
+func (h HomogeneousDisabledPortals) applyPure(params *homogeneousPureParams) {
+	params.disabledPortals = portalsToPortalData(h)
+}
+
 type homogeneousParams struct {
 	maxDepth           int
 	topLevelScorer     homogeneousTopLevelScorer
@@ -196,6 +205,7 @@ func defaultHomogeneous2Params(numPortals int) homogeneous2Params {
 }
 
 type homogeneousPureParams struct {
+	disabledPortals    []portalData
 	maxDepth           int
 	scorer             homogeneousPureScorer
 	fixedCornerIndices []int
