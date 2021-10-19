@@ -80,7 +80,7 @@ func (t *herringboneTab) portalColor(guid string) (color.Color, color.Color) {
 
 func (t *herringboneTab) enableSelectedPortals() {
 	for guid := range t.portals.selectedPortals {
-		delete(t.basePortals, guid)
+		delete(t.portals.disabledPortals, guid)
 	}
 }
 
