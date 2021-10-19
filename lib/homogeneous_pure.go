@@ -48,16 +48,18 @@ func sortHomogeneousPureNodesByDistance(nodes []homogeneousPureNode) {
 
 type lvlNTriangleQuery struct {
 	portals                      []portalData
+	disabledPortals              []portalData
 	expectedNumPortalsInTriangle int
 }
 
-func newLvlNTriangleQuery(portals []portalData, level int) *lvlNTriangleQuery {
+func newLvlNTriangleQuery(portals []portalData, disabledPortals []portalData, level int) *lvlNTriangleQuery {
 	expectedNumPortalsInTriangle := 0
 	for i := 1; i < level; i++ {
 		expectedNumPortalsInTriangle = expectedNumPortalsInTriangle*3 + 1
 	}
 	return &lvlNTriangleQuery{
 		portals:                      portals,
+		disabledPortals:              disabledPortals,
 		expectedNumPortalsInTriangle: expectedNumPortalsInTriangle,
 	}
 }
@@ -78,11 +80,13 @@ func lvlNTriangleWorker(
 	}
 
 	portalsLeftOfLine := []homogeneousPureNode{}
+	disabledPortalsLeftOfLine := []homogeneousPureNode{}
 	portalsInTriangle := []portalIndex{}
 	for req := range requestChannel {
 		req.third = req.third[:0]
 		p0, p1 := req.p0, req.p1
 		portalsLeftOfLine = portalsLeftOfLine[:0]
+		disabledPortalsLeftOfLine = disabledPortalsLeftOfLine[:0]
 		p01, p10 := normalizedVector(p0.LatLng, p1.LatLng), normalizedVector(p1.LatLng, p0.LatLng)
 		distQuery := newDistanceQuery(p0.LatLng, p1.LatLng)
 		for _, p2 := range q.portals {
@@ -100,12 +104,30 @@ func lvlNTriangleWorker(
 				p2.Index, a0, a1, dist})
 		}
 		sortHomogeneousPureNodesByDistance(portalsLeftOfLine)
+		for _, dp := range q.disabledPortals {
+			if !s2.Sign(dp.LatLng, p0.LatLng, p1.LatLng) {
+				continue
+			}
+
+			a0 := p01.Dot(normalizedVector(p1.LatLng, dp.LatLng)) // acos of angle p0,p1,dp
+			a1 := p10.Dot(normalizedVector(p0.LatLng, dp.LatLng)) // acos of angle p1,p0,dp
+			dist := distQuery.ChordAngle(dp.LatLng)
+			disabledPortalsLeftOfLine = append(disabledPortalsLeftOfLine, homogeneousPureNode{
+				dp.Index, a0, a1, dist})
+		}
+	thirdPortalLoop:
 		for k, node := range portalsLeftOfLine {
 			// Emit each triangle only once to make sure we have consistent data,
 			// even in the face of duplicate or colinear portals.
 			// So emit triangle only if p0 is the smallest of its vertices.
 			if node.index <= p0.Index {
 				continue
+			}
+			for _, disabledPortal := range disabledPortalsLeftOfLine {
+				// Triangle contains a disabled portal so cannot make a pure field.
+				if disabledPortal.start <= node.start && disabledPortal.end <= node.end && disabledPortal.distance <= node.distance {
+					break thirdPortalLoop
+				}
 			}
 			portalsInTriangle = portalsInTriangle[:0]
 			numPortalsInTriangle := 0
@@ -187,7 +209,7 @@ func findAllLvlNTriangles(portals []portalData, params homogeneousPureParams, le
 	responseChannel := make(chan lvlNTriangleRequest, params.numWorkers)
 	var wg sync.WaitGroup
 	wg.Add(params.numWorkers)
-	q := newLvlNTriangleQuery(portals, level)
+	q := newLvlNTriangleQuery(portals, params.disabledPortals, level)
 	for i := 0; i < params.numWorkers; i++ {
 		go lvlNTriangleWorker(q, requestChannel, responseChannel, &wg)
 	}

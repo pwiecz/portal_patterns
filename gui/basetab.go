@@ -287,3 +287,13 @@ func (t *baseTab) enableSelectedPortals() {
 		t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
 	}
 }
+
+func (t *baseTab) getDisabledPortals() []lib.Portal {
+	portals := []lib.Portal{}
+	for _, portal := range t.portals {
+		if _, ok := t.disabledPortals[portal.Guid]; ok {
+			portals = append(portals, portal)
+		}
+	}
+	return portals
+}

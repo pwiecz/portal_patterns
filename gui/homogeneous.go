@@ -176,6 +176,10 @@ func (t *homogeneousTab) search() {
 	}
 	options = append(options, lib.HomogeneousProgressFunc(t.onProgress))
 	options = append(options, lib.HomogeneousFixedCornerIndices(corners))
+	disabledPortals := t.getDisabledPortals()
+	if len(disabledPortals) > 0 {
+		options = append(options, lib.HomogeneousDisabledPortals(disabledPortals))
+	}
 
 	t.solutionLabel.SetText("")
 
