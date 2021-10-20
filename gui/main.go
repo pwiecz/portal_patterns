@@ -65,8 +65,9 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	menuBar := fltk.NewMenuBar(0, 0, 1600, 30)
 	menuBar.AddEx("&File/&Load", fltk.CTRL+int('o'), w.onLoadPressed, 0)
 	menuBar.AddEx("&File/&Save", fltk.CTRL+int('s'), w.onSavePressed, 0)
-	menuBar.AddEx("&Edit/Select &All", fltk.CTRL+int('a'), w.onSelectAll, 0)
-	menuBar.AddEx("&Edit/&Rectangular Selection", fltk.ALT+int('r'), w.onRectangularSelection, 0)
+	menuBar.AddEx("&Select/Select &All", fltk.CTRL+int('a'), w.onSelectAll, 0)
+	menuBar.AddEx("&Select/&Invert", fltk.CTRL+int('i'), w.onInvertSelection, 0)
+	menuBar.AddEx("&Select/&Rectangular Selection", fltk.ALT+int('r'), w.onRectangularSelection, 0)
 	menuBar.AddEx("&View/Zoom &In", fltk.CTRL+int('+'), w.onZoomIn, 0)
 	menuBar.AddEx("&View/Zoom &Out", fltk.CTRL+int('-'), w.onZoomOut, 0)
 	pack := fltk.NewPack(0, 0, 1600, 870)
@@ -219,6 +220,15 @@ func (w *MainWindow) onSelectAll() {
 	selection := make(map[string]struct{})
 	for _, portal := range w.portals.portals {
 		selection[portal.Guid] = struct{}{}
+	}
+	w.OnSelectionChanged(selection)
+}
+func (w *MainWindow) onInvertSelection() {
+	selection := make(map[string]struct{})
+	for _, portal := range w.portals.portals {
+		if _, ok := w.portals.selectedPortals[portal.Guid]; !ok {
+			selection[portal.Guid] = struct{}{}
+		}
 	}
 	w.OnSelectionChanged(selection)
 }
