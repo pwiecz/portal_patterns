@@ -160,10 +160,10 @@ func LargestHerringboneST(portals []Portal, fixedBaseIndices []int, progressFunc
 	q := newBestHerringboneQuery(portalsData)
 	for i, b0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
-			b1 := portalsData[j]
 			if !hasAllIndicesInThePair(fixedBaseIndices, i, j) {
 				continue
 			}
+			b1 := portalsData[j]
 			bestCCW := q.findBestHerringbone(b0, b1, resultCache)
 			if len(bestCCW) > len(largestHerringbone) {
 				largestHerringbone = append(largestHerringbone[:0], bestCCW...)
