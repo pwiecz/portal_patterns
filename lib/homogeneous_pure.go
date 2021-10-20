@@ -275,9 +275,6 @@ func findAllLvlNTriangles(portals []portalData, params homogeneousPureParams, le
 	}
 	params.progressFunc(numPairs, numPairs)
 
-	fmt.Println()
-	fmt.Println("Num lvl", level, "triangles", numLvlNTriangles, len(lvlNEdges))
-
 	return lvlNTriangles, lvlNEdges
 }
 
@@ -373,7 +370,6 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousPureParams) 
 		if len(lvlNEdges) == 0 {
 			break
 		}
-		fmt.Println("\nNum lvl", depth, "triangles", newTriangles, len(lvlNEdges))
 		prevTriangles = lvlNTriangles
 		prevEdges = lvlNEdges
 		bestDepth = depth
