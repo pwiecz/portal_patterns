@@ -6,9 +6,10 @@ import (
 )
 
 type doubleHerringboneRequest struct {
-	p0, p1    portalData
 	resultCCW []portalIndex
 	resultCW  []portalIndex
+	p0        portalData
+	p1        portalData
 }
 
 func bestDoubleHerringboneWorker(

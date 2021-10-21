@@ -22,16 +22,16 @@ const (
 )
 
 type bestFlipFieldQuery struct {
+	backbone    []portalData
+	candidates  []portalData
+	flipPortals []portalData
+	portals     []portalData
+	// Best solution found so far, we can abort early if we're sure we won't improve current best solution
+	bestSolution       int
 	maxBackbonePortals int
 	numPortalLimit     PortalLimit
 	maxFlipPortals     int
 	simpleBackbone     bool
-	// Best solution found so far, we can abort early if we're sure we won't improve current best solution
-	bestSolution int
-	portals      []portalData
-	backbone     []portalData
-	candidates   []portalData
-	flipPortals  []portalData
 }
 
 func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPortalLimit PortalLimit, maxFlipPortals int, simpleBackbone bool) bestFlipFieldQuery {
@@ -135,7 +135,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			posCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos].LatLng)
 			prevPosCCW := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos-1].LatLng)
 			segCCW := newCCWQuery(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng)
-			tripleIndexBase := (uint64(f.backbone[pos-1].Index)*numAllPortals+uint64(f.backbone[pos].Index))*numAllPortals
+			tripleIndexBase := (uint64(f.backbone[pos-1].Index)*numAllPortals + uint64(f.backbone[pos].Index)) * numAllPortals
 			for i, candidate := range f.candidates {
 				tripleIndex := tripleIndexBase + uint64(candidate.Index)
 				if _, ok := nonBeneficialTriples[tripleIndex]; ok {

@@ -162,18 +162,18 @@ func (h HomogeneousPure) applyPure(params *homogeneousPureParams) {}
 
 type HomogeneousDisabledPortals []Portal
 
-func (h HomogeneousDisabledPortals) requires2() bool { return false }
-func (h HomogeneousDisabledPortals) apply(params *homogeneousParams) {}
-func (h HomogeneousDisabledPortals) apply2(params* homogeneous2Params) {}
+func (h HomogeneousDisabledPortals) requires2() bool                   { return false }
+func (h HomogeneousDisabledPortals) apply(params *homogeneousParams)   {}
+func (h HomogeneousDisabledPortals) apply2(params *homogeneous2Params) {}
 func (h HomogeneousDisabledPortals) applyPure(params *homogeneousPureParams) {
 	params.disabledPortals = portalsToPortalData(h)
 }
 
 type homogeneousParams struct {
-	maxDepth           int
 	topLevelScorer     homogeneousTopLevelScorer
-	fixedCornerIndices []int
 	progressFunc       func(int, int)
+	fixedCornerIndices []int
+	maxDepth           int
 }
 
 func defaultHomogeneousParams() homogeneousParams {
@@ -185,9 +185,9 @@ func defaultHomogeneousParams() homogeneousParams {
 }
 
 type homogeneous2Params struct {
+	scorer homogeneousScorer
 	homogeneousParams
 	numPortals int
-	scorer     homogeneousScorer
 }
 
 func defaultHomogeneous2Params(numPortals int) homogeneous2Params {
@@ -205,12 +205,12 @@ func defaultHomogeneous2Params(numPortals int) homogeneous2Params {
 }
 
 type homogeneousPureParams struct {
-	disabledPortals    []portalData
-	maxDepth           int
 	scorer             homogeneousPureScorer
-	fixedCornerIndices []int
-	numWorkers         int
 	progressFunc       func(int, int)
+	disabledPortals    []portalData
+	fixedCornerIndices []int
+	maxDepth           int
+	numWorkers         int
 }
 
 func defaultHomogeneousPureParams() homogeneousPureParams {

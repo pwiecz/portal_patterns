@@ -1,22 +1,21 @@
 package lib
 
 type bestThreeCornersQuery struct {
-	portals0           []portalData
-	numPortals0        portalIndex
-	portals1           []portalData
-	numPortals1        portalIndex
-	portals2           []portalData
-	numPortals2        uint
-	numPortals1x2      uint
-	index              []bestSolution
-	numCornerChanges   []uint16
 	onIndexEntryFilled func()
 	// preallocated storage for lists of portals within triangles at consecutive recursion depths
-	portalsInTriangle0 [][]portalData
 	portalsInTriangle1 [][]portalData
+	portalsInTriangle0 [][]portalData
 	portalsInTriangle2 [][]portalData
-	// current recursion depth
-	depth uint16
+	portals0           []portalData
+	portals1           []portalData
+	portals2           []portalData
+	numCornerChanges   []uint16
+	index              []bestSolution
+	numPortals1x2      uint
+	numPortals2        uint
+	numPortals1        portalIndex
+	numPortals0        portalIndex
+	depth              uint16
 }
 
 func newBestThreeCornersQuery(portals0, portals1, portals2 []portalData, onIndexEntryFilled func()) *bestThreeCornersQuery {
@@ -187,25 +186,25 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal, progressFunc func
 	numPortals1 := portalIndex(len(portals1))
 	k0, k1, k2 := bestP0.Index, bestP1.Index, bestP2.Index
 	result := append(make([]IndexedPortal, 0, largestTC.Length+3),
-		IndexedPortal{0, portals0[k0]},
-		IndexedPortal{1, portals1[k1]},
-		IndexedPortal{2, portals2[k2]})
+		IndexedPortal{Index: 0, Portal: portals0[k0]},
+		IndexedPortal{Index: 1, Portal: portals1[k1]},
+		IndexedPortal{Index: 2, Portal: portals2[k2]})
 	for {
 		sol := q.getIndex(k0, k1, k2)
 		if sol.Length == 0 {
 			break
 		}
 		if sol.Index < numPortals0 {
-			result = append(result, IndexedPortal{0, portals0[sol.Index]})
+			result = append(result, IndexedPortal{Index: 0, Portal: portals0[sol.Index]})
 			k0 = sol.Index
 		} else {
 			sol.Index = sol.Index - numPortals0
 			if sol.Index < numPortals1 {
-				result = append(result, IndexedPortal{1, portals1[sol.Index]})
+				result = append(result, IndexedPortal{Index: 1, Portal: portals1[sol.Index]})
 				k1 = sol.Index
 			} else {
 				sol.Index = sol.Index - numPortals1
-				result = append(result, IndexedPortal{2, portals2[sol.Index]})
+				result = append(result, IndexedPortal{Index: 2, Portal: portals2[sol.Index]})
 				k2 = sol.Index
 			}
 		}

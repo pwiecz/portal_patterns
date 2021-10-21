@@ -17,11 +17,12 @@ func LargestHerringbone(portals []Portal, fixedBaseIndices []int, numWorkers int
 }
 
 type herringboneNode struct {
-	index      portalIndex
-	start, end float64
-	distance   s1.ChordAngle
-	length     uint16
-	next       portalIndex
+	start    float64
+	end      float64
+	distance s1.ChordAngle
+	index    portalIndex
+	length   uint16
+	next     portalIndex
 }
 
 type bestHerringboneQuery struct {
@@ -74,7 +75,14 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 		a0 := b01.Dot(q.normalizedVector(b1, portal)) // acos of angle b0,b1,portal
 		a1 := b10.Dot(q.normalizedVector(b0, portal)) // acos of angle b1,b0,portal
 		dist := distQuery.ChordAngle(portal.LatLng)
-		q.nodes = append(q.nodes, herringboneNode{portal.Index, a0, a1, dist, 0, invalidPortalIndex})
+		q.nodes = append(q.nodes, herringboneNode{
+			index:    portal.Index,
+			start:    a0,
+			end:      a1,
+			distance: dist,
+			length:   0,
+			next:     invalidPortalIndex,
+		})
 	}
 	sort.Sort(herringboneNodesByDistance(q.nodes))
 	for i := 0; i < len(q.weights); i++ {

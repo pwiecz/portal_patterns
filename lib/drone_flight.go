@@ -20,11 +20,11 @@ func LongestDroneFlight(portals []Portal, options ...DroneFlightOption) ([]Porta
 }
 
 type droneFlightPrioQueueItem struct {
-	index         portalIndex
 	numKeysNeeded int
 	numJumps      int
-	prev          portalIndex
 	queueIndex    int
+	index         portalIndex
+	prev          portalIndex
 }
 type droneFlightPrioQueue struct {
 	items           []*droneFlightPrioQueueItem
