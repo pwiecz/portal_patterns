@@ -25,8 +25,8 @@ type Portal struct {
 
 // IndexedPortal - Portal plus a number
 type IndexedPortal struct {
-	Index  int
 	Portal Portal
+	Index  int
 }
 
 // PortalCoordinates - portal coordinates in textual format

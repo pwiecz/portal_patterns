@@ -65,8 +65,9 @@ func newLvlNTriangleQuery(portals []portalData, disabledPortals []portalData, le
 }
 
 type lvlNTriangleRequest struct {
-	p0, p1 portalData
-	third  []portalIndex
+	third []portalIndex
+	p0    portalData
+	p1    portalData
 }
 
 func lvlNTriangleWorker(
@@ -156,8 +157,9 @@ type triangle struct {
 	p0, p1, p2 portalIndex
 }
 type mergeTrianglesRequest struct {
-	p0, p1    portalIndex
 	triangles []triangle
+	p0        portalIndex
+	p1        portalIndex
 }
 
 func mergeTrianglesWorker(

@@ -11,17 +11,17 @@ type bestHomogeneousQuery interface {
 }
 
 type bestHomogeneousNonPureQuery struct {
+	// callback to be called whenever solution for new triple of portals is found
+	onFilledIndexEntry func()
 	// all the portals
 	portals []portalData
 	// index of triple of portals to a solution
 	// solution for every triple is store six times - for each of the permutations of portals
 	index []bestSolution
-	// count of portals (used to compute a solution index from indices of three portals)
-	numPortals uint
-	// callback to be called whenever solution for new triple of portals is found
-	onFilledIndexEntry func()
 	// preallocated storage for lists of portals within triangles at consecutive recursion depths
 	portalsInTriangle [][]portalData
+	// count of portals (used to compute a solution index from indices of three portals)
+	numPortals uint
 	// current recursion depth
 	depth uint16
 	// maxDepth of solution to be found

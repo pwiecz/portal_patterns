@@ -38,12 +38,12 @@ func (f FlipFieldSimpleBackbone) apply(params *flipFieldParams) {
 }
 
 type flipFieldParams struct {
+	progressFunc        func(int, int)
 	maxBackbonePortals  int
 	backbonePortalLimit PortalLimit
 	maxFlipPortals      int
-	simpleBackbone      bool
 	numWorkers          int
-	progressFunc        func(int, int)
+	simpleBackbone      bool
 }
 
 func defaultFlipFieldParams() flipFieldParams {

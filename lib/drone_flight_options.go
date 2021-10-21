@@ -56,11 +56,12 @@ func (d DroneFlightProgressFunc) apply(params *droneFlightParams) {
 }
 
 type droneFlightParams struct {
-	startPortalIndex, endPortalIndex portalIndex
-	useLongJumps                     bool
-	optimizeNumKeys                  bool
-	numWorkers                       int
-	progressFunc                     func(int, int)
+	progressFunc     func(int, int)
+	numWorkers       int
+	startPortalIndex portalIndex
+	endPortalIndex   portalIndex
+	useLongJumps     bool
+	optimizeNumKeys  bool
 }
 
 func defaultDroneFlightParams() droneFlightParams {

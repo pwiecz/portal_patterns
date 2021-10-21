@@ -13,26 +13,26 @@ type homogeneousScorer interface {
 }
 
 type bestHomogeneous2Query struct {
+	// a scorer for picking best of the possible solutions of the same depth
+	scorer homogeneousScorer
+	// callback to be called whenever solution for new triple of portals is found
+	onFilledIndexEntry func()
 	// all the portals
 	portals []portalData
 	// index of triple of portals to a solution
 	// each permutations of the three portals stores the best solution
 	// for different depth - 2..7
 	index []portalIndex
-	// count of portals (used to compute a solution index from indices of three portals)
-	numPortals uint
-	// callback to be called whenever solution for new triple of portals is found
-	onFilledIndexEntry func()
 	// preallocated storage for lists of portals within triangles at consecutive recursion depths
 	portalsInTriangle [][]portalData
 	// preallocated storage for triangle scorers at consecutive recursion depths
 	triangleScorers []homogeneousTriangleScorer
-	// current recursion depth
-	depth uint16
 	// maxDepth of solution to be found
 	maxDepth int
-	// a scorer for picking best of the possible solutions of the same depth
-	scorer homogeneousScorer
+	// count of portals (used to compute a solution index from indices of three portals)
+	numPortals uint
+	// current recursion depth
+	depth uint16
 }
 
 func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, maxDepth int, onFilledIndexEntry func()) *bestHomogeneous2Query {

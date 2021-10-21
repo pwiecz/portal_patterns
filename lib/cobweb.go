@@ -1,11 +1,11 @@
 package lib
 
 type bestCobwebQuery struct {
+	onFilledIndexEntry func()
 	portals            []portalData
 	index              []bestSolution
-	numPortals         uint
-	onFilledIndexEntry func()
 	filteredPortals    [][]portalData
+	numPortals         uint
 	depth              uint16
 }
 
