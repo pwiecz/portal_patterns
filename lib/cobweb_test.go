@@ -70,6 +70,12 @@ func generateCobwebPortals(depth int) []Portal {
 	return portals
 }
 
+func TestCobwebSyntheticPortals(t *testing.T) {
+	portals := generateCobwebPortals(10)
+	res := LargestCobweb(portals, []int{}, func(int, int) {})
+	checkValidCobwebResult(len(portals), res, t)
+}
+
 func benchmarkCobweb(depth int, b *testing.B) {
 	portals := generateCobwebPortals(depth)
 	for n := 0; n < b.N; n++ {
