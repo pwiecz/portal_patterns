@@ -499,7 +499,9 @@ func (w *MainWindow) onDrawToolsFileSelected(filename string) {
 		return
 	}
 	defer file.Close()
-	file.WriteString(w.selectedPattern().solutionDrawToolsString())
+	if _, err := file.WriteString(w.selectedPattern().solutionDrawToolsString()); err != nil {
+		fltk.MessageBox("Error exporting", "Error writing to file "+filename+"\n"+err.Error())
+	}
 }
 func (w *MainWindow) onCopyPressed() {
 	fltk.CopyToClipboard(w.selectedPattern().solutionDrawToolsString())

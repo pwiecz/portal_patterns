@@ -173,7 +173,6 @@ func (renderer *OpenGL2s) Render(displaySize [2]float32, framebufferSize [2]floa
 
 		for _, cmd := range list.Commands() {
 			if cmd.HasUserCallback() {
-				panic("user callback")
 				cmd.CallUserCallback(list)
 			} else {
 				gl.BindTexture(gl.TEXTURE_2D, uint32(cmd.TextureID()))

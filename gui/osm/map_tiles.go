@@ -41,13 +41,15 @@ type MapTiles struct {
 }
 
 func NewMapTiles() *MapTiles {
-	cacheDirBase, err := os.UserCacheDir()
-	cacheDir := ""
-	if err == nil {
+	var cacheDir string
+	if cacheDirBase, err := os.UserCacheDir(); err == nil {
 		cacheDir = filepath.Join(cacheDirBase, "portal_patterns")
-	}
-	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
-		os.MkdirAll(cacheDir, 0755)
+		if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
+			if err := os.MkdirAll(cacheDir, 0755); err != nil {
+				log.Println("Cannot create cache dir", err)
+				cacheDir = ""
+			}
+		}
 	}
 	semaphore := make(chan empty, 50)
 	e := empty{}

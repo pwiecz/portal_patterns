@@ -51,7 +51,7 @@ func (f *flipFieldCmd) Run(args []string, numWorkers int, output io.Writer, prog
 		log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 	}
 	fmt.Printf("Read %d portals\n", len(portals))
-	numPortalLimit := lib.LESS_EQUAL
+	var numPortalLimit lib.PortalLimit
 	if f.numBackbonePortals.Exactly {
 		numPortalLimit = lib.EQUAL
 	} else {
