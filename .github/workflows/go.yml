@@ -2,9 +2,13 @@ name: Go
 
 on:
   push:
-    branches: [ fltk ]
+    branches:
+    - fltk
+    - dev
   pull_request:
-    branches: [ fltk ]
+    branches:
+    - fltk
+    - dev
 
 jobs:
 
