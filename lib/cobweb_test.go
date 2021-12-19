@@ -48,7 +48,7 @@ func appendPortalsBetween(depth int, p Portal, ll s2.LatLng, portals []Portal) [
 	for i := 1; i < depth; i++ {
 		midPoint := s2.PointFromLatLng(p.LatLng).Add(
 			diff.Mul(float64(i) / float64(depth)))
-		midLL := s2.LatLngFromPoint(s2.Point{midPoint})
+		midLL := s2.LatLngFromPoint(s2.Point{Vector: midPoint})
 		midPortal := Portal{Guid: p.Guid + fmt.Sprintf("%d", i), LatLng: midLL}
 		portals = append(portals, midPortal)
 	}
