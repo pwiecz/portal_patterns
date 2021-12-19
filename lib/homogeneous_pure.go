@@ -433,7 +433,7 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousPureParams) 
 }
 
 // Assuming p0, p1, p2 are corners of a pure homogeneous field, find its center portal.
-// Return -1 if no suitable center portal found.
+// Panic if no suitable center portal found.
 func findHomogeneousCenterPortal(p0, p1, p2 portalData, portalsInTriangle []portalData) portalData {
 	for _, candidate := range portalsInTriangle {
 		q0 := newTriangleQuery(p0.LatLng, p1.LatLng, candidate.LatLng)

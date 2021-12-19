@@ -118,7 +118,7 @@ func appendMidPortals(depth int, p0, p1, p2 Portal, portals []Portal) []Portal {
 	midPoint := s2.PointFromLatLng(p0.LatLng).Add(
 		s2.PointFromLatLng(p1.LatLng).Vector).Add(
 		s2.PointFromLatLng(p2.LatLng).Vector).Mul(1. / 3.)
-	midLL := s2.LatLngFromPoint(s2.Point{midPoint})
+	midLL := s2.LatLngFromPoint(s2.Point{Vector: midPoint})
 	midPortal := Portal{Guid: p0.Guid + string(rune('0'+depth)), LatLng: midLL}
 	portals = append(portals, midPortal)
 	portals = appendMidPortals(depth-1, p0, p1, midPortal, portals)
