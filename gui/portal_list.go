@@ -81,12 +81,12 @@ func (l *PortalList) drawCallback(context fltk.TableContext, row, column, x, y, 
 		if row >= len(l.portals) {
 			return
 		}
-		background := uint(0xffffffff)
+		background := fltk.WHITE
 		if l.IsRowSelected(row) {
 			background = l.SelectionColor()
 		}
 		fltk.DrawBox(fltk.THIN_UP_BOX, x, y, w, h, background)
-		fltk.Color(0x00000000)
+		fltk.SetDrawColor(fltk.BLACK)
 		if column == 0 {
 			fltk.Draw(l.portals[row].Name, x, y, w, h, fltk.ALIGN_LEFT)
 		} else if column == 1 {
@@ -98,7 +98,7 @@ func (l *PortalList) drawCallback(context fltk.TableContext, row, column, x, y, 
 		}
 	case fltk.ContextColHeader:
 		fltk.DrawBox(fltk.UP_BOX, x, y, w, h, 0x8f8f8fff)
-		fltk.Color(0x00000000)
+		fltk.SetDrawColor(fltk.BLACK)
 		if column == 0 {
 			fltk.Draw("Name", x, y, w, h, fltk.ALIGN_CENTER)
 		} else if column == 1 {
