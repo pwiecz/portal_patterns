@@ -215,6 +215,7 @@ func (t *flipFieldTab) load(state flipFieldState) error {
 			t.backbone = append(t.backbone, backbonePortal)
 		}
 	}
+	t.flipPortals = nil
 	for _, flipPortalGUID := range state.FlipPortals {
 		if flipPortal, ok := t.portals.portalMap[flipPortalGUID]; !ok {
 			return fmt.Errorf("invalid flipField flip portal \"%s\"", flipPortalGUID)
