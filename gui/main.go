@@ -477,6 +477,9 @@ func (w *MainWindow) onSearchDone() {
 			w.copy.Activate()
 			w.solutionLabel.SetLabel(selectedPattern.solutionInfoString())
 			w.mapWindow.SetPaths(selectedPattern.solutionPaths())
+		} else {
+			w.solutionLabel.SetLabel("No solution found")
+			w.mapWindow.SetPaths(nil)
 		}
 	}
 }
