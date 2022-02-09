@@ -26,6 +26,11 @@ func newFlipFieldTab(portals *Portals) *flipFieldTab {
 	t := &flipFieldTab{}
 	t.baseTab = newBaseTab("Flip Field", portals, t)
 
+	warningLabel := fltk.NewBox(fltk.NO_BOX, 0, 0, 700, 30)
+	warningLabel.SetAlign(fltk.ALIGN_INSIDE | fltk.ALIGN_LEFT)
+	warningLabel.SetLabel("* WARNING: a greedy algorithm which finds suboptimal solutions *")
+	t.Add(warningLabel)
+
 	numBackbonePortalsPack := fltk.NewPack(0, 0, 700, 30)
 	numBackbonePortalsPack.SetType(fltk.HORIZONTAL)
 	numBackbonePortalsPack.SetSpacing(5)
@@ -52,6 +57,7 @@ func newFlipFieldTab(portals *Portals) *flipFieldTab {
 	t.simpleBackbone = fltk.NewCheckButton(0, 0, 200, 30, "Simple backbone")
 	t.simpleBackbone.SetValue(false)
 	simpleBackbonePack.End()
+
 	t.Add(simpleBackbonePack)
 
 	t.End()
