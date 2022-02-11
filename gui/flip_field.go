@@ -24,6 +24,7 @@ type flipFieldTab struct {
 	simpleBackbone           *widget.Check
 	backbone                 []lib.Portal
 	rest                     []lib.Portal
+	basePortals              map[string]struct{}
 }
 
 var _ pattern = (*flipFieldTab)(nil)
@@ -31,6 +32,7 @@ var _ pattern = (*flipFieldTab)(nil)
 func NewFlipFieldTab(app fyne.App, parent fyne.Window, conf *configuration.Configuration, tileFetcher *osm.MapTiles) *container.TabItem {
 	t := &flipFieldTab{}
 	t.baseTab = NewBaseTab(app, parent, "Flip Field", t, conf, tileFetcher)
+	t.basePortals = make(map[string]struct{})
 	warningLabel := widget.NewLabel("EXPERIMENTAL: SLOW AND INACCURATE")
 
 	numBackbonePortalsLabel := widget.NewLabel("Num backbone portals: ")
@@ -61,11 +63,16 @@ func NewFlipFieldTab(app fyne.App, parent fyne.Window, conf *configuration.Confi
 			topContent))
 }
 
-func (t *flipFieldTab) onReset() {}
+func (t *flipFieldTab) onReset() {
+	t.basePortals = make(map[string]struct{})
+}
 
 func (t *flipFieldTab) portalLabel(guid string) string {
 	if _, ok := t.disabledPortals[guid]; ok {
 		return "Disabled"
+	}
+	if _, ok := t.basePortals[guid]; ok {
+		return "Base"
 	}
 	return "Normal"
 }
@@ -85,12 +92,18 @@ func (t *flipFieldTab) portalColor(guid string) color.NRGBA {
 
 func (t *flipFieldTab) onContextMenu(x, y float32) {
 	menuItems := []*fyne.MenuItem{}
-	var isDisabledSelected, isEnabledSelected bool
+	var isDisabledSelected, isEnabledSelected, isBaseSelected bool
+	numNonBaseSelected := 0
 	for guid := range t.selectedPortals {
 		if _, ok := t.disabledPortals[guid]; ok {
 			isDisabledSelected = true
 		} else {
 			isEnabledSelected = true
+		}
+		if _, ok := t.basePortals[guid]; ok {
+			isBaseSelected = true
+		} else {
+			numNonBaseSelected++
 		}
 	}
 	if isDisabledSelected {
@@ -100,6 +113,14 @@ func (t *flipFieldTab) onContextMenu(x, y float32) {
 	if isEnabledSelected {
 		menuItems = append(menuItems,
 			fyne.NewMenuItem("Disable", t.disableSelectedPortals))
+	}
+	if numNonBaseSelected > 0 && numNonBaseSelected+len(t.basePortals) <= 2 {
+		menuItems = append(menuItems,
+			fyne.NewMenuItem("Make base", t.makeSelectedPortalsBases))
+	}
+	if isBaseSelected {
+		menuItems = append(menuItems,
+			fyne.NewMenuItem("Unmake base", t.unmakeSelectedPortalsBases))
 	}
 	if len(menuItems) == 0 {
 		return
@@ -116,7 +137,27 @@ func (t *flipFieldTab) disableSelectedPortals() {
 			continue
 		}
 		t.disabledPortals[guid] = struct{}{}
+		delete(t.basePortals, guid)
 		t.solutionMap.SetPortalColor(guid, t.pattern.portalColor(guid))
+	}
+}
+func (t *flipFieldTab) makeSelectedPortalsBases() {
+	for guid := range t.selectedPortals {
+		if _, ok := t.basePortals[guid]; ok {
+			continue
+		}
+		t.basePortals[guid] = struct{}{}
+		delete(t.disabledPortals, guid)
+		t.solutionMap.SetPortalColor(guid, t.portalColor(guid))
+	}
+}
+func (t *flipFieldTab) unmakeSelectedPortalsBases() {
+	for guid := range t.selectedPortals {
+		if _, ok := t.basePortals[guid]; !ok {
+			continue
+		}
+		delete(t.basePortals, guid)
+		t.solutionMap.SetPortalColor(guid, t.portalColor(guid))
 	}
 }
 
@@ -126,9 +167,13 @@ func (t *flipFieldTab) search() {
 	}
 
 	portals := []lib.Portal{}
-	for _, portal := range t.portals {
+	base := []int{}
+	for i, portal := range t.portals {
 		if _, ok := t.disabledPortals[portal.Guid]; !ok {
 			portals = append(portals, portal)
+			if _, ok := t.basePortals[portal.Guid]; ok {
+				base = append(base, i)
+			}
 		}
 	}
 	maxFlipPortals, err := strconv.Atoi(t.maxFlipPortals.Text)
@@ -149,6 +194,7 @@ func (t *flipFieldTab) search() {
 		lib.FlipFieldProgressFunc(
 			func(val int, max int) { t.onProgress(val, max) }),
 		backbonePortalLimit,
+		lib.FlipFieldFixedBaseIndices(base),
 		lib.FlipFieldSimpleBackbone(t.simpleBackbone.Checked),
 		lib.FlipFieldMaxFlipPortals(maxFlipPortals),
 		lib.FlipFieldNumWorkers(runtime.GOMAXPROCS(0)),

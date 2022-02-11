@@ -107,6 +107,14 @@ func hasAllIndicesInTheTriple(indices []int, a, b, c int) bool {
 	}
 	return true
 }
+func hasAllPortalIndicesInThePair(indices []portalIndex, a, b portalIndex) bool {
+	for _, index := range indices {
+		if a != index && b != index {
+			return false
+		}
+	}
+	return true
+}
 
 func hasAllIndicesInThePair(indices []int, a, b int) bool {
 	for _, index := range indices {

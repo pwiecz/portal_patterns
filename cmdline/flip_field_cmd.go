@@ -15,6 +15,7 @@ type flipFieldCmd struct {
 	numBackbonePortals *numberLimitValue
 	maxFlipPortals     *int
 	simpleBackbone     *bool
+	basePortals        *portalsValue
 }
 
 func NewFlipFieldCmd() flipFieldCmd {
@@ -27,13 +28,15 @@ func NewFlipFieldCmd() flipFieldCmd {
 		},
 		maxFlipPortals: flags.Int("max_flip_portals", 0, "if >0 don't try to optimize for number of flip portals above this value"),
 		simpleBackbone: flags.Bool("simple_backbone", false, "make all backbone portals linkable from the first backbone portal"),
+		basePortals:    &portalsValue{},
 	}
 	flags.Var(cmd.numBackbonePortals, "num_backbone_portals", "limit of number of portals in the \"backbone\" of the field. May be a number of have a format of \"<=number\"")
+	flags.Var(cmd.basePortals, "base_portal", "fix a base portal of the flip field")
 	return cmd
 }
 
 func (f *flipFieldCmd) Usage(fileBase string) {
-	fmt.Fprintf(flag.CommandLine.Output(), "%s flip_field [-num_backbone_portals=[<=]<number>] [--max_flip_portals=<number>] [--simple_backbone]\n", fileBase)
+	fmt.Fprintf(flag.CommandLine.Output(), "%s flip_field [-num_backbone_portals=[<=]<number>] [--max_flip_portals=<number>] [--simple_backbone] [-base_portal=<lat>,<lng>]... <portals_file>\n", fileBase)
 	f.flags.PrintDefaults()
 }
 
@@ -51,7 +54,12 @@ func (f *flipFieldCmd) Run(args []string, numWorkers int, output io.Writer, prog
 		log.Fatalf("Could not parse file %s : %v\n", fileArgs[0], err)
 	}
 	fmt.Printf("Read %d portals\n", len(portals))
-	numPortalLimit := lib.LESS_EQUAL
+	if len(*f.basePortals) > 2 {
+		log.Fatalf("flip_field command accepts at most two base portals - %d specified", len(*f.basePortals))
+	}
+	basePortalIndices := portalsToIndices(*f.basePortals, portals)
+
+	var numPortalLimit lib.PortalLimit
 	if f.numBackbonePortals.Exactly {
 		numPortalLimit = lib.EQUAL
 	} else {
@@ -67,6 +75,7 @@ func (f *flipFieldCmd) Run(args []string, numWorkers int, output io.Writer, prog
 		lib.FlipFieldBackbonePortalLimit{Value: f.numBackbonePortals.Value, LimitType: numPortalLimit},
 		lib.FlipFieldMaxFlipPortals(*f.maxFlipPortals),
 		lib.FlipFieldSimpleBackbone(*f.simpleBackbone),
+		lib.FlipFieldFixedBaseIndices(basePortalIndices),
 	}
 	backbone, rest := lib.LargestFlipField(portals, options...)
 	fmt.Fprintf(output, "\nNum backbone portals: %d, num flip portals: %d, num fields: %d\nBackbone:\n",
