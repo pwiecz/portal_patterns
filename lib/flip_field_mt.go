@@ -7,6 +7,7 @@ import (
 
 type bestFlipFieldMtQuery struct {
 	portals            []portalData
+	fixedBaseIndices   []portalIndex
 	maxBackbonePortals int
 	maxFlipPortals     int
 	numPortalLimit     PortalLimit
@@ -21,6 +22,7 @@ func (f *bestFlipFieldMtQuery) findBestFlipField(p0, p1 portalData, ccw bool, ba
 		simpleBackbone:     f.simpleBackbone,
 		bestSolution:       bestSolution,
 		portals:            f.portals,
+		fixedBaseIndices:   f.fixedBaseIndices,
 		backbone:           backbone,
 		candidates:         candidates,
 		flipPortals:        flipPortals,
@@ -71,6 +73,10 @@ func LargestFlipFieldMT(portals []Portal, params flipFieldParams) ([]Portal, []P
 		panic(fmt.Errorf("too short portal list: %d", len(portals)))
 	}
 	portalsData := portalsToPortalData(portals)
+	fixedBaseIndices := []portalIndex{}
+	for _, i := range params.fixedBaseIndices {
+		fixedBaseIndices = append(fixedBaseIndices, portalsData[i].Index)
+	}
 
 	backboneCache := sync.Pool{
 		New: func() interface{} {
@@ -88,11 +94,12 @@ func LargestFlipFieldMT(portals []Portal, params flipFieldParams) ([]Portal, []P
 	var wg sync.WaitGroup
 	wg.Add(params.numWorkers)
 	q := &bestFlipFieldMtQuery{
-		maxBackbonePortals: params.maxBackbonePortals, 
-		numPortalLimit: params.backbonePortalLimit,
-		maxFlipPortals: params.maxFlipPortals,
-		simpleBackbone: params.simpleBackbone,
-		portals: portalsData}
+		maxBackbonePortals: params.maxBackbonePortals,
+		numPortalLimit:     params.backbonePortalLimit,
+		maxFlipPortals:     params.maxFlipPortals,
+		simpleBackbone:     params.simpleBackbone,
+		portals:            portalsData,
+		fixedBaseIndices:   fixedBaseIndices}
 	for i := 0; i < params.numWorkers; i++ {
 		go bestFlipFieldWorker(q, requestChannel, responseChannel, &wg)
 	}
@@ -132,7 +139,9 @@ func LargestFlipFieldMT(portals []Portal, params flipFieldParams) ([]Portal, []P
 	bestBackbone, bestFlipPortals := []portalData(nil), []portalData(nil)
 	var bestBackboneLength float64
 	for resp := range responseChannel {
-		if params.backbonePortalLimit != EQUAL || len(resp.backbone) == params.maxBackbonePortals {
+		if len(resp.backbone) >= 2 &&
+			hasAllPortalIndicesInThePair(fixedBaseIndices, resp.backbone[0].Index, resp.backbone[len(resp.backbone)-1].Index) &&
+			(params.backbonePortalLimit != EQUAL || len(resp.backbone) == params.maxBackbonePortals) {
 			numFlipPortals := len(resp.flipPortals)
 			if params.maxFlipPortals > 0 && numFlipPortals > params.maxFlipPortals {
 				numFlipPortals = params.maxFlipPortals

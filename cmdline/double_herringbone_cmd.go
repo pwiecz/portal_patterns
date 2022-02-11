@@ -41,7 +41,7 @@ func (d *doubleHerringboneCmd) Run(args []string, output io.Writer, numWorkers i
 	}
 	fmt.Printf("Read %d portals\n", len(portals))
 	if len(*d.basePortals) > 2 {
-		log.Fatalf("double_herringbone command accepts at most two corner portals - %d specified", len(*d.basePortals))
+		log.Fatalf("double_herringbone command accepts at most two base portals - %d specified", len(*d.basePortals))
 	}
 	basePortalIndices := portalsToIndices(*d.basePortals, portals)
 

@@ -39,10 +39,17 @@ func (f FlipFieldSimpleBackbone) apply(params *flipFieldParams) {
 	params.simpleBackbone = bool(f)
 }
 
+type FlipFieldFixedBaseIndices []int
+
+func (f FlipFieldFixedBaseIndices) apply(params *flipFieldParams) {
+	params.fixedBaseIndices = []int(f)
+}
+
 type flipFieldParams struct {
 	progressFunc        func(int, int)
 	maxBackbonePortals  int
 	backbonePortalLimit PortalLimit
+	fixedBaseIndices    []int
 	maxFlipPortals      int
 	numWorkers          int
 	simpleBackbone      bool
@@ -52,6 +59,7 @@ func defaultFlipFieldParams() flipFieldParams {
 	return flipFieldParams{
 		maxBackbonePortals:  16,
 		backbonePortalLimit: EQUAL,
+		fixedBaseIndices:    nil,
 		maxFlipPortals:      0,
 		simpleBackbone:      false,
 		numWorkers:          runtime.GOMAXPROCS(0),

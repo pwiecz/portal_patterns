@@ -1,6 +1,8 @@
 package lib
 
-import "github.com/golang/geo/s2"
+import (
+	"github.com/golang/geo/s2"
+)
 
 // LargestFlipField -
 func LargestFlipField(portals []Portal, options ...FlipFieldOption) ([]Portal, []Portal) {
@@ -32,14 +34,16 @@ type bestFlipFieldQuery struct {
 	numPortalLimit     PortalLimit
 	maxFlipPortals     int
 	simpleBackbone     bool
+	fixedBaseIndices   []portalIndex
 }
 
-func newBestFlipFieldQuery(portals []portalData, maxBackbonePortals int, numPortalLimit PortalLimit, maxFlipPortals int, simpleBackbone bool) bestFlipFieldQuery {
+func newBestFlipFieldQuery(portals []portalData, fixedBaseIndices []portalIndex, maxBackbonePortals int, numPortalLimit PortalLimit, maxFlipPortals int, simpleBackbone bool) bestFlipFieldQuery {
 	return bestFlipFieldQuery{
 		maxBackbonePortals: maxBackbonePortals,
 		numPortalLimit:     numPortalLimit,
 		maxFlipPortals:     maxFlipPortals,
 		simpleBackbone:     simpleBackbone,
+		fixedBaseIndices:   fixedBaseIndices,
 		portals:            portals,
 		backbone:           make([]portalData, 0, maxBackbonePortals),
 		candidates:         make([]portalData, 0, len(portals)),
@@ -106,6 +110,14 @@ func numFlipFields(numFlipPortals, numBackbonePortals int) int {
 	return numFlipPortals * (2*numBackbonePortals - 3)
 }
 
+func sliceContains(slice []portalIndex, ix portalIndex) bool {
+	for _, val := range slice {
+		if val == ix {
+			return true
+		}
+	}
+	return false
+}
 func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]portalData, []portalData, float64) {
 	if ccw {
 		f.candidates = portalsLeftOfLine(f.portals, p0, p1, f.candidates[:0])
@@ -137,6 +149,9 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			segCCW := newCCWQuery(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng)
 			tripleIndexBase := (uint64(f.backbone[pos-1].Index)*numAllPortals + uint64(f.backbone[pos].Index)) * numAllPortals
 			for i, candidate := range f.candidates {
+				if sliceContains(f.fixedBaseIndices, candidate.Index) {
+					continue
+				}
 				tripleIndex := tripleIndexBase + uint64(candidate.Index)
 				if _, ok := nonBeneficialTriples[tripleIndex]; ok {
 					continue
@@ -178,7 +193,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			}
 		}
 		// Check if appending a new backbone portal would improve the solution.
-		{
+		if !sliceContains(f.fixedBaseIndices, f.backbone[len(f.backbone)-1].Index) {
 			pos := len(f.backbone) - 1
 			zeroLast := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos].LatLng)
 			for i, candidate := range f.portals {
@@ -211,7 +226,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			}
 		}
 		// Check if prepending a new backbone portal would improve the solution.
-		{
+		if !sliceContains(f.fixedBaseIndices, f.backbone[0].Index) {
 			zeroLast := newCCWQuery(f.backbone[0].LatLng, f.backbone[len(f.backbone)-1].LatLng)
 			for i, candidate := range f.portals {
 				if f.backbone[len(f.backbone)-1].Index == candidate.Index || f.backbone[0].Index == candidate.Index {
@@ -333,6 +348,10 @@ func LargestFlipFieldST(portals []Portal, params flipFieldParams) ([]Portal, []P
 		panic("Too short portal list")
 	}
 	portalsData := portalsToPortalData(portals)
+	fixedBaseIndices := []portalIndex{}
+	for _, i := range params.fixedBaseIndices {
+		fixedBaseIndices = append(fixedBaseIndices, portalsData[i].Index)
+	}
 
 	numPairs := len(portals) * (len(portals) - 1)
 	everyNth := numPairs / 1000
@@ -346,7 +365,7 @@ func LargestFlipFieldST(portals []Portal, params flipFieldParams) ([]Portal, []P
 	var bestNumFields int
 	bestBackbone, bestFlipPortals := []portalData(nil), []portalData(nil)
 	var bestBackboneLength float64
-	q := newBestFlipFieldQuery(portalsData, params.maxBackbonePortals, params.backbonePortalLimit, params.maxFlipPortals, params.simpleBackbone)
+	q := newBestFlipFieldQuery(portalsData, fixedBaseIndices, params.maxBackbonePortals, params.backbonePortalLimit, params.maxFlipPortals, params.simpleBackbone)
 	for _, p0 := range portalsData {
 		for _, p1 := range portalsData {
 			if p0.Index == p1.Index {
@@ -354,6 +373,9 @@ func LargestFlipFieldST(portals []Portal, params flipFieldParams) ([]Portal, []P
 			}
 			for _, ccw := range []bool{true, false} {
 				b, f, bl := q.findBestFlipField(p0, p1, ccw)
+				if len(b) <= 2 || !hasAllPortalIndicesInThePair(fixedBaseIndices, b[0].Index, b[len(b)-1].Index) {
+					continue
+				}
 				if params.backbonePortalLimit != EQUAL || len(b) == params.maxBackbonePortals {
 					numFlipPortals := len(f)
 					if params.maxFlipPortals > 0 && numFlipPortals > params.maxFlipPortals {

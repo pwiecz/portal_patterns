@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"runtime"
 
 	"github.com/golang/geo/s2"
@@ -18,6 +19,7 @@ type flipFieldTab struct {
 	backbone           []lib.Portal
 	flipPortals        []lib.Portal
 	solutionText       string
+	basePortals        map[string]struct{}
 }
 
 var _ pattern = (*flipFieldTab)(nil)
@@ -25,7 +27,7 @@ var _ pattern = (*flipFieldTab)(nil)
 func newFlipFieldTab(portals *Portals) *flipFieldTab {
 	t := &flipFieldTab{}
 	t.baseTab = newBaseTab("Flip Field", portals, t)
-
+	t.basePortals = make(map[string]struct{})
 	warningLabel := fltk.NewBox(fltk.NO_BOX, 0, 0, 700, 30)
 	warningLabel.SetAlign(fltk.ALIGN_INSIDE | fltk.ALIGN_LEFT)
 	warningLabel.SetLabel("* WARNING: a greedy algorithm which finds suboptimal solutions *")
@@ -66,6 +68,7 @@ func newFlipFieldTab(portals *Portals) *flipFieldTab {
 }
 
 func (t *flipFieldTab) onReset() {
+	t.basePortals = make(map[string]struct{})
 	t.backbone = nil
 	t.flipPortals = nil
 	t.solutionText = ""
@@ -75,14 +78,21 @@ func (t *flipFieldTab) onSearch(progressFunc func(int, int), onSearchDone func()
 	if t.exactly.Value() {
 		numPortalLimit = lib.EQUAL
 	}
+	portals := t.enabledPortals()
+	base := []int{}
+	for i, portal := range portals {
+		if _, ok := t.basePortals[portal.Guid]; ok {
+			base = append(base, i)
+		}
+	}
 	options := []lib.FlipFieldOption{
 		lib.FlipFieldProgressFunc(progressFunc),
 		lib.FlipFieldBackbonePortalLimit{Value: int(t.numBackbonePortals.Value()), LimitType: numPortalLimit},
+		lib.FlipFieldFixedBaseIndices(base),
 		lib.FlipFieldMaxFlipPortals(int(t.maxFlipPortals.Value())),
 		lib.FlipFieldSimpleBackbone(t.simpleBackbone.Value()),
 		lib.FlipFieldNumWorkers(runtime.GOMAXPROCS(0)),
 	}
-	portals := t.enabledPortals()
 	go func() {
 		backbone, flipPortals := lib.LargestFlipField(portals, options...)
 		fltk.Awake(func() {
@@ -122,6 +132,20 @@ func (t *flipFieldTab) solutionPaths() [][]s2.Point {
 	return lines
 }
 
+func (t *flipFieldTab) portalLabel(guid string) string {
+	if _, ok := t.basePortals[guid]; ok {
+		return "Base"
+	}
+	return t.baseTab.portalLabel(guid)
+}
+
+func (t *flipFieldTab) portalColor(guid string) (color.Color, color.Color) {
+	if _, ok := t.basePortals[guid]; ok {
+		return color.NRGBA{0, 128, 0, 128}, t.baseTab.strokeColor(guid)
+	}
+	return t.baseTab.portalColor(guid)
+}
+
 func (t *flipFieldTab) enableSelectedPortals() {
 	for guid := range t.portals.selectedPortals {
 		delete(t.portals.disabledPortals, guid)
@@ -131,6 +155,19 @@ func (t *flipFieldTab) enableSelectedPortals() {
 func (t *flipFieldTab) disableSelectedPortals() {
 	for guid := range t.portals.selectedPortals {
 		t.portals.disabledPortals[guid] = struct{}{}
+		delete(t.basePortals, guid)
+	}
+}
+
+func (t *flipFieldTab) makeSelectedPortalsBase() {
+	for guid := range t.portals.selectedPortals {
+		delete(t.portals.disabledPortals, guid)
+		t.basePortals[guid] = struct{}{}
+	}
+}
+func (t *flipFieldTab) unmakeSelectedPortalsBase() {
+	for guid := range t.portals.selectedPortals {
+		delete(t.basePortals, guid)
 	}
 }
 
@@ -138,12 +175,19 @@ func (t *flipFieldTab) contextMenu() *menu {
 	var aSelectedGUID string
 	numSelectedEnabled := 0
 	numSelectedDisabled := 0
+	numSelectedBase := 0
+	numSelectedNotBase := 0
 	for guid := range t.portals.selectedPortals {
 		aSelectedGUID = guid
 		if _, ok := t.portals.disabledPortals[guid]; ok {
 			numSelectedDisabled++
 		} else {
 			numSelectedEnabled++
+		}
+		if _, ok := t.basePortals[guid]; ok {
+			numSelectedBase++
+		} else {
+			numSelectedNotBase++
 		}
 	}
 	menu := &menu{}
@@ -166,10 +210,25 @@ func (t *flipFieldTab) contextMenu() *menu {
 			menu.items = append(menu.items, menuItem{"Disable All", t.disableSelectedPortals})
 		}
 	}
+	if numSelectedBase > 0 {
+		if len(t.portals.selectedPortals) == 1 {
+			menu.items = append(menu.items, menuItem{"Unmake base", t.unmakeSelectedPortalsBase})
+		} else {
+			menu.items = append(menu.items, menuItem{"Unmake all base", t.unmakeSelectedPortalsBase})
+		}
+	}
+	if numSelectedNotBase > 0 && numSelectedNotBase+len(t.basePortals) <= 2 {
+		if len(t.portals.selectedPortals) == 1 {
+			menu.items = append(menu.items, menuItem{"Make base", t.makeSelectedPortalsBase})
+		} else {
+			menu.items = append(menu.items, menuItem{"Make all base", t.makeSelectedPortalsBase})
+		}
+	}
 	return menu
 }
 
 type flipFieldState struct {
+	BasePortals        []string `json:"basePortals"`
 	NumBackbonePortals int      `json:"numBackbonePortals"`
 	Exactly            bool     `json:"exactly"`
 	MaxFlipPortals     int      `json:"maxFlipPortals"`
@@ -187,6 +246,9 @@ func (t *flipFieldTab) state() flipFieldState {
 		SimpleBackbone:     t.simpleBackbone.Value(),
 		SolutionText:       t.solutionText,
 	}
+	for baseGUID := range t.basePortals {
+		state.BasePortals = append(state.BasePortals, baseGUID)
+	}
 	for _, backbonePortal := range t.backbone {
 		state.Backbone = append(state.Backbone, backbonePortal.Guid)
 	}
@@ -197,6 +259,13 @@ func (t *flipFieldTab) state() flipFieldState {
 }
 
 func (t *flipFieldTab) load(state flipFieldState) error {
+	t.basePortals = make(map[string]struct{})
+	for _, baseGUID := range state.BasePortals {
+		if _, ok := t.portals.portalMap[baseGUID]; !ok {
+			return fmt.Errorf("unknown herringbone base portal \"%s\"", baseGUID)
+		}
+		t.basePortals[baseGUID] = struct{}{}
+	}
 	if state.NumBackbonePortals <= 0 {
 		return fmt.Errorf("non-positive flipField.numBackbonePortals value %d", state.NumBackbonePortals)
 	}
