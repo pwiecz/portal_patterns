@@ -47,7 +47,9 @@ func bestFlipFieldWorker(
 	candidates := make([]portalData, 0, len(q.portals))
 	for req := range requestChannel {
 		b, f, bl := q.findBestFlipField(req.p0, req.p1, req.ccw, req.backbone, req.flipPortals, candidates, localBestNumFields)
-		if q.numPortalLimit != EQUAL || len(b) == q.maxBackbonePortals {
+		if len(b) >= 2 &&
+			hasAllPortalIndicesInThePair(q.fixedBaseIndices, b[0].Index, b[len(b)-1].Index) &&
+			(q.numPortalLimit != EQUAL || len(b) == q.maxBackbonePortals) {
 			numFlipPortals := len(f)
 			if q.maxFlipPortals > 0 && numFlipPortals > q.maxFlipPortals {
 				numFlipPortals = q.maxFlipPortals
