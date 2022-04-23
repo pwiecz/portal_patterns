@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"image"
@@ -620,6 +621,7 @@ func (w *MapDrawer) redrawTiles() {
 			}
 		}
 	}
+	w.tileFetcher.CancelRequestsExcept(tileCoords)
 	for coord, tex := range w.mapTiles {
 		if _, ok := tileCoords[coord]; !ok {
 			deleteTexture(tex)
@@ -647,7 +649,7 @@ func (w *MapDrawer) fetchTile(coord osm.TileCoord) {
 			w.onTileRead(coord, img)
 			return
 		}
-		if !errors.Is(err, osm.ErrBusy) {
+		if !errors.Is(err, osm.ErrBusy) && !errors.Is(err, context.Canceled) {
 			fmt.Println("fetching error:", err)
 			return
 		}

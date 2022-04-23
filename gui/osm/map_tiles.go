@@ -1,6 +1,7 @@
 package osm
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"image"
@@ -35,7 +36,7 @@ type MapTiles struct {
 	fetchSemaphore        chan empty
 	requestsInFlightMutex sync.Mutex
 	requestsInFlightCond  *sync.Cond
-	requestsInFlight      map[TileCoord]empty
+	requestsInFlight      map[TileCoord]context.CancelFunc
 	requestResults        map[TileCoord]requestResult
 	numWaitingForResult   map[TileCoord]int
 }
@@ -59,11 +60,22 @@ func NewMapTiles() *MapTiles {
 	mapTiles := &MapTiles{
 		cacheDir:            cacheDir,
 		fetchSemaphore:      semaphore,
-		requestsInFlight:    make(map[TileCoord]empty),
+		requestsInFlight:    make(map[TileCoord]context.CancelFunc),
 		requestResults:      make(map[TileCoord]requestResult),
 		numWaitingForResult: make(map[TileCoord]int)}
 	mapTiles.requestsInFlightCond = sync.NewCond(&mapTiles.requestsInFlightMutex)
 	return mapTiles
+}
+
+func (m *MapTiles) CancelRequestsExcept(requestsToKeep map[TileCoord]struct{}) {
+	m.requestsInFlightMutex.Lock()
+	defer m.requestsInFlightMutex.Unlock()
+	for requestedTile, cancelFunc := range m.requestsInFlight {
+		if _, ok := requestsToKeep[requestedTile]; !ok {
+			cancelFunc()
+			delete(m.requestsInFlight, requestedTile)
+		}
+	}
 }
 
 func (m *MapTiles) GetTile(coord TileCoord) (image.Image, error) {
@@ -99,16 +111,18 @@ func (m *MapTiles) GetTile(coord TileCoord) (image.Image, error) {
 			}
 		}
 	}
-	m.requestsInFlight[coord] = empty{}
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	m.requestsInFlight[coord] = cancelFunc
 	m.requestsInFlightMutex.Unlock()
 
-	img, err := m.getTileSlow(coord)
+	img, err := m.getTileSlow(coord, ctx)
 
 	m.requestsInFlightMutex.Lock()
 	if m.numWaitingForResult[coord] > 0 {
 		m.requestResults[coord] = requestResult{img: img, err: err}
 		m.requestsInFlightCond.Broadcast()
 	}
+	cancelFunc()
 	delete(m.requestsInFlight, coord)
 	m.requestsInFlightMutex.Unlock()
 
@@ -118,15 +132,15 @@ func (m *MapTiles) GetTile(coord TileCoord) (image.Image, error) {
 	return img, nil
 }
 
-func (m *MapTiles) getTileSlow(coord TileCoord) (image.Image, error) {
+func (m *MapTiles) getTileSlow(coord TileCoord, ctx context.Context) (image.Image, error) {
 	if m.cacheDir == "" {
-		return m.fetchTile(coord)
+		return m.fetchTile(coord, ctx)
 	}
 	cachedTileDir := filepath.Join(m.cacheDir, strconv.Itoa(coord.Zoom), strconv.Itoa(coord.X))
 	if _, err := os.Stat(cachedTileDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(cachedTileDir, 0755); err != nil {
 			log.Println("Cannot create cache dir", err)
-			return m.fetchTile(coord)
+			return m.fetchTile(coord, ctx)
 		}
 	}
 	cachedTilePath := filepath.Join(cachedTileDir, strconv.Itoa(coord.Y)+".png")
@@ -142,7 +156,7 @@ func (m *MapTiles) getTileSlow(coord TileCoord) (image.Image, error) {
 			log.Println("Cannot remove cached tile", cachedTilePath)
 		}
 	}
-	img, err := m.fetchTile(coord)
+	img, err := m.fetchTile(coord, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -170,14 +184,14 @@ func (m *MapTiles) getTileSlow(coord TileCoord) (image.Image, error) {
 	return img, nil
 }
 
-func (m *MapTiles) fetchTile(coord TileCoord) (image.Image, error) {
+func (m *MapTiles) fetchTile(coord TileCoord, ctx context.Context) (image.Image, error) {
 	select {
 	case <-m.fetchSemaphore:
 		defer func() {
 			m.fetchSemaphore <- empty{}
 		}()
 		url := fmt.Sprintf("http://a.tile.openstreetmap.org/%d/%d/%d.png", coord.Zoom, coord.X, coord.Y)
-		req, err := http.NewRequest("GET", url, nil)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
 			return nil, err
 		}
