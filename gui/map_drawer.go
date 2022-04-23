@@ -155,15 +155,11 @@ func (w *MapDrawer) Destroy() {
 
 func (w *MapDrawer) Async(callback func()) {
 	w.taskQueue.Enqueue(callback)
-	for _, callback := range w.onMapChangedCallbacks {
-		callback()
-	}
 }
 func (w *MapDrawer) SetPortalColor(guid string, fillColor, strokeColor color.Color) {
 	w.Async(func() {
 		w.portals[w.portalIndices[guid]].fillColor = imgui.Packed(fillColor)
 		w.portals[w.portalIndices[guid]].strokeColor = imgui.Packed(strokeColor)
-		go w.MapChanged()
 	})
 }
 
@@ -203,7 +199,6 @@ func (w *MapDrawer) Raise(guid string) {
 		for ord, portalIndex := range w.portalDrawOrder {
 			w.portals[portalIndex].drawOrder = ord
 		}
-		w.MapChanged()
 	})
 }
 func (w *MapDrawer) Resize(width, height int) {
@@ -236,7 +231,6 @@ func (w *MapDrawer) ShowRectangularSelection(x0, y0, x1, y1 int) {
 	w.Async(func() {
 		w.selX0, w.selX1 = minMax(x0, x1)
 		w.selY0, w.selY1 = minMax(y0, y1)
-		w.MapChanged()
 	})
 }
 func (w *MapDrawer) PortalsInsideSelection() map[string]struct{} {
@@ -279,7 +273,6 @@ func (w *MapDrawer) ZoomOut(x, y int) {
 func (w *MapDrawer) SetSelectionMode(selectionMode SelectionMode) {
 	w.Async(func() {
 		w.selectionMode = selectionMode
-		w.MapChanged()
 	})
 }
 func (w *MapDrawer) screenPointToGeoPoint(x, y int) s2.Point {
@@ -299,12 +292,10 @@ func (w *MapDrawer) Hover(x, y int) {
 			}
 			w.tooltip = "Rectangular selection"
 			w.tooltipX, w.tooltipY = 65, 30
-			w.MapChanged()
 			return
 		} else {
 			if w.tooltip != "" {
 				w.tooltip = ""
-				w.MapChanged()
 			}
 		}
 		w.mouseX, w.mouseY = x, y
@@ -326,7 +317,6 @@ func (w *MapDrawer) Hover(x, y int) {
 		}
 		if portalUnderMouse != w.portalUnderMouse {
 			w.portalUnderMouse = portalUnderMouse
-			w.MapChanged()
 		}
 	})
 }
@@ -426,7 +416,6 @@ func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
 		w.y0 = 0
 		w.portalUnderMouse = -1
 		w.redrawTiles()
-		w.MapChanged()
 		return
 	}
 	for i, portal := range portals {
@@ -448,7 +437,6 @@ func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
 	w.portalUnderMouse = -1
 
 	w.redrawTiles()
-	w.MapChanged()
 }
 
 const LabelXMargin = 10
@@ -602,7 +590,6 @@ func (w *MapDrawer) SetPaths(paths [][]s2.Point) {
 			}
 			w.paths = append(w.paths, mapPath)
 		}
-		w.MapChanged()
 	})
 }
 func (w *MapDrawer) onTileRead(coord osm.TileCoord, img image.Image) {
@@ -617,6 +604,7 @@ func (w *MapDrawer) onTileRead(coord osm.TileCoord, img image.Image) {
 	w.Async(func() {
 		w.showTile(coord, img)
 	})
+	w.MapChanged()
 }
 func (w *MapDrawer) redrawTiles() {
 	if w.zoomPow == 0 {
@@ -650,9 +638,6 @@ func (w *MapDrawer) showTile(coord osm.TileCoord, img image.Image) {
 		deleteTexture(tex)
 	}
 	w.mapTiles[coord] = newTexture(img)
-	for _, callback := range w.onMapChangedCallbacks {
-		callback()
-	}
 }
 
 func (w *MapDrawer) fetchTile(coord osm.TileCoord) {

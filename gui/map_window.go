@@ -40,11 +40,7 @@ func NewMapWindow(title string, tileFetcher *osm.MapTiles, parent *fltk.Window) 
 }
 
 func (w *MapWindow) redraw() {
-	if fltk.Lock() {
-		defer fltk.Unlock()
-		w.Redraw()
-		fltk.AwakeNullMessage()
-	}
+	fltk.Awake(w.Redraw)
 }
 func (w *MapWindow) Destroy() {
 	w.mapDrawer.Destroy()
@@ -240,6 +236,7 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 			if err := gl.Init(); err != nil {
 				log.Fatal("Cannot initialize OpenGL", err)
 			}
+			w.redraw()
 		}
 	}
 	return false

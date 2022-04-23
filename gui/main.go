@@ -211,10 +211,12 @@ func (w *MainWindow) onTabSelected(selectedIx int) {
 		w.export.Deactivate()
 		w.copy.Deactivate()
 	}
+	w.mapWindow.Redraw()
 }
 
 func (w *MainWindow) onRectangularSelection() {
 	w.mapWindow.SetSelectionMode(RectangularSelection)
+	w.mapWindow.Redraw()
 }
 func (w *MainWindow) onSelectAll() {
 	selection := make(map[string]struct{})
@@ -256,6 +258,7 @@ func (w *MainWindow) OnSelectionChanged(selectedPortals map[string]struct{}) {
 		w.mapWindow.ScrollToPortal(selectedGUID)
 		w.portalList.ScrollToPortal(selectedGUID)
 	}
+	w.mapWindow.Redraw()
 }
 
 func (w *MainWindow) onContextMenu(x, y int) {
@@ -277,12 +280,15 @@ func (w *MainWindow) onContextMenu(x, y int) {
 		w.portalList.SetPortalLabel(guid, selectedPattern.portalLabel(guid))
 	}
 	w.portalList.Redraw()
+	w.mapWindow.Redraw()
 }
 func (w *MainWindow) onZoomIn() {
 	w.mapWindow.ZoomIn()
+	w.mapWindow.Redraw()
 }
 func (w *MainWindow) onZoomOut() {
 	w.mapWindow.ZoomOut()
+	w.mapWindow.Redraw()
 }
 func (w *MainWindow) onLoadPressed() {
 	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "PP files (*.pp)", fltk.FileChooser_SINGLE, "Select project file")
@@ -380,6 +386,7 @@ func (w *MainWindow) onPortalsChanged() {
 	if len(w.portals.portals) > 0 {
 		w.reset.Activate()
 	}
+	w.mapWindow.Redraw()
 }
 
 func (w *MainWindow) addPortals(portals []lib.Portal) {
@@ -443,6 +450,7 @@ func (w *MainWindow) onResetPortalsPressed() {
 	w.flipField.onReset()
 	w.threeCorners.onReset()
 	w.SetLabel("")
+	w.mapWindow.Redraw()
 }
 
 func (w *MainWindow) onSearchPressed() {
@@ -457,31 +465,31 @@ func (w *MainWindow) onSearchPressed() {
 	selectedPattern.onSearch(w.progressCallback, w.onSearchDone)
 }
 func (w *MainWindow) progressCallback(val, max int) {
-	if fltk.Lock() {
-		w.progress.SetMaximum(float64(max))
-		w.progress.SetValue(float64(val))
-		fltk.Unlock()
-		fltk.AwakeNullMessage()
-	}
+	fltk.Lock()
+	w.progress.SetMaximum(float64(max))
+	w.progress.SetValue(float64(val))
+	fltk.Unlock()
+	fltk.AwakeNullMessage()
 }
 func (w *MainWindow) onSearchDone() {
-	if fltk.Lock() {
-		defer fltk.Unlock()
-		w.add.Activate()
-		w.reset.Activate()
-		w.search.Activate()
-		w.portalList.Activate()
-		selectedPattern := w.selectedPattern()
-		if selectedPattern.hasSolution() {
-			w.export.Activate()
-			w.copy.Activate()
-			w.solutionLabel.SetLabel(selectedPattern.solutionInfoString())
-			w.mapWindow.SetPaths(selectedPattern.solutionPaths())
-		} else {
-			w.solutionLabel.SetLabel("No solution found")
-			w.mapWindow.SetPaths(nil)
-		}
+	fltk.Lock()
+	w.add.Activate()
+	w.reset.Activate()
+	w.search.Activate()
+	w.portalList.Activate()
+	selectedPattern := w.selectedPattern()
+	if selectedPattern.hasSolution() {
+		w.export.Activate()
+		w.copy.Activate()
+		w.solutionLabel.SetLabel(selectedPattern.solutionInfoString())
+		fltk.Unlock()
+		w.mapWindow.SetPaths(selectedPattern.solutionPaths())
+	} else {
+		w.solutionLabel.SetLabel("No solution found")
+		fltk.Unlock()
+		w.mapWindow.SetPaths(nil)
 	}
+	w.mapWindow.Redraw()
 }
 func (w *MainWindow) onExportPressed() {
 	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "JSON files (*.json)", fltk.FileChooser_CREATE, "Select draw tools file")
