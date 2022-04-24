@@ -475,10 +475,10 @@ func (w *MainWindow) progressCallback(val, max int) {
 	}
 	w.lastProgressUpdate = now
 	fltk.Awake(func() {
-		if maxF := float32(max); maxF != w.progress.Maximum() {
+		if maxF := float64(max); maxF != w.progress.Maximum() {
 			w.progress.SetMaximum(maxF)
 		}
-		w.progress.SetValue(float32(val))
+		w.progress.SetValue(float64(val))
 	})
 }
 func (w *MainWindow) onSearchDone() {
