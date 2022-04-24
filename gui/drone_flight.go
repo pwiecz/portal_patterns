@@ -12,12 +12,13 @@ import (
 
 type droneFlightTab struct {
 	*baseTab
-	useLongJumps   *fltk.CheckButton
-	optimizeFor    *fltk.Choice
-	solution, keys []lib.Portal
-	solutionText   string
-	startPortal    string
-	endPortal      string
+	useLongJumps      *fltk.CheckButton
+	optimizeFor       *fltk.Choice
+	solution, keys    []lib.Portal
+	searchingFinished bool
+	solutionText      string
+	startPortal       string
+	endPortal         string
 }
 
 var _ pattern = (*droneFlightTab)(nil)
@@ -80,6 +81,7 @@ func (t *droneFlightTab) onSearch(progressFunc func(int, int), onSearchDone func
 			options = append(options, lib.DroneFlightEndPortalIndex(i))
 		}
 	}
+	t.searchingFinished = false
 	go func() {
 		solution, keys := lib.LongestDroneFlight(portals, options...)
 		fltk.Awake(func() {
@@ -90,11 +92,15 @@ func (t *droneFlightTab) onSearch(progressFunc func(int, int), onSearchDone func
 				distance := t.solution[0].LatLng.Distance(t.solution[len(t.solution)-1].LatLng) * lib.RadiansToMeters
 				t.solutionText = fmt.Sprintf("Flight distance: %.1fm, keys needed: %d", distance, len(t.keys))
 			}
+			t.searchingFinished = false
 			onSearchDone()
 		})
 	}()
 }
 
+func (t *droneFlightTab) finishedSearching() bool {
+	return t.searchingFinished
+}
 func (t *droneFlightTab) hasSolution() bool {
 	return len(t.solution) > 0
 }

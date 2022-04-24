@@ -13,14 +13,15 @@ import (
 
 type homogeneousTab struct {
 	*baseTab
-	maxDepth      *fltk.Spinner
-	innerPortals  *fltk.Choice
-	topLevel      *fltk.Choice
-	pure          *fltk.CheckButton
-	depth         uint16
-	solution      []lib.Portal
-	solutionText  string
-	cornerPortals map[string]struct{}
+	maxDepth          *fltk.Spinner
+	innerPortals      *fltk.Choice
+	topLevel          *fltk.Choice
+	pure              *fltk.CheckButton
+	depth             uint16
+	searchingFinished bool
+	solution          []lib.Portal
+	solutionText      string
+	cornerPortals     map[string]struct{}
 }
 
 var _ pattern = (*homogeneousTab)(nil)
@@ -114,6 +115,7 @@ func (t *homogeneousTab) onSearch(progressFunc func(int, int), onSearchDone func
 			corners = append(corners, i)
 		}
 	}
+	t.searchingFinished = false
 	go func() {
 		options = append(options, lib.HomogeneousFixedCornerIndices(corners))
 		solution, depth := lib.DeepestHomogeneous(portals, options...)
@@ -124,11 +126,15 @@ func (t *homogeneousTab) onSearch(progressFunc func(int, int), onSearchDone func
 			} else {
 				t.solutionText = "No solution found"
 			}
+			t.searchingFinished = true
 			onSearchDone()
 		})
 	}()
 }
 
+func (t *homogeneousTab) finishedSearching() bool {
+	return t.searchingFinished
+}
 func (t *homogeneousTab) hasSolution() bool {
 	return len(t.solution) > 0
 }

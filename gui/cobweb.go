@@ -11,9 +11,10 @@ import (
 
 type cobwebTab struct {
 	*baseTab
-	solution      []lib.Portal
-	solutionText  string
-	cornerPortals map[string]struct{}
+	solution          []lib.Portal
+	searchingFinished bool
+	solutionText      string
+	cornerPortals     map[string]struct{}
 }
 
 var _ pattern = (*cobwebTab)(nil)
@@ -40,13 +41,18 @@ func (t *cobwebTab) onSearch(progressFunc func(int, int), onSearchDone func()) {
 			corners = append(corners, i)
 		}
 	}
+	t.searchingFinished = false
 	go func() {
 		solution := lib.LargestCobweb(portals, corners, progressFunc)
 		fltk.Awake(func() {
 			t.solution = solution
+			t.searchingFinished = true
 			onSearchDone()
 		})
 	}()
+}
+func (t *cobwebTab) finishedSearching() bool {
+	return t.searchingFinished
 }
 func (t *cobwebTab) hasSolution() bool {
 	return len(t.solution) > 0

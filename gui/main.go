@@ -53,6 +53,7 @@ type MainWindow struct {
 	droneFlight        *droneFlightTab
 	threeCorners       *threeCornersTab
 	selectedTab        int
+	searchInProgress   bool
 }
 
 func NewMainWindow(conf *configuration.Configuration) *MainWindow {
@@ -213,6 +214,13 @@ func (w *MainWindow) onTabSelected(selectedIx int) {
 		w.mapWindow.SetPaths(nil)
 		w.export.Deactivate()
 		w.copy.Deactivate()
+	}
+	if !w.searchInProgress {
+		if selectedPattern.finishedSearching() {
+			w.progress.SetValue(w.progress.Maximum())
+		} else {
+			w.progress.SetValue(0)
+		}
 	}
 	w.mapWindow.Redraw()
 }
@@ -437,6 +445,7 @@ func (w *MainWindow) onResetPortalsPressed() {
 	w.portals.portalMap = make(map[string]lib.Portal)
 	w.portals.selectedPortals = make(map[string]struct{})
 	w.portals.disabledPortals = make(map[string]struct{})
+	w.progress.SetValue(0)
 	w.reset.Deactivate()
 	w.search.Deactivate()
 	w.export.Deactivate()
@@ -457,6 +466,7 @@ func (w *MainWindow) onResetPortalsPressed() {
 }
 
 func (w *MainWindow) onSearchPressed() {
+	w.searchInProgress = true
 	w.add.Deactivate()
 	w.reset.Deactivate()
 	w.search.Deactivate()
@@ -482,6 +492,7 @@ func (w *MainWindow) progressCallback(val, max int) {
 	})
 }
 func (w *MainWindow) onSearchDone() {
+	w.searchInProgress = false
 	w.progress.SetValue(w.progress.Maximum())
 	w.add.Activate()
 	w.reset.Activate()

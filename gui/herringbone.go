@@ -12,10 +12,11 @@ import (
 
 type herringboneTab struct {
 	*baseTab
-	b0, b1       lib.Portal
-	spine        []lib.Portal
-	solutionText string
-	basePortals  map[string]struct{}
+	b0, b1            lib.Portal
+	spine             []lib.Portal
+	searchingFinished bool
+	solutionText      string
+	basePortals       map[string]struct{}
 }
 
 var _ pattern = (*herringboneTab)(nil)
@@ -42,16 +43,21 @@ func (t *herringboneTab) onSearch(progressFunc func(int, int), onSearchDone func
 			base = append(base, i)
 		}
 	}
+	t.searchingFinished = false
 	go func() {
 		b0, b1, spine := lib.LargestHerringbone(portals, base, runtime.GOMAXPROCS(0), progressFunc)
 		fltk.Awake(func() {
 			t.b0, t.b1, t.spine = b0, b1, spine
 			t.solutionText = fmt.Sprintf("Solution length: %d", len(t.spine))
+			t.searchingFinished = true
 			onSearchDone()
 		})
 	}()
 }
 
+func (t *herringboneTab) finishedSearching() bool {
+	return t.searchingFinished
+}
 func (t *herringboneTab) hasSolution() bool {
 	return len(t.spine) > 0
 }

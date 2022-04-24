@@ -18,6 +18,7 @@ type flipFieldTab struct {
 	simpleBackbone     *fltk.CheckButton
 	backbone           []lib.Portal
 	flipPortals        []lib.Portal
+	searchingFinished  bool
 	solutionText       string
 	basePortals        map[string]struct{}
 }
@@ -93,16 +94,21 @@ func (t *flipFieldTab) onSearch(progressFunc func(int, int), onSearchDone func()
 		lib.FlipFieldSimpleBackbone(t.simpleBackbone.Value()),
 		lib.FlipFieldNumWorkers(runtime.GOMAXPROCS(0)),
 	}
+	t.searchingFinished = false
 	go func() {
 		backbone, flipPortals := lib.LargestFlipField(portals, options...)
 		fltk.Awake(func() {
 			t.backbone, t.flipPortals = backbone, flipPortals
 			t.solutionText = fmt.Sprintf("Num backbone portals: %d, num flip portals: %d", len(t.backbone), len(t.flipPortals))
+			t.searchingFinished = true
 			onSearchDone()
 		})
 	}()
 }
 
+func (t *flipFieldTab) finishedSearching() bool {
+	return t.searchingFinished
+}
 func (t *flipFieldTab) hasSolution() bool {
 	return len(t.backbone) > 0 && len(t.flipPortals) > 0
 }

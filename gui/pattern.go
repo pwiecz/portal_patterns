@@ -19,6 +19,7 @@ type pattern interface {
 	onSearch(func(int, int), func())
 	portalColor(string) (color.Color, color.Color)
 	portalLabel(string) string
+	finishedSearching() bool
 	hasSolution() bool
 	solutionInfoString() string
 	solutionPaths() [][]s2.Point

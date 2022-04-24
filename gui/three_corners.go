@@ -13,6 +13,7 @@ import (
 
 type threeCornersTab struct {
 	*baseTab
+	searchingFinished                     bool
 	solution                              []lib.IndexedPortal
 	solutionText                          string
 	portalsNot0, portalsNot1, portalsNot2 map[string]struct{}
@@ -52,13 +53,18 @@ func (t *threeCornersTab) onSearch(progressFunc func(int, int), onSearchDone fun
 			portals2 = append(portals2, portal)
 		}
 	}
+	t.searchingFinished = false
 	go func() {
 		solution := lib.LargestThreeCorner(portals0, portals1, portals2, progressFunc)
 		fltk.Awake(func() {
 			t.solution = solution
+			t.searchingFinished = true
 			onSearchDone()
 		})
 	}()
+}
+func (t *threeCornersTab) finishedSearching() bool {
+	return t.searchingFinished
 }
 func (t *threeCornersTab) hasSolution() bool {
 	return len(t.solution) > 0
