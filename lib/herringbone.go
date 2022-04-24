@@ -159,8 +159,8 @@ func LargestHerringboneST(portals []Portal, fixedBaseIndices []int, progressFunc
 		numPairs = 1
 	}
 	everyNth := numPairs / 1000
-	if everyNth < 50 {
-		everyNth = 2
+	if everyNth < 1 {
+		everyNth = 1
 	}
 	numProcessedPairs := 0
 	numProcessedPairsModN := 0

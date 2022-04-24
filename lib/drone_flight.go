@@ -277,8 +277,8 @@ func longestDroneFlightST(portals []Portal, params droneFlightParams) ([]Portal,
 	}
 	numIndexEntries := len(portals)
 	everyNth := numIndexEntries / 1000
-	if everyNth < 50 {
-		everyNth = 2
+	if everyNth < 1 {
+		everyNth = 1
 	}
 	indexEntriesFilled := 0
 	indexEntriesFilledModN := 0
