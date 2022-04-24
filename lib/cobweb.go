@@ -80,8 +80,8 @@ func LargestCobweb(portals []Portal, fixedCornerIndices []int, progressFunc func
 
 	numIndexEntries := len(portals) * (len(portals) - 1) * (len(portals) - 2)
 	everyNth := numIndexEntries / 1000
-	if everyNth < 50 {
-		everyNth = 2
+	if everyNth < 1 {
+		everyNth = 1
 	}
 	indexEntriesFilled := 0
 	indexEntriesFilledModN := 0

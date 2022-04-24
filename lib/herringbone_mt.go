@@ -115,8 +115,8 @@ func LargestHerringboneMT(portals []Portal, fixedBaseIndices []int, numWorkers i
 	}()
 	numPairs := len(portals) * (len(portals) - 1)
 	everyNth := numPairs / 1000
-	if everyNth < 50 {
-		everyNth = 2
+	if everyNth < 1 {
+		everyNth = 1
 	}
 	progressFunc(0, numPairs)
 	numProcessedPairs := 0
