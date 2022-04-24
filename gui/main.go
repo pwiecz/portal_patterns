@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
@@ -32,25 +33,26 @@ func NewPortals() *Portals {
 
 type MainWindow struct {
 	*fltk.Window
-	configuration     *configuration.Configuration
-	add, reset        *fltk.Button
-	search            *fltk.Button
-	export            *fltk.Button
-	copy              *fltk.Button
-	solutionLabel     *fltk.Box
-	progress          *fltk.Progress
-	tabs              *fltk.Tabs
-	mapWindow         *MapWindow
-	portalList        *PortalList
-	portals           *Portals
-	homogeneous       *homogeneousTab
-	herringbone       *herringboneTab
-	doubleHerringbone *doubleHerringboneTab
-	cobweb            *cobwebTab
-	flipField         *flipFieldTab
-	droneFlight       *droneFlightTab
-	threeCorners      *threeCornersTab
-	selectedTab       int
+	configuration      *configuration.Configuration
+	add, reset         *fltk.Button
+	search             *fltk.Button
+	export             *fltk.Button
+	copy               *fltk.Button
+	solutionLabel      *fltk.Box
+	progress           *fltk.Progress
+	lastProgressUpdate time.Time
+	tabs               *fltk.Tabs
+	mapWindow          *MapWindow
+	portalList         *PortalList
+	portals            *Portals
+	homogeneous        *homogeneousTab
+	herringbone        *herringboneTab
+	doubleHerringbone  *doubleHerringboneTab
+	cobweb             *cobwebTab
+	flipField          *flipFieldTab
+	droneFlight        *droneFlightTab
+	threeCorners       *threeCornersTab
+	selectedTab        int
 }
 
 func NewMainWindow(conf *configuration.Configuration) *MainWindow {
@@ -148,6 +150,7 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 
 	w.progress = fltk.NewProgress(0, 0, 700, 30)
 	w.progress.SetSelectionColor(0x4444ff00)
+	w.lastProgressUpdate = time.Now()
 
 	w.portalList = NewPortalList(0, 0, 700, 590)
 	w.portalList.SetSelectionChangeCallback(func() { w.OnSelectionChanged(w.portalList.selectedPortals) })
@@ -465,14 +468,21 @@ func (w *MainWindow) onSearchPressed() {
 	selectedPattern.onSearch(w.progressCallback, w.onSearchDone)
 }
 func (w *MainWindow) progressCallback(val, max int) {
-	fltk.Lock()
-	w.progress.SetMaximum(float64(max))
-	w.progress.SetValue(float64(val))
-	fltk.Unlock()
-	fltk.AwakeNullMessage()
+	now := time.Now()
+	sinceLastUpdate := now.Sub(w.lastProgressUpdate)
+	if sinceLastUpdate.Milliseconds() < 10 {
+		return
+	}
+	w.lastProgressUpdate = now
+	fltk.Awake(func() {
+		if maxF := float32(max); maxF != w.progress.Maximum() {
+			w.progress.SetMaximum(maxF)
+		}
+		w.progress.SetValue(float32(val))
+	})
 }
 func (w *MainWindow) onSearchDone() {
-	fltk.Lock()
+	w.progress.SetValue(w.progress.Maximum())
 	w.add.Activate()
 	w.reset.Activate()
 	w.search.Activate()
@@ -482,11 +492,9 @@ func (w *MainWindow) onSearchDone() {
 		w.export.Activate()
 		w.copy.Activate()
 		w.solutionLabel.SetLabel(selectedPattern.solutionInfoString())
-		fltk.Unlock()
 		w.mapWindow.SetPaths(selectedPattern.solutionPaths())
 	} else {
 		w.solutionLabel.SetLabel("No solution found")
-		fltk.Unlock()
 		w.mapWindow.SetPaths(nil)
 	}
 	w.mapWindow.Redraw()

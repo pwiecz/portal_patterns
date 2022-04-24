@@ -48,8 +48,8 @@ func (t *doubleHerringboneTab) onSearch(progressFunc func(int, int), onSearchDon
 		fltk.Awake(func() {
 			t.b0, t.b1, t.spine0, t.spine1 = b0, b1, spine0, spine1
 			t.solutionText = fmt.Sprintf("Solution length: %d + %d", len(t.spine0), len(t.spine1))
+			onSearchDone()
 		})
-		onSearchDone()
 	}()
 }
 func (t *doubleHerringboneTab) hasSolution() bool {
