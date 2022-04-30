@@ -68,6 +68,18 @@ func (l *lockedCoordSet) Remove(coord osm.TileCoord) {
 	defer l.mutex.Unlock()
 	delete(l.set, coord)
 }
+func (l *lockedCoordSet) Set(set map[osm.TileCoord]struct{}) {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+	for coord, _ := range l.set {
+		if _, ok := set[coord]; !ok {
+			delete(l.set, coord)
+		}
+	}
+	for coord, _ := range set {
+		l.set[coord] = struct{}{}
+	}
+}
 func newLockedCoordSet() *lockedCoordSet {
 	return &lockedCoordSet{
 		set: make(map[osm.TileCoord]struct{}),
@@ -630,7 +642,7 @@ func (w *MapDrawer) redrawTiles() {
 			delete(tileCoords, coord)
 		}
 	}
-	w.missingTiles.Clear()
+	w.missingTiles.Set(tileCoords)
 	for coord := range tileCoords {
 		w.tryShowTile(coord)
 	}
@@ -674,7 +686,9 @@ func (w *MapDrawer) tryShowTile(coord osm.TileCoord) {
 	}
 	wrappedCoord.X %= maxCoord
 	tileImage := w.tileCache.Get(wrappedCoord)
-	if tileImage == nil {
+	if tileImage != nil {
+		w.missingTiles.Remove(coord)
+	} else {
 		go func() {
 			w.fetchTile(coord)
 		}()
