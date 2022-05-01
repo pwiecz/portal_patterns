@@ -71,12 +71,12 @@ func (l *lockedCoordSet) Remove(coord osm.TileCoord) {
 func (l *lockedCoordSet) Set(set map[osm.TileCoord]struct{}) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
-	for coord, _ := range l.set {
+	for coord := range l.set {
 		if _, ok := set[coord]; !ok {
 			delete(l.set, coord)
 		}
 	}
-	for coord, _ := range set {
+	for coord := range set {
 		l.set[coord] = struct{}{}
 	}
 }
