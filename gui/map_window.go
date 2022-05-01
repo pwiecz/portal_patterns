@@ -222,6 +222,7 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 		w.isMouseIn = true
 		w.setCursor()
 		w.mapDrawer.Hover(fltk.EventX(), fltk.EventY())
+		w.redraw()
 	case fltk.ENTER:
 		w.isMouseIn = true
 		w.setCursor()
@@ -229,6 +230,7 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 		w.mapDrawer.Leave()
 		w.isMouseIn = false
 		w.setCursor()
+		w.redraw()
 	case fltk.SHOW:
 		if w.firstShow && w.IsShown() {
 			w.firstShow = false

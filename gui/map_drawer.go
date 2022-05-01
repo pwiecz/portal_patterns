@@ -306,11 +306,8 @@ func (w *MapDrawer) Hover(x, y int) {
 			w.tooltip = "Rectangular selection"
 			w.tooltipX, w.tooltipY = 65, 30
 			return
-		} else {
-			if w.tooltip != "" {
-				w.tooltip = ""
-			}
 		}
+		w.tooltip = ""
 		w.mouseX, w.mouseY = x, y
 		if len(w.portals) == 0 {
 			return
