@@ -153,12 +153,17 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	w.progress.SetSelectionColor(0x4444ff00)
 	w.lastProgressUpdate = time.Now()
 
+	portalListPack := fltk.NewPack(0, 0, 700, 590)
+	portalListPack.SetType(fltk.HORIZONTAL)
 	w.portalList = NewPortalList(0, 0, 700, 590)
 	w.portalList.SetSelectionChangeCallback(func() { w.OnSelectionChanged(w.portalList.selectedPortals) })
 	w.portalList.SetContextMenuCallback(w.onContextMenu)
-
+	// Add an empty group that will resize horizonally instead of the portal list then the main window grows horizontally.
+	dummyGroup := fltk.NewGroup(0, 0, 0, 590)
+	portalListPack.End()
+	portalListPack.Resizable(dummyGroup)
 	rightPack.End()
-	rightPack.Resizable(w.portalList)
+	rightPack.Resizable(portalListPack)
 	pack.End()
 	pack.Resizable(w.mapWindow)
 	mainPack.End()
@@ -223,6 +228,7 @@ func (w *MainWindow) onTabSelected(selectedIx int) {
 		}
 	}
 	w.mapWindow.Redraw()
+	w.portalList.Redraw()
 }
 
 func (w *MainWindow) onRectangularSelection() {
