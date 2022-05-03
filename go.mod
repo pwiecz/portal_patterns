@@ -9,7 +9,7 @@ require (
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/inkyblackness/imgui-go/v4 v4.3.0
-	github.com/pwiecz/go-fltk v0.0.0-20220427191302-811e7d984384
+	github.com/pwiecz/go-fltk v0.0.0-20220503080146-06417f7ce962
 	golang.org/x/image v0.0.0-20220321031419-a8550c1d254a
 )
 
@@ -18,5 +18,5 @@ require (
 	github.com/adrg/xdg v0.3.0 // indirect
 )
 
-// replace github.com/pwiecz/go-fltk v0.0.0-20220427191302-811e7d984384 => ../go-fltk
+// replace github.com/pwiecz/go-fltk v0.0.0-20220503080146-06417f7ce962 => ../go-fltk
 // replace github.com/inkyblackness/imgui-go/v4 v4.3.0 => ../../inkyblackness/imgui-go
