@@ -440,7 +440,6 @@ func (w *MainWindow) addPortals(portals []lib.Portal) {
 		return
 	}
 	w.portals.portals = append(w.portals.portals, newPortals...)
-	w.portals.portalMap = make(map[string]lib.Portal)
 	for _, portal := range newPortals {
 		w.portals.portalMap[portal.Guid] = portal
 	}
