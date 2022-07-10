@@ -28,27 +28,6 @@ func newBaseTab(name string, portals *Portals, pattern pattern) *baseTab {
 	return t
 }
 
-func stringSetsAreTheSame(map1 map[string]struct{}, map2 map[string]struct{}) bool {
-	for s := range map1 {
-		if _, ok := map2[s]; !ok {
-			return false
-		}
-	}
-	for s := range map2 {
-		if _, ok := map1[s]; !ok {
-			return false
-		}
-	}
-	return true
-}
-func stringSetCopy(set map[string]struct{}) map[string]struct{} {
-	setCopy := make(map[string]struct{})
-	for s := range set {
-		setCopy[s] = struct{}{}
-	}
-	return setCopy
-}
-
 func (t *baseTab) strokeColor(guid string) color.Color {
 	if _, ok := t.portals.selectedPortals[guid]; ok {
 		return color.NRGBA{0, 0, 0, 255}

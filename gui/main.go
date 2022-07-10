@@ -14,6 +14,7 @@ import (
 	"github.com/pwiecz/portal_patterns/configuration"
 	"github.com/pwiecz/portal_patterns/gui/osm"
 	"github.com/pwiecz/portal_patterns/lib"
+	"golang.org/x/exp/maps"
 )
 
 type Portals struct {
@@ -253,11 +254,11 @@ func (w *MainWindow) onInvertSelection() {
 }
 
 func (w *MainWindow) OnSelectionChanged(selectedPortals map[string]struct{}) {
-	if stringSetsAreTheSame(selectedPortals, w.portals.selectedPortals) {
+	if maps.Equal(selectedPortals, w.portals.selectedPortals) {
 		return
 	}
 	var selectedBefore map[string]struct{}
-	w.portals.selectedPortals, selectedBefore = stringSetCopy(selectedPortals), w.portals.selectedPortals
+	w.portals.selectedPortals, selectedBefore = maps.Clone(selectedPortals), w.portals.selectedPortals
 	w.portalList.SetSelectedPortals(w.portals.selectedPortals)
 	selectedPattern := w.selectedPattern()
 	for guid := range selectedBefore {
@@ -395,6 +396,12 @@ func (w *MainWindow) onPortalsFileSelected(filename string) {
 func (w *MainWindow) onPortalsChanged() {
 	w.portalList.SetPortals(w.portals.portals)
 	w.mapWindow.SetPortals(w.portals.portals)
+	selectedPattern := w.selectedPattern()
+	for guid := range w.portals.portalMap {
+		fill, stroke := selectedPattern.portalColor(guid)
+		w.mapWindow.SetPortalColor(guid, fill, stroke)
+		w.portalList.SetPortalLabel(guid, selectedPattern.portalLabel(guid))
+	}
 	if len(w.portals.portals) >= 3 {
 		w.search.Activate()
 	} else {
@@ -404,13 +411,11 @@ func (w *MainWindow) onPortalsChanged() {
 		w.reset.Activate()
 	}
 	w.mapWindow.Redraw()
+	w.portalList.Redraw()
 }
 
 func (w *MainWindow) addPortals(portals []lib.Portal) {
-	portalMap := make(map[string]lib.Portal)
-	for _, portal := range w.portals.portals {
-		portalMap[portal.Guid] = portal
-	}
+	portalMap := maps.Clone(w.portals.portalMap)
 	newPortals := ([]lib.Portal)(nil)
 	for _, portal := range portals {
 		if existing, ok := portalMap[portal.Guid]; ok {
@@ -440,9 +445,7 @@ func (w *MainWindow) addPortals(portals []lib.Portal) {
 		return
 	}
 	w.portals.portals = append(w.portals.portals, newPortals...)
-	for _, portal := range newPortals {
-		w.portals.portalMap[portal.Guid] = portal
-	}
+	w.portals.portalMap = portalMap
 }
 
 func (w *MainWindow) onResetPortalsPressed() {
@@ -569,12 +572,8 @@ func (w *MainWindow) encode(writer io.Writer) error {
 		ThreeCorners:      w.threeCorners.state(),
 	}
 
-	for disabledGUID := range w.portals.disabledPortals {
-		s.DisabledPortals = append(s.DisabledPortals, disabledGUID)
-	}
-	for selectedGUID := range w.portals.selectedPortals {
-		s.SelectedPortals = append(s.SelectedPortals, selectedGUID)
-	}
+	s.DisabledPortals = maps.Keys(w.portals.disabledPortals)
+	s.SelectedPortals = maps.Keys(w.portals.selectedPortals)
 	return json.NewEncoder(writer).Encode(s)
 }
 

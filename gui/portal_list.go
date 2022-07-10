@@ -53,6 +53,7 @@ func (l *PortalList) SetPortals(portals []lib.Portal) {
 	for i, portal := range l.portals {
 		l.portalIndices[portal.Guid] = i
 	}
+	l.portalState = make(map[string]string)
 	l.SetRowCount(len(portals))
 }
 func (l *PortalList) SetPortalLabel(guid, label string) {
