@@ -397,7 +397,7 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousPureParams) 
 			if p0 >= int(p2) {
 				continue
 			}
-			if !hasAllIndicesInTheTriple(params.fixedCornerIndices, p0, p1, int(p2)) {
+			if !hasAllElementsInTheTriple(params.fixedCornerIndices, p0, p1, int(p2)) {
 				continue
 			}
 			score := params.scorer.scoreTrianglePure(

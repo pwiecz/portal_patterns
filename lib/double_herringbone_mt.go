@@ -65,7 +65,7 @@ func LargestDoubleHerringboneMT(portals []Portal, fixedBaseIndices []int, numWor
 		for i, b0 := range portalsData {
 			for j := i + 1; j < len(portalsData); j++ {
 				b1 := portalsData[j]
-				if !hasAllIndicesInThePair(fixedBaseIndices, i, j) {
+				if !hasAllElementsInThePair(fixedBaseIndices, i, j) {
 					continue
 				}
 				requestChannel <- doubleHerringboneRequest{

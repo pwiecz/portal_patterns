@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/golang/geo/s2"
+	"golang.org/x/exp/constraints"
 )
 
 type portalIndex uint16
@@ -76,32 +77,20 @@ func portalsInsideTriangle(portals []portalData, a, b, c portalData, result []po
 	return result
 }
 
-func float64Min(v0, v1 float64) float64 {
+func min[T constraints.Ordered](v0, v1 T) T {
 	if v0 < v1 {
 		return v0
 	}
 	return v1
 }
-func float64Max(v0, v1 float64) float64 {
+func max[T constraints.Ordered](v0, v1 T) T {
 	if v0 > v1 {
 		return v0
 	}
 	return v1
 }
-func float32Min(v0, v1 float32) float32 {
-	if v0 < v1 {
-		return v0
-	}
-	return v1
-}
-func intMin(v0, v1 int) int {
-	if v0 < v1 {
-		return v0
-	}
-	return v1
-}
 
-func hasAllIndicesInTheTriple(indices []int, a, b, c int) bool {
+func hasAllElementsInTheTriple[T comparable](indices []T, a, b, c T) bool {
 	for _, index := range indices {
 		if a != index && b != index && c != index {
 			return false
@@ -109,16 +98,7 @@ func hasAllIndicesInTheTriple(indices []int, a, b, c int) bool {
 	}
 	return true
 }
-func hasAllPortalIndicesInThePair(indices []portalIndex, a, b portalIndex) bool {
-	for _, index := range indices {
-		if a != index && b != index {
-			return false
-		}
-	}
-	return true
-}
-
-func hasAllIndicesInThePair(indices []int, a, b int) bool {
+func hasAllElementsInThePair[T comparable](indices []T, a, b T) bool {
 	for _, index := range indices {
 		if a != index && b != index {
 			return false

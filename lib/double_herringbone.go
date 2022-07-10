@@ -35,7 +35,7 @@ func LargestDoubleHerringboneST(portals []Portal, fixedBaseIndices []int, progre
 	for i, b0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
 			b1 := portalsData[j]
-			if !hasAllIndicesInThePair(fixedBaseIndices, i, j) {
+			if !hasAllElementsInThePair(fixedBaseIndices, i, j) {
 				continue
 			}
 			bestCCW := q.findBestHerringbone(b0, b1, resultCacheCCW)
