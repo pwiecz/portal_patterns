@@ -373,7 +373,7 @@ func LargestFlipFieldST(portals []Portal, params flipFieldParams) ([]Portal, []P
 			}
 			for _, ccw := range []bool{true, false} {
 				b, f, bl := q.findBestFlipField(p0, p1, ccw)
-				if len(b) <= 2 || !hasAllPortalIndicesInThePair(fixedBaseIndices, b[0].Index, b[len(b)-1].Index) {
+				if len(b) <= 2 || !hasAllElementsInThePair(fixedBaseIndices, b[0].Index, b[len(b)-1].Index) {
 					continue
 				}
 				if params.backbonePortalLimit != EQUAL || len(b) == params.maxBackbonePortals {

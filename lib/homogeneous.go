@@ -205,7 +205,7 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 			p1 := portalsData[j]
 			for k := j + 1; k < len(portalsData); k++ {
 				p2 := portalsData[k]
-				if !hasAllIndicesInTheTriple(params.fixedCornerIndices, i, j, k) {
+				if !hasAllElementsInTheTriple(params.fixedCornerIndices, i, j, k) {
 					continue
 				}
 				q.findBestHomogeneous(p0, p1, p2)
@@ -233,7 +233,7 @@ func pickBestTopLevelTriangle(portalsData []portalData, params homogeneousParams
 		for j := i + 1; j < len(portalsData); j++ {
 			p1 := portalsData[j]
 			for k := j + 1; k < len(portalsData); k++ {
-				if !hasAllIndicesInTheTriple(params.fixedCornerIndices, i, j, k) {
+				if !hasAllElementsInTheTriple(params.fixedCornerIndices, i, j, k) {
 					continue
 				}
 				p2 := portalsData[k]

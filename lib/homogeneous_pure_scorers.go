@@ -17,12 +17,11 @@ func (s thickTrianglesPureScorer) scoreTrianglePure(a, b, c portalData, level in
 		q3 := newDistanceQuery(a.LatLng, c.LatLng)
 		acDistance := float64(q3.Distance(center.LatLng))
 		return float32(
-			float64Min(abDistance,
-				float64Min(bcDistance, acDistance)) * RadiansToMeters)
+			min(abDistance, min(bcDistance, acDistance)) * RadiansToMeters)
 	}
-	return float32Min(
+	return min(
 		s.scoreTrianglePure(a, b, center, level-1, portalsInTriangle),
-		float32Min(
+		min(
 			s.scoreTrianglePure(b, c, center, level-1, portalsInTriangle),
 			s.scoreTrianglePure(c, a, center, level-1, portalsInTriangle)))
 }

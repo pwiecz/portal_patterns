@@ -100,7 +100,7 @@ func LargestCobweb(portals []Portal, fixedCornerIndices []int, progressFunc func
 			p1 := portalsData[j]
 			for k := j + 1; k < len(portalsData); k++ {
 				p2 := portalsData[k]
-				if !hasAllIndicesInTheTriple(fixedCornerIndices, i, j, k) {
+				if !hasAllElementsInTheTriple(fixedCornerIndices, i, j, k) {
 					continue
 				}
 				q.findBestCobweb(p0, p1, p2)
@@ -121,7 +121,7 @@ func LargestCobweb(portals []Portal, fixedCornerIndices []int, progressFunc func
 				if i == k || j == k {
 					continue
 				}
-				if !hasAllIndicesInTheTriple(fixedCornerIndices, i, j, k) {
+				if !hasAllElementsInTheTriple(fixedCornerIndices, i, j, k) {
 					continue
 				}
 				candidate := q.getIndex(p0.Index, p1.Index, p2.Index)

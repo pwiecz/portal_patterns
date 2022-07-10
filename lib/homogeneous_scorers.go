@@ -46,8 +46,8 @@ func (s mostEquilateralTriangleScorer) scoreTriangle(a, b, c portalData) float32
 	distAB := distance(a, b)
 	distBC := distance(b, c)
 	distAC := distance(a, c)
-	minDist := float64Min(distAB, float64Min(distBC, distAC))
-	maxDist := float64Max(distAB, float64Max(distBC, distAC))
+	minDist := min(distAB, min(distBC, distAC))
+	maxDist := max(distAB, max(distBC, distAC))
 	return float32(minDist / maxDist)
 }
 func (s mostEquilateralTriangleScorer) scoreTrianglePure(a, b, c portalData, _ int, _ []portalData) float32 {

@@ -114,7 +114,7 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 		if bestLength > 0 {
 			q.weights[node.index] = bestWeight
 		} else {
-			q.weights[node.index] = float32(float64Min(
+			q.weights[node.index] = float32(min(
 				distance(q.portals[node.index], b0),
 				distance(q.portals[node.index], b1)) * RadiansToMeters)
 		}
@@ -168,7 +168,7 @@ func LargestHerringboneST(portals []Portal, fixedBaseIndices []int, progressFunc
 	q := newBestHerringboneQuery(portalsData)
 	for i, b0 := range portalsData {
 		for j := i + 1; j < len(portalsData); j++ {
-			if !hasAllIndicesInThePair(fixedBaseIndices, i, j) {
+			if !hasAllElementsInThePair(fixedBaseIndices, i, j) {
 				continue
 			}
 			b1 := portalsData[j]
