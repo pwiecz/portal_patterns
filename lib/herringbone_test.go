@@ -1,8 +1,10 @@
 package lib
 
-import "testing"
+import (
+	"testing"
 
-import "github.com/golang/geo/s2"
+	"github.com/golang/geo/s2"
+)
 
 func isCorrectHerringbone(b0, b1 s2.Point, backbone []portalData) bool {
 	if len(backbone) <= 1 {

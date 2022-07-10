@@ -1,8 +1,10 @@
 package lib
 
-import "testing"
+import (
+	"testing"
 
-import "github.com/golang/geo/s2"
+	"github.com/golang/geo/s2"
+)
 
 func latLngSign(l0, l1, l2 s2.LatLng) bool {
 	return s2.Sign(s2.PointFromLatLng(l0), s2.PointFromLatLng(l1), s2.PointFromLatLng(l2))
