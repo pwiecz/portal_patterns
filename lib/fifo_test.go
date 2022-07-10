@@ -1,7 +1,10 @@
 package lib
 
-import "reflect"
-import "testing"
+import (
+	"testing"
+
+	"golang.org/x/exp/slices"
+)
 
 func TestReverse(t *testing.T) {
 	s := []portalIndex(nil)
@@ -18,19 +21,19 @@ func TestReverse(t *testing.T) {
 
 	s = []portalIndex{1}
 	reverse(s)
-	if !reflect.DeepEqual(s, []portalIndex{1}) {
+	if !slices.Equal(s, []portalIndex{1}) {
 		t.Errorf("Expected [1], got %v", s)
 	}
 
 	s = []portalIndex{1, 2}
 	reverse(s)
-	if !reflect.DeepEqual(s, []portalIndex{2, 1}) {
+	if !slices.Equal(s, []portalIndex{2, 1}) {
 		t.Errorf("Expected [2 1], got %v", s)
 	}
 
 	s = []portalIndex{1, 2, 3}
 	reverse(s)
-	if !reflect.DeepEqual(s, []portalIndex{3, 2, 1}) {
+	if !slices.Equal(s, []portalIndex{3, 2, 1}) {
 		t.Errorf("Expected [3 2 1], got %v", s)
 	}
 }
@@ -47,7 +50,7 @@ func TestFifoEnqueueDequeue(t *testing.T) {
 	q.Enqueue(7)
 	q.Enqueue(9)
 	output = append(output, q.Dequeue(), q.Dequeue(), q.Dequeue())
-	if !reflect.DeepEqual(output, []portalIndex{1, 3, 5, 7, 9}) {
+	if !slices.Equal(output, []portalIndex{1, 3, 5, 7, 9}) {
 		t.Errorf("Expected [1 3 5 7 9], got %v", output)
 	}
 	if !q.Empty() {
@@ -68,7 +71,7 @@ func TestFifoReset(t *testing.T) {
 	output := []portalIndex{q.Dequeue()}
 	q.Enqueue(9)
 	output = append(output, q.Dequeue(), q.Dequeue(), q.Dequeue())
-	if !reflect.DeepEqual(output, []portalIndex{3, 5, 7, 9}) {
+	if !slices.Equal(output, []portalIndex{3, 5, 7, 9}) {
 		t.Errorf("Expected [3 5 7 9], got %v", output)
 	}
 	if !q.Empty() {

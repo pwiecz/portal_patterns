@@ -1,8 +1,10 @@
 package lib
 
-import "testing"
+import (
+	"testing"
 
-import "github.com/golang/geo/s2"
+	"github.com/golang/geo/s2"
+)
 
 type indexedPoint struct {
 	Index  int

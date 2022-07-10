@@ -1,7 +1,10 @@
 package lib
 
-import "testing"
-import "github.com/golang/geo/s2"
+import (
+	"testing"
+
+	"github.com/golang/geo/s2"
+)
 
 func isCorrectCCWFlipField(backbone, flipPortals []portalData, simpleBackbone bool) bool {
 	if len(backbone) < 2 {

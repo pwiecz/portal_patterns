@@ -1,10 +1,12 @@
 package lib
 
-import "fmt"
-import "math"
-import "strings"
+import (
+	"fmt"
+	"math"
+	"strings"
 
-import "github.com/golang/geo/s2"
+	"github.com/golang/geo/s2"
+)
 
 type portalIndex uint16
 
