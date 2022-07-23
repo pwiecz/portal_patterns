@@ -386,7 +386,7 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousPureParams) 
 		}
 		p0 := edge / len(portals)
 		p1 := edge % len(portals)
-		// Every triangle is stored three times on the list pick only one representative.
+		// Every triangle is stored three times on the list. Pick only one representative.
 		if p0 >= p1 {
 			continue
 		}
