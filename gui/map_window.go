@@ -25,18 +25,18 @@ type MapWindow struct {
 	firstShow                bool
 }
 
-func NewMapWindow(title string, tileFetcher *osm.MapTiles, parent *fltk.Window) *MapWindow {
-	w := &MapWindow{}
-	w.GlWindow = fltk.NewGlWindow(0, 0, 900, 870, w.drawMap)
-	w.GlWindow.SetEventHandler(w.handleEvent)
-	w.GlWindow.SetResizeHandler(w.onGlWindowResized)
-	w.GlWindow.SetMode(fltk.ALPHA | fltk.DOUBLE | fltk.MULTISAMPLE | fltk.OPENGL3)
-	w.parent = parent
-	w.mapDrawer = NewMapDrawer(900, 870, tileFetcher)
-	w.mapDrawer.OnMapChanged(w.redraw)
-	w.firstShow = true
-	w.Resizable(w.GlWindow)
-	return w
+func NewMapWindow(x, y, w, h int, title string, tileFetcher *osm.MapTiles, parent *fltk.Window) *MapWindow {
+	mw := &MapWindow{}
+	mw.GlWindow = fltk.NewGlWindow(x, y, w, h, mw.drawMap)
+	mw.GlWindow.SetEventHandler(mw.handleEvent)
+	mw.GlWindow.SetResizeHandler(mw.onGlWindowResized)
+	mw.GlWindow.SetMode(fltk.OPENGL3 | fltk.RGB | fltk.DEPTH | fltk.DOUBLE | fltk.MULTISAMPLE)
+	mw.parent = parent
+	mw.mapDrawer = NewMapDrawer(w, h, tileFetcher)
+	mw.mapDrawer.OnMapChanged(mw.redraw)
+	mw.firstShow = true
+	mw.Resizable(mw.GlWindow)
+	return mw
 }
 
 func (w *MapWindow) redraw() {

@@ -77,7 +77,7 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	pack := fltk.NewPack(0, 0, 1600, 870)
 	pack.SetType(fltk.HORIZONTAL)
 	tileFetcher := osm.NewMapTiles()
-	w.mapWindow = NewMapWindow("", tileFetcher, w.Window)
+	w.mapWindow = NewMapWindow(0, 0, 900, 870, "", tileFetcher, w.Window)
 	w.mapWindow.SetSelectionChangeCallback(w.OnSelectionChanged)
 	w.mapWindow.SetAddedToSelectionCallback(func(selection map[string]struct{}) {
 		selectionCopy := make(map[string]struct{})
@@ -159,7 +159,8 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	w.portalList = NewPortalList(0, 0, 700, 590)
 	w.portalList.SetSelectionChangeCallback(func() { w.OnSelectionChanged(w.portalList.selectedPortals) })
 	w.portalList.SetContextMenuCallback(w.onContextMenu)
-	// Add an empty group that will resize horizonally instead of the portal list then the main window grows horizontally.
+	// Add an empty group that will resize horizontally instead of the portal list
+	// when the main window grows horizontally.
 	dummyGroup := fltk.NewGroup(0, 0, 0, 590)
 	portalListPack.End()
 	portalListPack.Resizable(dummyGroup)
