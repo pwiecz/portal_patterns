@@ -60,9 +60,9 @@ func generateCobwebPortals(depth int) []Portal {
 	ll1 := s2.LatLngFromDegrees(20, 22)
 	ll2 := s2.LatLngFromDegrees(21, 21)
 	portals := []Portal{
-		Portal{Guid: "a", LatLng: ll0},
-		Portal{Guid: "b", LatLng: ll1},
-		Portal{Guid: "c", LatLng: ll2}}
+		{Guid: "a", LatLng: ll0},
+		{Guid: "b", LatLng: ll1},
+		{Guid: "c", LatLng: ll2}}
 	midLL := s2.LatLngFromDegrees((20+20+21)/3., (20+22+21)/3.)
 	portals = appendPortalsBetween(depth, portals[0], midLL, portals)
 	portals = appendPortalsBetween(depth, portals[1], midLL, portals)

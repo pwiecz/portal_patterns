@@ -132,9 +132,9 @@ func generateHomogeneousPortals(depth int) []Portal {
 	ll1 := s2.LatLngFromDegrees(20, 22)
 	ll2 := s2.LatLngFromDegrees(21, 21)
 	portals := []Portal{
-		Portal{Guid: "a", LatLng: ll0},
-		Portal{Guid: "b", LatLng: ll1},
-		Portal{Guid: "c", LatLng: ll2}}
+		{Guid: "a", LatLng: ll0},
+		{Guid: "b", LatLng: ll1},
+		{Guid: "c", LatLng: ll2}}
 	return appendMidPortals(depth-1, portals[0], portals[1], portals[2], portals)
 }
 
