@@ -216,8 +216,8 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 				}
 				if f.simpleBackbone {
 					ok := true
-					for i := 1; i < len(f.backbone); i++ {
-						if ccw == s2.Sign(candidate.LatLng, f.backbone[i-1].LatLng, f.backbone[i].LatLng) {
+					for j := 1; j < len(f.backbone); j++ {
+						if ccw == s2.Sign(candidate.LatLng, f.backbone[j-1].LatLng, f.backbone[j].LatLng) {
 							ok = false
 							break
 						}
