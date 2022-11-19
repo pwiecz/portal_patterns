@@ -1,18 +1,20 @@
 package lib
 
-import "encoding/csv"
-import "encoding/json"
-import "errors"
-import "fmt"
-import "io"
-import "io/ioutil"
-import "math"
-import "os"
-import "path/filepath"
-import "strconv"
-import "strings"
+import (
+	"encoding/csv"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"math"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 
-import "github.com/golang/geo/s2"
+	"github.com/golang/geo/s2"
+)
 
 // Portal - portal with geographic coordinates in s2.Point format
 type Portal struct {
@@ -132,7 +134,7 @@ func parseCSVFileAsPortalInfo(filename string) ([]PortalInfo, error) {
 			return nil, fmt.Errorf("error: %v, in line %d", err, lineNo+1)
 		}
 		if len(record) != 4 {
-			return nil, fmt.Errorf("unexcepted number of fields: %d in line %d", len(record), lineNo+1)
+			return nil, fmt.Errorf("unexpected number of fields: %d in line %d", len(record), lineNo+1)
 		}
 		_, err = strconv.ParseFloat(record[2], 64)
 		if err != nil {
