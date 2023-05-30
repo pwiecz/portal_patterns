@@ -5,12 +5,12 @@ go 1.18
 require (
 	github.com/adrg/sysfont v0.1.2
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6
-	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
+	github.com/golang/geo v0.0.0-20230421003525-6adc56603217
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
-	github.com/inkyblackness/imgui-go/v4 v4.5.0
-	github.com/pwiecz/go-fltk v0.0.0-20220723095549-2020b5635372
-	golang.org/x/exp v0.0.0-20220706164943-b4a6d9510983
-	golang.org/x/image v0.5.0
+	github.com/inkyblackness/imgui-go/v4 v4.7.0
+	github.com/pwiecz/go-fltk v0.0.0-20230517194029-93b83da51e22
+	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
+	golang.org/x/image v0.7.0
 )
 
 require (
@@ -19,5 +19,4 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 )
 
-// replace github.com/pwiecz/go-fltk v0.0.0-20220723095549-2020b5635372 => ../go-fltk
-// replace github.com/inkyblackness/imgui-go/v4 v4.5.0 => ../../inkyblackness/imgui-go
+// replace github.com/pwiecz/go-fltk v0.0.0-20230517194029-93b83da51e22 => ../go-fltk
