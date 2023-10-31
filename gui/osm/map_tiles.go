@@ -20,7 +20,7 @@ const (
 	MAX_ZOOM_LEVEL       = 19
 )
 
-var ErrBusy = errors.New("Too many simultaneous requests")
+var ErrBusy = errors.New("too many simultaneous requests")
 
 type TileCoord struct {
 	X, Y, Zoom int
@@ -80,14 +80,14 @@ func (m *MapTiles) CancelRequestsExcept(requestsToKeep map[TileCoord]struct{}) {
 
 func (m *MapTiles) GetTile(coord TileCoord) (image.Image, error) {
 	if coord.Zoom < 0 || coord.Y < 0 {
-		return nil, fmt.Errorf("Negative tile coordinates %v", coord)
+		return nil, fmt.Errorf("negative tile coordinates %v", coord)
 	}
 	if coord.Zoom > MAX_ZOOM_LEVEL {
-		return nil, fmt.Errorf("Too high zoom factor %v", coord)
+		return nil, fmt.Errorf("too high zoom factor %v", coord)
 	}
 	maxCoord := 1 << coord.Zoom
 	if coord.Y >= maxCoord {
-		return nil, fmt.Errorf("Invalid x,y coords %v", coord)
+		return nil, fmt.Errorf("invalid x,y coords %v", coord)
 	}
 
 	for coord.X < 0 {

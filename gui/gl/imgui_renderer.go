@@ -117,12 +117,12 @@ func (renderer *OpenGL2) Render(displaySize [2]float32, framebufferSize [2]float
 	for _, commandList := range drawData.CommandLists() {
 		vertexBuffer, _ := commandList.VertexBuffer()
 		indexBuffer, _ := commandList.IndexBuffer()
-		indexBufferOffset := uintptr(indexBuffer)
 
 		gl.VertexPointer(2, gl.FLOAT, int32(vertexSize), unsafe.Pointer(uintptr(vertexBuffer)+uintptr(vertexOffsetPos)))
 		gl.TexCoordPointer(2, gl.FLOAT, int32(vertexSize), unsafe.Pointer(uintptr(vertexBuffer)+uintptr(vertexOffsetUv)))
 		gl.ColorPointer(4, gl.UNSIGNED_BYTE, int32(vertexSize), unsafe.Pointer(uintptr(vertexBuffer)+uintptr(vertexOffsetCol)))
 
+		var indexBufferOffset uintptr
 		for _, command := range commandList.Commands() {
 			if command.HasUserCallback() {
 				command.CallUserCallback(commandList)
@@ -130,7 +130,7 @@ func (renderer *OpenGL2) Render(displaySize [2]float32, framebufferSize [2]float
 				clipRect := command.ClipRect()
 				gl.Scissor(int32(clipRect.X), int32(fbHeight)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
 				gl.BindTexture(gl.TEXTURE_2D, uint32(command.TextureID()))
-				gl.DrawElements(gl.TRIANGLES, int32(command.ElementCount()), uint32(drawType), unsafe.Pointer(indexBufferOffset))
+				gl.DrawElements(gl.TRIANGLES, int32(command.ElementCount()), uint32(drawType), unsafe.Pointer(uintptr(indexBuffer) + indexBufferOffset))
 			}
 
 			indexBufferOffset += uintptr(command.ElementCount() * indexSize)
@@ -217,12 +217,12 @@ func (renderer *OpenGL2) RenderDrawList(displaySize [2]float32, framebufferSize 
 	{
 		vertexBuffer, _ := commandList.VertexBuffer()
 		indexBuffer, _ := commandList.IndexBuffer()
-		indexBufferOffset := uintptr(indexBuffer)
 
 		gl.VertexPointer(2, gl.FLOAT, int32(vertexSize), unsafe.Pointer(uintptr(vertexBuffer)+uintptr(vertexOffsetPos)))
 		gl.TexCoordPointer(2, gl.FLOAT, int32(vertexSize), unsafe.Pointer(uintptr(vertexBuffer)+uintptr(vertexOffsetUv)))
 		gl.ColorPointer(4, gl.UNSIGNED_BYTE, int32(vertexSize), unsafe.Pointer(uintptr(vertexBuffer)+uintptr(vertexOffsetCol)))
 
+		var indexBufferOffset uintptr
 		for _, command := range commandList.Commands() {
 			if command.HasUserCallback() {
 				command.CallUserCallback(commandList)
@@ -230,7 +230,7 @@ func (renderer *OpenGL2) RenderDrawList(displaySize [2]float32, framebufferSize 
 				clipRect := command.ClipRect()
 				gl.Scissor(int32(clipRect.X), int32(fbHeight)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
 				gl.BindTexture(gl.TEXTURE_2D, uint32(command.TextureID()))
-				gl.DrawElements(gl.TRIANGLES, int32(command.ElementCount()), uint32(drawType), unsafe.Pointer(indexBufferOffset))
+				gl.DrawElements(gl.TRIANGLES, int32(command.ElementCount()), uint32(drawType), unsafe.Pointer(uintptr(indexBuffer) + indexBufferOffset))
 			}
 
 			indexBufferOffset += uintptr(command.ElementCount() * indexSize)
