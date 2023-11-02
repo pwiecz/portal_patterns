@@ -10,7 +10,7 @@ require (
 	github.com/inkyblackness/imgui-go/v4 v4.7.0
 	github.com/pwiecz/go-fltk v0.0.0-20230517194029-93b83da51e22
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
-	golang.org/x/image v0.7.0
+	golang.org/x/image v0.10.0
 )
 
 require (
