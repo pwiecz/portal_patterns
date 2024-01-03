@@ -63,6 +63,7 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	w.configuration = conf
 	w.portals = NewPortals()
 	w.SetCallback(w.onClose)
+	w.SetXClass("Portal Patterns")
 	w.Begin()
 	mainPack := fltk.NewPack(0, 0, 1600, 900)
 	mainPack.SetType(fltk.VERTICAL)
