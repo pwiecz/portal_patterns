@@ -8,7 +8,7 @@ require (
 	github.com/golang/geo v0.0.0-20230421003525-6adc56603217
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/inkyblackness/imgui-go/v4 v4.7.0
-	github.com/pwiecz/go-fltk v0.0.0-20230517194029-93b83da51e22
+	github.com/pwiecz/go-fltk v0.0.0-20240129144424-3260f5ba37f1
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/image v0.10.0
 )
@@ -19,4 +19,4 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 )
 
-// replace github.com/pwiecz/go-fltk v0.0.0-20230517194029-93b83da51e22 => ../go-fltk
+// replace github.com/pwiecz/go-fltk v0.0.0-20240129144424-3260f5ba37f1 => ../go-fltk
