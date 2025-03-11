@@ -43,13 +43,13 @@ func (pq droneFlightPrioQueue) Swap(i, j int) {
 	pq.items[i].queueIndex = i
 	pq.items[j].queueIndex = j
 }
-func (pq *droneFlightPrioQueue) Push(x interface{}) {
+func (pq *droneFlightPrioQueue) Push(x any) {
 	n := len(pq.items)
 	item := x.(*droneFlightPrioQueueItem)
 	item.queueIndex = n
 	pq.items = append(pq.items, item)
 }
-func (pq *droneFlightPrioQueue) Pop() interface{} {
+func (pq *droneFlightPrioQueue) Pop() any {
 	n := len(pq.items)
 	top := pq.items[n-1]
 	pq.items[n-1] = nil

@@ -202,7 +202,7 @@ func mergeTrianglesWorker(
 
 func findAllLvlNTriangles(portals []portalData, params homogeneousPureParams, level int) ([][]portalIndex, []edge) {
 	resultCache := sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return []portalIndex{}
 		},
 	}
@@ -296,7 +296,7 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousPureParams) 
 	}
 
 	resultCache := sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return make([]triangle, 0, len(portals))
 		},
 	}

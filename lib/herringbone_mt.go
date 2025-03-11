@@ -74,7 +74,7 @@ func LargestHerringboneMT(portals []Portal, fixedBaseIndices []int, numWorkers i
 	portalsData := portalsToPortalData(portals)
 
 	resultCache := sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return make([]portalIndex, 0, len(portals))
 		},
 	}

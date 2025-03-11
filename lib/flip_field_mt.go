@@ -81,12 +81,12 @@ func LargestFlipFieldMT(portals []Portal, params flipFieldParams) ([]Portal, []P
 	}
 
 	backboneCache := sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return make([]portalData, 0, params.maxBackbonePortals)
 		},
 	}
 	flipPortalsCache := sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return make([]portalData, 0, len(portals))
 		},
 	}

@@ -43,7 +43,7 @@ func LargestDoubleHerringboneMT(portals []Portal, fixedBaseIndices []int, numWor
 	var largestCCW, largestCW []portalIndex
 	var bestB0, bestB1 portalIndex
 	resultCache := sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return make([]portalIndex, 0, len(portals))
 		},
 	}
