@@ -129,10 +129,7 @@ func LargestFlipFieldMT(portals []Portal, params flipFieldParams) ([]Portal, []P
 		close(responseChannel)
 	}()
 	numPairs := len(portals) * (len(portals) - 1) * 2
-	everyNth := numPairs / 1000
-	if everyNth < 1 {
-		everyNth = 1
-	}
+	everyNth := max(numPairs / 1000, 1)
 	numProcessedPairs := 0
 	numProcessedPairsModN := 0
 	params.progressFunc(0, numPairs)

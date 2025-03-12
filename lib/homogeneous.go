@@ -161,10 +161,7 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 	}
 
 	numIndexEntries := len(portals) * (len(portals) - 1) * (len(portals) - 2) / 6
-	everyNth := numIndexEntries / 1000
-	if everyNth < 1 {
-		everyNth = 1
-	}
+	everyNth := max(numIndexEntries / 1000, 1)
 	indexEntriesFilled := 0
 	indexEntriesFilledModN := 0
 	onFilledIndexEntry := func() {

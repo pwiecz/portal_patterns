@@ -235,10 +235,7 @@ func findAllLvlNTriangles(portals []portalData, params homogeneousPureParams, le
 	lvlNEdges := []edge{}
 
 	numPairs := len(portals) * (len(portals) - 1) / 2
-	everyNth := numPairs / 1000
-	if everyNth < 1 {
-		everyNth = 1
-	}
+	everyNth := max(numPairs / 1000, 1)
 
 	params.progressFunc(0, numPairs)
 	numProcessedPairs := 0
@@ -329,10 +326,7 @@ func deepestPureHomogeneous(portals []portalData, params homogeneousPureParams) 
 		}()
 
 		numEdges := len(prevEdges)
-		everyNth := numEdges / 1000
-		if everyNth < 1 {
-			everyNth = 1
-		}
+		everyNth := max(numEdges / 1000, 1)
 
 		params.progressFunc(0, numEdges)
 		numProcessedEdges := 0
