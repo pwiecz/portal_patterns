@@ -132,9 +132,9 @@ func generateHomogeneousPortals(depth int) []Portal {
 	ll1 := s2.LatLngFromDegrees(20, 22)
 	ll2 := s2.LatLngFromDegrees(21, 21)
 	portals := []Portal{
-		Portal{Guid: "a", LatLng: ll0},
-		Portal{Guid: "b", LatLng: ll1},
-		Portal{Guid: "c", LatLng: ll2}}
+		{Guid: "a", LatLng: ll0},
+		{Guid: "b", LatLng: ll1},
+		{Guid: "c", LatLng: ll2}}
 	return appendMidPortals(depth-1, portals[0], portals[1], portals[2], portals)
 }
 
@@ -158,7 +158,7 @@ func TestHomogeneousPureSyntheticPortals(t *testing.T) {
 
 func benchmarkHomogeneous(depth int, b *testing.B) {
 	portals := generateHomogeneousPortals(depth)
-	for n := 0; n < b.N; n++ {
+	for b.Loop() {
 		_, resDepth := DeepestHomogeneous(portals, HomogeneousMaxDepth(6), HomogeneousLargestArea{}, HomogeneousNumWorkers(7))
 		if depth != int(resDepth) {
 			panic(resDepth)
@@ -171,7 +171,7 @@ func BenchmarkHomogeneous6(b *testing.B) { benchmarkHomogeneous(6, b) }
 
 func benchmarkHomogeneousPretty(depth int, b *testing.B) {
 	portals := generateHomogeneousPortals(depth)
-	for n := 0; n < b.N; n++ {
+	for b.Loop() {
 		_, resDepth := DeepestHomogeneous(portals, HomogeneousSpreadAround{}, HomogeneousMaxDepth(6), HomogeneousLargestArea{}, HomogeneousNumWorkers(6))
 		if depth != int(resDepth) {
 			panic(resDepth)
@@ -184,7 +184,7 @@ func BenchmarkHomogeneousPretty6(b *testing.B) { benchmarkHomogeneousPretty(6, b
 
 func benchmarkHomogeneousPure(depth int, b *testing.B) {
 	portals := generateHomogeneousPortals(depth)
-	for n := 0; n < b.N; n++ {
+	for b.Loop() {
 		_, resDepth := DeepestHomogeneous(portals, HomogeneousPure(true), HomogeneousMaxDepth(6), HomogeneousLargestArea{}, HomogeneousNumWorkers(6))
 		if depth != int(resDepth) {
 			panic(resDepth)
