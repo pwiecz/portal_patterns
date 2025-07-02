@@ -1,8 +1,9 @@
 package lib
 
 import (
-	"github.com/golang/geo/s2"
 	"slices"
+
+	"github.com/golang/geo/s2"
 )
 
 // LargestFlipField -
