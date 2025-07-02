@@ -2,13 +2,9 @@ name: Go
 
 on:
   push:
-    branches:
-    - fltk
-    - dev
+    branches: [ "main" ]
   pull_request:
-    branches:
-    - fltk
-    - dev
+    branches: [ "main" ]
 
 jobs:
 
@@ -20,7 +16,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: 1.24
+        go-version: 1.24.x
 
     - name: Build
       working-directory: ${{github.workspace}}/cmdline
