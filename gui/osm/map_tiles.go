@@ -54,7 +54,7 @@ func NewMapTiles() *MapTiles {
 	}
 	semaphore := make(chan empty, 50)
 	e := empty{}
-	for i := 0; i < MAX_DOWNLOAD_THREADS; i++ {
+	for range MAX_DOWNLOAD_THREADS {
 		semaphore <- e
 	}
 	mapTiles := &MapTiles{

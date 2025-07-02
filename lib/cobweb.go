@@ -12,7 +12,7 @@ type bestCobwebQuery struct {
 func newBestCobwebQuery(portals []portalData, onFilledIndexEntry func()) *bestCobwebQuery {
 	numPortals := uint(len(portals))
 	index := make([]bestSolution, numPortals*numPortals*numPortals)
-	for i := 0; i < len(index); i++ {
+	for i := range index {
 		index[i].Length = invalidLength
 	}
 	return &bestCobwebQuery{

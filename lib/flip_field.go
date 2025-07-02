@@ -2,6 +2,7 @@ package lib
 
 import (
 	"github.com/golang/geo/s2"
+	"slices"
 )
 
 // LargestFlipField -
@@ -111,12 +112,7 @@ func numFlipFields(numFlipPortals, numBackbonePortals int) int {
 }
 
 func sliceContains(slice []portalIndex, ix portalIndex) bool {
-	for _, val := range slice {
-		if val == ix {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, ix)
 }
 func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]portalData, []portalData, float64) {
 	if ccw {

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -114,7 +113,7 @@ func parseCSVFileAsPortalInfo(filename string) ([]PortalInfo, error) {
 		return nil, err
 	}
 	defer file.Close()
-	bytes, err := ioutil.ReadAll(file)
+	bytes, err := io.ReadAll(file)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +160,7 @@ func parseJSONFileAsPortalInfo(filename string) ([]PortalInfo, error) {
 		return nil, err
 	}
 	defer file.Close()
-	bytes, err := ioutil.ReadAll(file)
+	bytes, err := io.ReadAll(file)
 	if err != nil {
 		return nil, err
 	}

@@ -65,7 +65,7 @@ func generateHerringbonePortals(length int) []Portal {
 		{Guid: "b0", LatLng: base0},
 		{Guid: "b1", LatLng: base1}}
 	lat := 20.01
-	for i := 0; i < length; i++ {
+	for i := range length {
 		portals = append(portals, Portal{Guid: "bb" + strconv.Itoa(i), LatLng: s2.LatLngFromDegrees(lat, 21)})
 		lat += 0.01
 	}

@@ -20,7 +20,7 @@ func bestDoubleHerringboneWorker(
 	weights := make([]float32, len(q.portals))
 	for req := range requestChannel {
 		nodes = nodes[:0]
-		for i := 0; i < len(weights); i++ {
+		for i := range weights {
 			weights[i] = 0
 		}
 		req.resultCCW = q.findBestHerringbone(req.p0, req.p1, nodes, weights, req.resultCCW)
@@ -55,7 +55,7 @@ func LargestDoubleHerringboneMT(portals []Portal, fixedBaseIndices []int, numWor
 	responseChannel := make(chan doubleHerringboneRequest, numWorkers)
 	doneChannel := make(chan struct{}, numWorkers)
 	q := newBestHerringboneMtQuery(portalsData)
-	for i := 0; i < numWorkers; i++ {
+	for range numWorkers {
 		go bestDoubleHerringboneWorker(q, requestChannel, responseChannel, doneChannel)
 	}
 	go func() {

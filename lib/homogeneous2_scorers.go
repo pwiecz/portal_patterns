@@ -26,7 +26,7 @@ func newThickTrianglesScorer(numPortals int) *thickTrianglesScorer {
 func newClumpPortalsScorer(numPortals int) *clumpPortalsScorer {
 	numPortals64 := uint(numPortals)
 	minDistance := make([]float32, numPortals64*numPortals64*numPortals64)
-	for i := 0; i < len(minDistance); i++ {
+	for i := range minDistance {
 		minDistance[i] = -math.MaxFloat32
 	}
 	return &clumpPortalsScorer{
@@ -91,7 +91,7 @@ func (s *thickTrianglesTriangleScorer) reset(a, b, c portalData, numCandidates i
 		i, j, k := indexOrdering(a.Index, b.Index, c.Index, level)
 		s.scorePtrs[level-2] = &s.minHeight[(uint(i)*s.numPortals+uint(j))*s.numPortals+uint(k)]
 	}
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		s.candidates[i] = invalidPortalIndex - 1
 	}
 	s.a, s.b, s.c = a, b, c
@@ -106,7 +106,7 @@ func (s *clumpPortalsTriangleScorer) reset(a, b, c portalData, numCandidates int
 		i, j, k := indexOrdering(a.Index, b.Index, c.Index, level)
 		s.scorePtrs[level-2] = &s.minDistance[(uint(i)*s.numPortals+uint(j))*s.numPortals+uint(k)]
 	}
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		s.candidates[i] = invalidPortalIndex - 1
 	}
 	s.a, s.b, s.c = a, b, c

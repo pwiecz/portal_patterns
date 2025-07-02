@@ -54,7 +54,7 @@ func bestHerringboneWorker(
 	weights := make([]float32, len(q.portals))
 	for req := range requestChannel {
 		nodes = nodes[:0]
-		for i := 0; i < len(weights); i++ {
+		for i := range weights {
 			weights[i] = 0
 		}
 		req.result = q.findBestHerringbone(req.p0, req.p1, nodes, weights, req.result)
@@ -84,7 +84,7 @@ func LargestHerringboneMT(portals []Portal, fixedBaseIndices []int, numWorkers i
 	var wg sync.WaitGroup
 	wg.Add(numWorkers)
 	q := newBestHerringboneMtQuery(portalsData)
-	for i := 0; i < numWorkers; i++ {
+	for range numWorkers {
 		go bestHerringboneWorker(q, requestChannel, responseChannel, &wg)
 	}
 	go func() {

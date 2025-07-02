@@ -22,7 +22,7 @@ func newBestThreeCornersQuery(portals0, portals1, portals2 []portalData, onIndex
 	numPortals0x1x2 := uint(len(portals0)) * uint(len(portals1)) * uint(len(portals2))
 	index := make([]bestSolution, numPortals0x1x2)
 	numCornerChanges := make([]uint16, numPortals0x1x2)
-	for i := 0; i < len(index); i++ {
+	for i := range index {
 		index[i].Length = invalidLength
 	}
 	return &bestThreeCornersQuery{

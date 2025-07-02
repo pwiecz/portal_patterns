@@ -132,7 +132,7 @@ func lvlNTriangleWorker(
 			}
 			portalsInTriangle = portalsInTriangle[:0]
 			numPortalsInTriangle := 0
-			for j := 0; j < k; j++ {
+			for j := range k {
 				if portalsLeftOfLine[j].start <= node.start && portalsLeftOfLine[j].end <= node.end {
 					portalsInTriangle = append(portalsInTriangle, portalsLeftOfLine[j].index)
 					numPortalsInTriangle++
@@ -460,7 +460,7 @@ func areValidPureHomogeneousPortals(p0, p1, p2 portalIndex, inside []portalIndex
 		return true
 	}
 	insideCopy := make([]portalIndex, len(inside)-1)
-	for candidate := 0; candidate < len(inside); candidate++ {
+	for candidate := range inside {
 		insideCopy[0] = inside[candidate]
 		q0 := newTriangleQuery(portals[p0].LatLng, portals[p1].LatLng, portals[insideCopy[0]].LatLng)
 		q1 := newTriangleQuery(portals[p1].LatLng, portals[p2].LatLng, portals[insideCopy[0]].LatLng)

@@ -38,11 +38,11 @@ type bestHomogeneous2Query struct {
 func newBestHomogeneous2Query(portals []portalData, scorer homogeneousScorer, maxDepth int, onFilledIndexEntry func()) *bestHomogeneous2Query {
 	numPortals := uint(len(portals))
 	index := make([]portalIndex, numPortals*numPortals*numPortals)
-	for i := 0; i < len(index); i++ {
+	for i := range index {
 		index[i] = invalidPortalIndex
 	}
 	triangleScorers := make([]homogeneousTriangleScorer, len(portals))
-	for i := 0; i < len(portals); i++ {
+	for i := range portals {
 		triangleScorers[i] = scorer.newTriangleScorer(maxDepth)
 	}
 	return &bestHomogeneous2Query{

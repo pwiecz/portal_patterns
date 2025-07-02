@@ -68,10 +68,7 @@ func (l *PortalList) ScrollToPortal(guid string) {
 	if portalIndex >= top && portalIndex <= bottom {
 		return
 	}
-	topRow := portalIndex - (bottom-top)/2
-	if topRow < 0 {
-		topRow = 0
-	}
+	topRow := max(portalIndex-(bottom-top)/2, 0)
 	l.SetTopRow(topRow)
 }
 
