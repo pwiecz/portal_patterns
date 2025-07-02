@@ -49,7 +49,7 @@ func LargestDoubleHerringboneMT(portals []Portal, fixedBaseIndices []int, numWor
 	}
 
 	numPairs := len(portals) * (len(portals) - 1) / 2
-	everyNth := max(numPairs / 1000, 1)
+	everyNth := max(numPairs/1000, 1)
 	numProcessedPairs := 0
 	requestChannel := make(chan doubleHerringboneRequest, numWorkers)
 	responseChannel := make(chan doubleHerringboneRequest, numWorkers)
