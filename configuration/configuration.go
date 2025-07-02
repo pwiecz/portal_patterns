@@ -2,7 +2,7 @@ package configuration
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -37,7 +37,7 @@ func LoadConfiguration() *Configuration {
 		return conf
 	}
 	defer file.Close()
-	bytes, err := ioutil.ReadAll(file)
+	bytes, err := io.ReadAll(file)
 	if err != nil {
 		return conf
 	}
@@ -61,7 +61,7 @@ func SaveConfiguration(config *Configuration) {
 	if err != nil {
 		panic(err)
 	}
-	if err := ioutil.WriteFile(configPath, bytes, 0644); err != nil {
+	if err := os.WriteFile(configPath, bytes, 0644); err != nil {
 		panic(err)
 	}
 }

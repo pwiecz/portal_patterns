@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"image"
 	"image/png"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -160,7 +159,7 @@ func (m *MapTiles) getTileSlow(coord TileCoord, ctx context.Context) (image.Imag
 	if err != nil {
 		return nil, err
 	}
-	tmpfile, err := ioutil.TempFile(cachedTileDir, ".tile_*.png")
+	tmpfile, err := os.CreateTemp(cachedTileDir, ".tile_*.png")
 	if err != nil {
 		log.Println("Cannot create temp tile file", err)
 		return img, nil
