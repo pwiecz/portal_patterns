@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/golang/geo/s2"
@@ -53,3 +54,40 @@ func TestHerringboneDoubleSingleThread(t *testing.T) {
 		t.Errorf("Incorrect orientation of second herringbone backbone")
 	}
 }
+
+func generateDoubleHerringbonePortals(length0, length1 int) []Portal {
+	base0 := s2.LatLngFromDegrees(20, 20)
+	base1 := s2.LatLngFromDegrees(20, 22)
+	portals := []Portal{
+		{Guid: "b0", LatLng: base0},
+		{Guid: "b1", LatLng: base1}}
+	lat := 20.01
+	for i := 0; i < length0; i++ {
+		portals = append(portals, Portal{Guid: "bb0" + strconv.Itoa(i), LatLng: s2.LatLngFromDegrees(lat, 21)})
+		lat += 0.01
+	}
+	lat = 19.99
+	for i := 0; i < length1; i++ {
+		portals = append(portals, Portal{Guid: "bb1" + strconv.Itoa(i), LatLng: s2.LatLngFromDegrees(lat, 21)})
+		lat -= 0.01
+	}
+	return portals
+}
+
+func TestDoubleHerringboneSyntheticPortals(t *testing.T) {
+	portals := generateDoubleHerringbonePortals(25, 30)
+	b0, b1, backbone0, backbone1 := LargestDoubleHerringbone(portals, []int{}, 1, func(int, int) {})
+	checkValidHerringboneResult(25, b0, b1, backbone0, t)
+	checkValidHerringboneResult(30, b0, b1, backbone1, t)
+}
+
+func benchmarkDoubleHerringbone(length0, length1 int, b *testing.B) {
+	portals := generateDoubleHerringbonePortals(length0, length1)
+	for b.Loop() {
+		LargestDoubleHerringbone(portals, []int{}, 1, func(int, int) {})
+	}
+}
+
+func BenchmarkDoubleHerringbone20_30(b *testing.B) { benchmarkDoubleHerringbone(20, 30, b) }
+func BenchmarkDoubleHerringbone40_60(b *testing.B) { benchmarkDoubleHerringbone(40, 60, b) }
+func BenchmarkDoubleHerringbone90_60(b *testing.B) { benchmarkDoubleHerringbone(90, 60, b) }

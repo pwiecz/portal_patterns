@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/golang/geo/s2"
@@ -56,3 +57,34 @@ func TestHerringboneSingleThread(t *testing.T) {
 	b0, b1, backbone := LargestHerringbone(portals, []int{}, 1, func(int, int) {})
 	checkValidHerringboneResult(19, b0, b1, backbone, t)
 }
+
+func generateHerringbonePortals(length int) []Portal {
+	base0 := s2.LatLngFromDegrees(20, 20)
+	base1 := s2.LatLngFromDegrees(20, 22)
+	portals := []Portal{
+		{Guid: "b0", LatLng: base0},
+		{Guid: "b1", LatLng: base1}}
+	lat := 20.01
+	for i := 0; i < length; i++ {
+		portals = append(portals, Portal{Guid: "bb" + strconv.Itoa(i), LatLng: s2.LatLngFromDegrees(lat, 21)})
+		lat += 0.01
+	}
+	return portals
+}
+
+func TestHerringboneSyntheticPortals(t *testing.T) {
+	portals := generateHerringbonePortals(30)
+	b0, b1, backbone := LargestHerringbone(portals, []int{}, 1, func(int, int) {})
+	checkValidHerringboneResult(30, b0, b1, backbone, t)
+}
+
+func benchmarkHerringbone(length int, b *testing.B) {
+	portals := generateHerringbonePortals(length)
+	for b.Loop() {
+		LargestHerringbone(portals, []int{}, 1, func(int, int) {})
+	}
+}
+
+func BenchmarkHerringbone50(b *testing.B)  { benchmarkHerringbone(50, b) }
+func BenchmarkHerringbone100(b *testing.B) { benchmarkHerringbone(100, b) }
+func BenchmarkHerringbone150(b *testing.B) { benchmarkHerringbone(150, b) }
