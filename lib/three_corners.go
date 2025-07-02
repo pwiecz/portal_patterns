@@ -141,7 +141,7 @@ func LargestThreeCorner(portals0, portals1, portals2 []Portal, progressFunc func
 	portalsData2 := portalsToPortalData(portals2)
 
 	numIndexEntries := len(portals0) * len(portals1) * len(portals2)
-	everyNth := max(numIndexEntries / 1000, 1)
+	everyNth := max(numIndexEntries/1000, 1)
 	indexEntriesFilled := 0
 	indexEntriesFilledModN := 0
 	onFillIndexEntry := func() {

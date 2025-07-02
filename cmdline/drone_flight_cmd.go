@@ -13,8 +13,8 @@ import (
 type droneFlightCmd struct {
 	flags        *flag.FlagSet
 	useLongJumps *bool
-	leastKeys * bool
-	leastJumps *bool
+	leastKeys    *bool
+	leastJumps   *bool
 	startPortal  *portalValue
 	endPortal    *portalValue
 }

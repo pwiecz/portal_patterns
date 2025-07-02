@@ -1,12 +1,14 @@
 package main
 
-import "fmt"
-import "log"
-import "strconv"
-import "strings"
+import (
+	"fmt"
+	"log"
+	"strconv"
+	"strings"
 
-import "github.com/golang/geo/s2"
-import "github.com/pwiecz/portal_patterns/lib"
+	"github.com/golang/geo/s2"
+	"github.com/pwiecz/portal_patterns/lib"
+)
 
 type portalValue struct {
 	LatLngString string

@@ -1,9 +1,11 @@
 package configuration
 
-import "os"
-import "encoding/json"
-import "io/ioutil"
-import "path/filepath"
+import (
+	"encoding/json"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+)
 
 type Configuration struct {
 	PortalsDirectory string `json:"portals_directory"`

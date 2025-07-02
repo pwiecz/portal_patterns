@@ -354,7 +354,7 @@ func LargestFlipFieldST(portals []Portal, params flipFieldParams) ([]Portal, []P
 	}
 
 	numPairs := len(portals) * (len(portals) - 1)
-	everyNth := max(numPairs / 1000, 1)
+	everyNth := max(numPairs/1000, 1)
 	numProcessedPairs := 0
 	numProcessedPairsModN := 0
 	params.progressFunc(0, numPairs)

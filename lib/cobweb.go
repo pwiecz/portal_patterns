@@ -79,7 +79,7 @@ func LargestCobweb(portals []Portal, fixedCornerIndices []int, progressFunc func
 	portalsData := portalsToPortalData(portals)
 
 	numIndexEntries := len(portals) * (len(portals) - 1) * (len(portals) - 2)
-	everyNth := max(numIndexEntries / 1000, 1)
+	everyNth := max(numIndexEntries/1000, 1)
 	indexEntriesFilled := 0
 	indexEntriesFilledModN := 0
 	onFilledIndexEntry := func() {

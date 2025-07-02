@@ -276,7 +276,7 @@ func longestDroneFlightST(portals []Portal, params droneFlightParams) ([]Portal,
 		return distanceSq(portalsData[i], portalsData[j])
 	}
 	numIndexEntries := len(portals)
-	everyNth := max(numIndexEntries / 1000, 1)
+	everyNth := max(numIndexEntries/1000, 1)
 	indexEntriesFilled := 0
 	indexEntriesFilledModN := 0
 	params.progressFunc(0, numIndexEntries)

@@ -1,18 +1,20 @@
 package lib
 
-import "encoding/csv"
-import "encoding/json"
-import "errors"
-import "fmt"
-import "io"
-import "io/ioutil"
-import "math"
-import "os"
-import "path/filepath"
-import "strconv"
-import "strings"
+import (
+	"encoding/csv"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"math"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 
-import "github.com/golang/geo/s2"
+	"github.com/golang/geo/s2"
+)
 
 // Portal - portal with geographic coordinates in s2.Point format
 type Portal struct {
