@@ -85,7 +85,7 @@ func (q *bestHerringboneQuery) findBestHerringbone(b0, b1 portalData, result []p
 		})
 	}
 	sort.Sort(herringboneNodesByDistance(q.nodes))
-	for i := 0; i < len(q.weights); i++ {
+	for i := range len(q.weights) {
 		q.weights[i] = 0
 	}
 	for i, node := range q.nodes {
@@ -163,12 +163,11 @@ func LargestHerringboneST(portals []Portal, fixedBaseIndices []int, progressFunc
 	numProcessedPairsModN := 0
 	progressFunc(0, numPairs)
 	q := newBestHerringboneQuery(portalsData)
-	for i, b0 := range portalsData {
-		for j := i + 1; j < len(portalsData); j++ {
+	for j, b1 := range portalsData {
+		for i, b0 := range portalsData[:j] {
 			if !hasAllElementsInThePair(fixedBaseIndices, i, j) {
 				continue
 			}
-			b1 := portalsData[j]
 			bestCCW := q.findBestHerringbone(b0, b1, resultCache)
 			if len(bestCCW) > len(largestHerringbone) {
 				largestHerringbone = append(largestHerringbone[:0], bestCCW...)

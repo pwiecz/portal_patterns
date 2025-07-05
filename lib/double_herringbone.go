@@ -29,9 +29,8 @@ func LargestDoubleHerringboneST(portals []Portal, fixedBaseIndices []int, progre
 	numProcessedPairs := 0
 	progressFunc(0, numPairs)
 	q := newBestHerringboneQuery(portalsData)
-	for i, b0 := range portalsData {
-		for j := i + 1; j < len(portalsData); j++ {
-			b1 := portalsData[j]
+	for j, b1 := range portalsData {
+		for i, b0 := range portalsData[:j] {
 			if !hasAllElementsInThePair(fixedBaseIndices, i, j) {
 				continue
 			}
