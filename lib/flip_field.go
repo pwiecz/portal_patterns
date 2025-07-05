@@ -94,17 +94,10 @@ func portalsLeftOfLine(portals []portalData, a, b portalData, result []portalDat
 }
 
 func partitionPortalsLeftOfLine(portals []portalData, a, b portalData) []portalData {
-	length := len(portals)
 	ab := newCCWQuery(a.LatLng, b.LatLng)
-	for i := 0; i < length; {
-		p := portals[i]
-		if p.Index != a.Index && p.Index != b.Index && ab.IsCCW(p.LatLng) {
-			i++
-		} else {
-			portals[i], portals[length-1] = portals[length-1], portals[i]
-			length--
-		}
-	}
+	length := partition(portals, func(p portalData) bool {
+		return p.Index != a.Index && p.Index != b.Index && ab.IsCCW(p.LatLng)
+	})
 	return portals[:length]
 }
 

@@ -52,17 +52,10 @@ func portalsInsideWedge(portals []portalData, a, b, c portalData, result []porta
 // It reorders the input portals slice and returns its subslice
 func partitionPortalsInsideWedge(portals []portalData, a, b, c portalData) []portalData {
 	wedge := newTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
-	length := len(portals)
-	for i := 0; i < length; {
-		p := portals[i]
-		if p.Index != a.Index && p.Index != b.Index && p.Index != c.Index &&
-			wedge.ContainsPoint(p.LatLng) {
-			i++
-		} else {
-			portals[i], portals[length-1] = portals[length-1], portals[i]
-			length--
-		}
-	}
+	length := partition(portals, func(p portalData) bool {
+		return p.Index != a.Index && p.Index != b.Index && p.Index != c.Index &&
+			wedge.ContainsPoint(p.LatLng)
+	})
 	return portals[:length]
 }
 
@@ -89,6 +82,23 @@ func max[T constraints.Ordered](v0, v1 T) T {
 		return v0
 	}
 	return v1
+}
+
+// partition moves elements that do not satisfy the f predicate to the end of the slice
+// (swaps them with the elements at the end).
+// Returns number of elements that satisfy the predicate
+// Does not preserve relative order of elements.
+func partition[S ~[]E, E any](s S, f func(E) bool) int {
+	length := len(s)
+	for i := 0; i < length; {
+		if !f(s[i]) {
+			s[i], s[length-1] = s[length-1], s[i]
+			length--
+		} else {
+			i++
+		}
+	}
+	return length
 }
 
 func hasAllElementsInTheTriple[T comparable](indices []T, a, b, c T) bool {
