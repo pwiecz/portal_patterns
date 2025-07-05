@@ -1,6 +1,6 @@
 module github.com/pwiecz/portal_patterns
 
-go 1.22
+go 1.24
 
 require (
 	github.com/adrg/sysfont v0.1.2
