@@ -10,6 +10,8 @@ import (
 	"github.com/golang/geo/s2"
 )
 
+//lint:file-ignore SA6002 We store slicer as values in sync.Pool. Changing code the use pointers seems to make benchmarks slower.
+
 type homogeneousPureNode struct {
 	index      portalIndex
 	start, end float64

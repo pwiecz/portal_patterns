@@ -7,6 +7,8 @@ import (
 	"github.com/golang/geo/r3"
 )
 
+//lint:file-ignore SA6002 We store slicer as values in sync.Pool. Changing code the use pointers seems to make benchmarks slower.
+
 type bestHerringboneMtQuery struct {
 	portals []portalData
 	// Array of normalized direction vectors between all the pairs of portals

@@ -1,5 +1,7 @@
 package main
 
+//lint:file-ignore SA1019 We use deprecated imgui-go. TODO:use go-gl directly.
+
 import (
 	"context"
 	"errors"

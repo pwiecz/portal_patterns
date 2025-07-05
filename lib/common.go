@@ -35,6 +35,7 @@ type bestSolution struct {
 	Length uint16
 }
 
+//lint:ignore U1000 We keep some unused functions that may be potentially useful
 func portalsInsideWedge(portals []portalData, a, b, c portalData, result []portalData) []portalData {
 	wedge := newTriangleWedgeQuery(a.LatLng, b.LatLng, c.LatLng)
 	result = result[:0]
@@ -107,6 +108,7 @@ func hasAllElementsInThePair[T comparable](indices []T, a, b T) bool {
 	return true
 }
 
+//lint:ignore U1000 We keep some unused functions that may be potentially useful
 func pointToJSONCoords(point s2.Point) string {
 	return latLngToJSONCoords(s2.LatLngFromPoint(point))
 }

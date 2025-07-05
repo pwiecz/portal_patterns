@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+//lint:file-ignore SA6002 We store slicer as values in sync.Pool. Changing code the use pointers seems to make benchmarks slower.
+
 type bestFlipFieldMtQuery struct {
 	portals            []portalData
 	fixedBaseIndices   []portalIndex

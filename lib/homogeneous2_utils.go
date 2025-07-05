@@ -38,6 +38,7 @@ func sortedIndices(a, b, c portalIndex) (portalIndex, portalIndex, portalIndex) 
 	return c, b, a
 }
 
+//lint:ignore U1000 We keep some unused functions that may be potentially useful
 func ordering(p0, p1, p2 portalData, index int) (portalData, portalData, portalData) {
 	switch index {
 	case 2:
