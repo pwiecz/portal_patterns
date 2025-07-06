@@ -18,8 +18,6 @@ var fragmentShader string
 
 // OpenGL2 implements a renderer based on github.com/go-gl/gl (v2.1).
 type OpenGL2s struct {
-	imguiIO imgui.IO
-
 	//	glyphRanges imgui.AllocatedGlyphRanges
 	fontTexture            uint32
 	shaderHandle           uint32
@@ -36,15 +34,13 @@ type OpenGL2s struct {
 
 // NewOpenGL2s attempts to initialize a renderer.
 // An OpenGL context has to be established before calling this function.
-func NewOpenGL2s(io imgui.IO) (*OpenGL2s, error) {
+func NewOpenGL2s() (*OpenGL2s, error) {
 	err := gl.Init()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize OpenGL: %w", err)
 	}
 
-	renderer := &OpenGL2s{
-		imguiIO: io,
-	}
+	renderer := &OpenGL2s{}
 	renderer.createDeviceObjects()
 
 	return renderer, nil

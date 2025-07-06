@@ -364,7 +364,7 @@ func (w *MapDrawer) Init(screenWidth, screenHeight int) {
 	}
 	context := imgui.CreateContext(nil)
 	imgui.CurrentIO().SetDisplaySize(imgui.Vec2{X: float32(screenWidth), Y: float32(screenHeight)})
-	renderer, err := guigl.NewOpenGL3(imgui.CurrentIO())
+	renderer, err := guigl.NewOpenGL3()
 	if err != nil {
 		panic(err)
 	}

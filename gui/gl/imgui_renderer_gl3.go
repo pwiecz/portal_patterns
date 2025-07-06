@@ -18,8 +18,6 @@ var fragmentShader_gl3 string
 
 // OpenGL3 implements a renderer based on github.com/go-gl/gl (v3.2-core).
 type OpenGL3 struct {
-	imguiIO imgui.IO
-
 	fontTexture            uint32
 	shaderHandle           uint32
 	vertHandle             uint32
@@ -35,15 +33,13 @@ type OpenGL3 struct {
 
 // NewOpenGL3 attempts to initialize a renderer.
 // An OpenGL context has to be established before calling this function.
-func NewOpenGL3(io imgui.IO) (*OpenGL3, error) {
+func NewOpenGL3() (*OpenGL3, error) {
 	err := gl.Init()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize OpenGL: %w", err)
 	}
 
-	renderer := &OpenGL3{
-		imguiIO: io,
-	}
+	renderer := &OpenGL3{}
 	renderer.createDeviceObjects()
 
 	return renderer, nil
