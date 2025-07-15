@@ -36,9 +36,14 @@ func NewMapWindow(x, y, w, h int, title string, tileFetcher *osm.MapTiles, paren
 	mw.mapDrawer.OnMapChanged(mw.redraw)
 	mw.firstShow = true
 	mw.Resizable(mw.GlWindow)
+	fltk.AddTimeout(1.0/24.0, mw.timedRedraw)
 	return mw
 }
 
+func (w *MapWindow) timedRedraw() {
+	w.Redraw()
+	fltk.RepeatTimeout(1.0/24.0, w.timedRedraw)
+}
 func (w *MapWindow) redraw() {
 	fltk.Awake(w.Redraw)
 }
