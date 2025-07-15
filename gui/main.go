@@ -171,13 +171,9 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	// when the main window grows horizontally.
 	/*dummyGroup :=*/ fltk.NewGroup(0, 0, 0, 590)
 	portalListPack.End()
-//	portalListPack.Resizable(dummyGroup)
 	rightPack.End()
-//	rightPack.Resizable(portalListPack)
 	pack.End()
-//	pack.Resizable(w.mapWindow)
 	mainPack.End()
-//	mainPack.Resizable(pack)
 	w.End()
 	w.Resizable(mainPack)
 	return w
