@@ -167,9 +167,6 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	w.portalList = NewPortalList(0, 0, 700, 590)
 	w.portalList.SetSelectionChangeCallback(func() { w.OnSelectionChanged(w.portalList.selectedPortals) })
 	w.portalList.SetContextMenuCallback(w.onContextMenu)
-	// Add an empty group that will resize horizontally instead of the portal list
-	// when the main window grows horizontally.
-	/*dummyGroup :=*/ fltk.NewGroup(0, 0, 0, 590)
 	portalListPack.End()
 	rightPack.End()
 	pack.End()
