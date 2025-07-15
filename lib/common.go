@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/golang/geo/s2"
-	"golang.org/x/exp/constraints"
 )
 
 type portalIndex uint16
@@ -69,19 +68,6 @@ func portalsInsideTriangle(portals []portalData, a, b, c portalData, result []po
 		}
 	}
 	return result
-}
-
-func min[T constraints.Ordered](v0, v1 T) T {
-	if v0 < v1 {
-		return v0
-	}
-	return v1
-}
-func max[T constraints.Ordered](v0, v1 T) T {
-	if v0 > v1 {
-		return v0
-	}
-	return v1
 }
 
 // partition moves elements that do not satisfy the f predicate to the end of the slice
