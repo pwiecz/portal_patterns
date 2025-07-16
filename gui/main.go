@@ -76,6 +76,10 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	menuBar.AddEx("&View/Zoom &In", fltk.CTRL+int('+'), w.onZoomIn, 0)
 	menuBar.AddEx("&View/Zoom &Out", fltk.CTRL+int('-'), w.onZoomOut, 0)
 	menuBar.AddEx("&View/&Reset View", fltk.CTRL+int('r'), w.onResetView, 0)
+	menuBar.AddEx("&View/Scroll Up", fltk.CTRL+fltk.UP, w.onScrollUp, 0)
+	menuBar.AddEx("&View/Scroll Down", fltk.CTRL+fltk.DOWN, w.onScrollDown, 0)
+	menuBar.AddEx("&View/Scroll Left", fltk.CTRL+fltk.LEFT, w.onScrollLeft, 0)
+	menuBar.AddEx("&View/Scroll Right", fltk.CTRL+fltk.RIGHT, w.onScrollRight, 0)
 	mainPack.Fixed(menuBar, 30)
 	pack := fltk.NewFlex(0, 0, 1600, 870)
 	pack.SetType(fltk.ROW)
@@ -313,6 +317,22 @@ func (w *MainWindow) onZoomOut() {
 }
 func (w *MainWindow) onResetView() {
 	w.mapWindow.ResetView()
+	w.mapWindow.Redraw()
+}
+func (w *MainWindow) onScrollUp() {
+	w.mapWindow.ScrollUp()
+	w.mapWindow.Redraw()
+}
+func (w *MainWindow) onScrollDown() {
+	w.mapWindow.ScrollDown()
+	w.mapWindow.Redraw()
+}
+func (w *MainWindow) onScrollLeft() {
+	w.mapWindow.ScrollLeft()
+	w.mapWindow.Redraw()
+}
+func (w *MainWindow) onScrollRight() {
+	w.mapWindow.ScrollRight()
 	w.mapWindow.Redraw()
 }
 func (w *MainWindow) onLoadPressed() {

@@ -116,6 +116,18 @@ func (w *MapWindow) ZoomOut() {
 func (w *MapWindow) ResetView() {
 	w.mapDrawer.ResetView()
 }
+func (w *MapWindow) ScrollUp() {
+	w.mapDrawer.ScrollUp()
+}
+func (w *MapWindow) ScrollDown() {
+	w.mapDrawer.ScrollDown()
+}
+func (w *MapWindow) ScrollLeft() {
+	w.mapDrawer.ScrollLeft()
+}
+func (w *MapWindow) ScrollRight() {
+	w.mapDrawer.ScrollRight()
+}
 func (w *MapWindow) setCursor() {
 	if !w.isMouseIn {
 		w.parent.SetCursor(fltk.CURSOR_DEFAULT)
@@ -138,6 +150,7 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 		// return true to receive keyboard events
 		return true
 	case fltk.RELEASE:
+		w.TakeFocus()
 		if w.selectionMode == NoSelection && fltk.EventButton() == fltk.LeftMouse && fltk.EventIsClick() {
 			x, y := fltk.EventX(), fltk.EventY()
 			if x >= 20 && x < 60 && y >= 20 && y < 60 {
@@ -216,15 +229,36 @@ func (w *MapWindow) handleEvent(event fltk.Event) bool {
 			return true
 		}
 	case fltk.KEY:
-		if (fltk.EventState()&fltk.CTRL) != 0 &&
-			(fltk.EventKey() == '+' || fltk.EventKey() == '=') {
-			w.mapDrawer.ZoomIn(w.W()/2, w.H()/2)
-			w.redraw()
-			return true
-		} else if fltk.EventKey() == '-' && (fltk.EventState()&fltk.CTRL) != 0 {
-			w.mapDrawer.ZoomOut(w.W()/2, w.H()/2)
-			w.redraw()
-			return true
+		if (fltk.EventState() & fltk.CTRL) != 0 {
+			if fltk.EventKey() == '+' || fltk.EventKey() == '=' {
+				w.mapDrawer.ZoomIn(w.W()/2, w.H()/2)
+				w.redraw()
+				return true
+			} else if fltk.EventKey() == '-' {
+				w.mapDrawer.ZoomOut(w.W()/2, w.H()/2)
+				w.redraw()
+				return true
+			} else if fltk.EventKey() == 'r' {
+				w.mapDrawer.ResetView()
+				w.redraw()
+				return true
+			} else if fltk.EventKey() == fltk.UP {
+				w.mapDrawer.ScrollUp()
+				w.redraw()
+				return true
+			} else if fltk.EventKey() == fltk.DOWN {
+				w.mapDrawer.ScrollDown()
+				w.redraw()
+				return true
+			} else if fltk.EventKey() == fltk.RIGHT {
+				w.mapDrawer.ScrollRight()
+				w.redraw()
+				return true
+			} else if fltk.EventKey() == fltk.LEFT {
+				w.mapDrawer.ScrollLeft()
+				w.redraw()
+				return true
+			}
 		}
 	case fltk.MOVE:
 		w.isMouseIn = true

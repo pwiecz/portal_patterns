@@ -284,6 +284,35 @@ func (w *MapDrawer) ZoomOut(x, y int) {
 			w.redrawTiles()
 		}
 	})
+	w.MapChanged()
+}
+func (w *MapDrawer) ScrollUp() {
+	w.Async(func() {
+		w.y0 -= 10
+		w.redrawTiles()
+	})
+	w.MapChanged()
+}
+func (w *MapDrawer) ScrollDown() {
+	w.Async(func() {
+		w.y0 += 10
+		w.redrawTiles()
+	})
+	w.MapChanged()
+}
+func (w *MapDrawer) ScrollLeft() {
+	w.Async(func() {
+		w.x0 -= 10
+		w.redrawTiles()
+	})
+	w.MapChanged()
+}
+func (w *MapDrawer) ScrollRight() {
+	w.Async(func() {
+		w.x0 += 10
+		w.redrawTiles()
+	})
+	w.MapChanged()
 }
 
 func (w *MapDrawer) SetSelectionMode(selectionMode SelectionMode) {
