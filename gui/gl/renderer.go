@@ -122,7 +122,8 @@ func checkForOpenGLErrors(info string) {
 	}
 }
 
-func (c DrawCommand) Render(r *GLRenderer) {
+func (c DrawCommand) Render(i int, r *GLRenderer) {
+	zMtx := mgl32.Translate3D(0, 0, -0.01*float32(i+1))
 	switch c.Type {
 	case DrawMeshCommand:
 		if r.lastShader != r.meshShader.handle {
@@ -131,7 +132,7 @@ func (c DrawCommand) Render(r *GLRenderer) {
 		}
 		gl.VertexAttribPointerWithOffset(uint32(r.meshShader.positionLocation), 2, gl.FLOAT, false, 0, 0)
 		gl.EnableVertexAttribArray(uint32(r.meshShader.positionLocation))
-		matrix := r.projectionMatrix.Mul4(c.Matrix)
+		matrix := r.projectionMatrix.Mul4(zMtx.Mul4(c.Matrix))
 		gl.UniformMatrix4fv(r.meshShader.matrixLocation, 1, false, &matrix[0])
 		gl.Uniform4fv(r.meshShader.colorLocation, 1, &c.Color[0])
 		switch c.Mode {
@@ -150,7 +151,7 @@ func (c DrawCommand) Render(r *GLRenderer) {
 		}
 		gl.VertexAttribPointerWithOffset(uint32(r.textureShader.positionLocation), 2, gl.FLOAT, false, 0, 0)
 		gl.EnableVertexAttribArray(uint32(r.textureShader.positionLocation))
-		matrix := r.projectionMatrix.Mul4(c.Matrix)
+		matrix := r.projectionMatrix.Mul4(zMtx.Mul4(c.Matrix))
 		gl.UniformMatrix4fv(r.textureShader.matrixLocation, 1, false, &matrix[0])
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, c.TextureId)
@@ -168,7 +169,8 @@ func (c DrawCommand) Render(r *GLRenderer) {
 		gl.EnableVertexAttribArray(uint32(r.msdfShader.uvLocation))
 		gl.VertexAttribPointerWithOffset(uint32(r.msdfShader.positionLocation), 2, gl.FLOAT, false, stride, uintptr(c.PositionOffset)*elemSize)
 		gl.VertexAttribPointerWithOffset(uint32(r.msdfShader.uvLocation), 2, gl.FLOAT, false, stride, uintptr(c.PositionOffset+1)*elemSize)
-		gl.UniformMatrix4fv(r.msdfShader.matrixLocation, 1, false, &r.projectionMatrix[0])
+		matrix := r.projectionMatrix.Mul4(zMtx)
+		gl.UniformMatrix4fv(r.msdfShader.matrixLocation, 1, false, &matrix[0])
 		gl.Uniform4fv(r.msdfShader.colorLocation, 1, &c.Color[0])
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, c.TextureId)
@@ -415,7 +417,6 @@ func NewGLRenderer() (*GLRenderer, error) {
 	gl.Enable(gl.BLEND)
 	gl.BlendEquation(gl.FUNC_ADD)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	gl.Disable(gl.DEPTH_TEST)
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 	gl.GenBuffers(1, &r.vertexBuffer)
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
@@ -437,9 +438,8 @@ func NewGLRenderer() (*GLRenderer, error) {
 }
 
 func (r *GLRenderer) Clear(width, height float32) {
-	gl.Viewport(0, 0, int32(width), int32(height))
-	gl.ClearColor(0.75, 0.75, 0.75, 1.0)
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	r.drawList.Commands = r.drawList.Commands[:0]
+	r.drawList.Vertices = r.drawList.Vertices[:r.drawList.staticVertexCount]
 }
 
 func (r *GLRenderer) Dispose() {
@@ -502,18 +502,15 @@ func (r *GLRenderer) AddImage(textureId uint32, x0, y0, x1, y1 float32) {
 }
 
 func (r *GLRenderer) Render(width, height float32) {
-	r.projectionMatrix = [16]float32{
-		2.0 / width, 0.0, 0.0, 0.0,
-		0.0, 2.0 / -height, 0.0, 0.0,
-		0.0, 0.0, -1.0, 0.0,
-		-1.0, 1.0, 0.0, 1.0,
+	r.projectionMatrix = mgl32.Ortho(0, width, height, 0, -1000, 1000)
+	gl.Viewport(0, 0, int32(width), int32(height))
+	gl.ClearColor(0.75, 0.75, 0.75, 1.0)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	elemSize := int(unsafe.Sizeof(r.drawList.Vertices[0]))
+	gl.BufferData(gl.ARRAY_BUFFER, len(r.drawList.Vertices)*elemSize, gl.Ptr(r.drawList.Vertices), gl.STREAM_DRAW)
+	for i, cmd := range r.drawList.Commands {
+		cmd.Render(i, r)
 	}
-	gl.BufferData(gl.ARRAY_BUFFER, len(r.drawList.Vertices)*2*4, gl.Ptr(r.drawList.Vertices), gl.STREAM_DRAW)
-	for _, cmd := range r.drawList.Commands {
-		cmd.Render(r)
-	}
-	r.drawList.Commands = r.drawList.Commands[:0]
-	r.drawList.Vertices = r.drawList.Vertices[:r.drawList.staticVertexCount]
 }
 
 func (r *GLRenderer) CalculateTextSize(text string, size float32) (float32, float32) {

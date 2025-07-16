@@ -1,7 +1,5 @@
 package main
 
-//lint:file-ignore SA1019 We use deprecated imgui-go. TODO:use go-gl directly.
-
 import (
 	"context"
 	"errors"
@@ -9,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"os"
 	"sync"
 	"time"
 
@@ -378,19 +377,22 @@ func (w *MapDrawer) Init(screenWidth, screenHeight int) {
 	w.initialized = true
 }
 func (w *MapDrawer) Update() {
-	for !w.taskQueue.Empty() {
-		callback := w.taskQueue.Dequeue()
-		callback()
+	if !w.taskQueue.Empty() {
+		w.renderer.Clear(w.width, w.height)
+		for !w.taskQueue.Empty() {
+			callback := w.taskQueue.Dequeue()
+			callback()
+		}
+		w.drawAllTiles()
+		w.drawAllPortals()
+		w.drawAllPaths()
+		w.drawPortalLabel()
+		w.drawTooltip()
+		w.drawSelection()
+		w.drawSelectionButton()
+		w.drawCopyrightLabel()
 	}
-	w.renderer.Clear(w.width, w.height)
-	w.drawAllTiles()
-	w.drawAllPortals()
-	w.drawAllPaths()
-	w.drawPortalLabel()
-	w.drawTooltip()
-	w.drawSelection()
-	w.drawSelectionButton()
-	w.drawCopyrightLabel()
+	w.renderer.Render(w.width, w.height)
 }
 
 func (w *MapDrawer) ResetView() {
@@ -472,7 +474,6 @@ func (w *MapDrawer) drawCopyrightLabel() {
 	textSizeX, textSizeY := w.renderer.CalculateTextSize(label, fontSize)
 	posX, posY := w.width-textSizeX-5, w.height-textSizeY-5
 	w.renderer.AddText(posX, posY, fontSize, black, label)
-	w.renderer.Render(w.width, w.height)
 }
 
 func (w *MapDrawer) drawPortalLabel() {
@@ -495,8 +496,6 @@ func (w *MapDrawer) drawPortalLabel() {
 	w.renderer.AddRectFilled(labelPosX, labelPosY-textSizeY, labelPosX+textSizeX+2*LabelXMargin, labelPosY, white)
 	textPosX := labelPosX + LabelXMargin
 	w.renderer.AddText(textPosX, labelPosY-textSizeY, fontSize, black, portal.name)
-	w.renderer.Render(w.width, w.height)
-
 }
 func (w *MapDrawer) drawTooltip() {
 	if w.tooltip == "" {
@@ -507,7 +506,6 @@ func (w *MapDrawer) drawTooltip() {
 	tooltipY := w.tooltipY - height/2
 	w.renderer.AddRectFilled(w.tooltipX, tooltipY, w.tooltipX+width, tooltipY+height, gray)
 	w.renderer.AddText(w.tooltipX+5, tooltipY+3, fontSize, black, w.tooltip)
-	w.renderer.Render(w.width, w.height)
 }
 func (w *MapDrawer) drawAllTiles() {
 	for coord, tex := range w.mapTiles {
@@ -515,7 +513,6 @@ func (w *MapDrawer) drawAllTiles() {
 		dy := float32(coord.Y)*256 - float32(w.y0)
 		w.renderer.AddImage(uint32(tex), dx, dy, dx+256, dy+256)
 	}
-	w.renderer.Render(w.width, w.height)
 }
 func (w *MapDrawer) drawAllPortals() {
 	for _, portalIndex := range w.portalDrawOrder {
@@ -525,7 +522,6 @@ func (w *MapDrawer) drawAllPortals() {
 		w.renderer.AddCircleFilled(x, y, portal.fillColor)
 		w.renderer.AddCircle(x, y, portal.strokeColor)
 	}
-	w.renderer.Render(w.width, w.height)
 }
 func (w *MapDrawer) drawAllPaths() {
 	for _, path := range w.paths {
@@ -537,7 +533,6 @@ func (w *MapDrawer) drawAllPaths() {
 			w.renderer.AddLine(x0, y0, x1, y1, 3, purple)
 		}
 	}
-	w.renderer.Render(w.width, w.height)
 }
 func (w *MapDrawer) drawSelectionButton() {
 
@@ -546,14 +541,12 @@ func (w *MapDrawer) drawSelectionButton() {
 	} else {
 		w.renderer.AddSelectionButton(20, 20, white, black)
 	}
-	w.renderer.Render(w.width, w.height)
 }
 func (w *MapDrawer) drawSelection() {
 	if w.selX0 >= w.selX1 || w.selY0 >= w.selY1 {
 		return
 	}
 	w.renderer.AddRect(w.selX0, w.selY0, w.selX1, w.selY1, 1, black)
-	w.renderer.Render(w.width, w.height)
 }
 func (w *MapDrawer) SetPortals(portals []lib.Portal) {
 	w.Async(func() { w.onNewPortals(portals) })
@@ -633,7 +626,7 @@ func (w *MapDrawer) fetchTile(coord osm.TileCoord) {
 			return
 		}
 		if !errors.Is(err, osm.ErrBusy) && !errors.Is(err, context.Canceled) {
-			fmt.Println("fetching error:", err)
+			fmt.Fprintln(os.Stderr, "fetching error:", err)
 			return
 		}
 		if !w.missingTiles.Contains(coord) {
