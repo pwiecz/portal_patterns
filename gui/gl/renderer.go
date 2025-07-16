@@ -340,7 +340,7 @@ type GLRenderer struct {
 	vertexBuffer     uint32
 	projectionMatrix mgl32.Mat4
 	fontTexture      uint32
-	fontInfo         MSDFData
+	fontInfo         MSDFInfo
 }
 
 func NewGLRenderer() (*GLRenderer, error) {
@@ -430,7 +430,7 @@ func NewGLRenderer() (*GLRenderer, error) {
 		panic(err)
 	}
 
-	r.fontInfo = fontInfo
+	r.fontInfo = fontInfo.ToMSDFInfo()
 
 	r.drawList.Init()
 	return r, nil
@@ -519,13 +519,9 @@ func (r *GLRenderer) Render(width, height float32) {
 func (r *GLRenderer) CalculateTextSize(text string, size float32) (float32, float32) {
 	x := float32(0)
 	for _, rune := range text {
-		if rune == ' ' {
-			x += 0.25 * size
-		}
-		glyph, ok := r.fontInfo.FindDataForRune(rune)
+		glyph, ok := r.fontInfo.Glyphs[rune]
 		if !ok {
-			glyph, ok = r.fontInfo.FindDataForRune('?')
-			if !ok {
+			if glyph, ok = r.fontInfo.Glyphs['?']; !ok {
 				panic(fmt.Errorf("cannot find ? glyph"))
 			}
 			continue
@@ -543,29 +539,19 @@ func (r *GLRenderer) AddText(x, y, size float32, color Color, text string) {
 	} else if pxRange < 2.0 {
 		fmt.Fprintf(os.Stderr, "low pxRange: %f\n", pxRange)
 	}
-
+	xy := mgl32.Vec2{x, y}
 	for _, rune := range text {
-		if rune == ' ' {
-			x += 0.25 * size
-		}
-		glyph, ok := r.fontInfo.FindDataForRune(rune)
+		glyph, ok := r.fontInfo.Glyphs[rune]
 		if !ok {
-			glyph, ok = r.fontInfo.FindDataForRune('?')
-			if !ok {
+			if glyph, ok = r.fontInfo.Glyphs['?']; !ok {
 				panic(fmt.Errorf("cannot find ? glyph"))
 			}
 			continue
 		}
-		bounds := glyph.AtlasBounds
-
-		uvTop, uvBottom := bounds.Top/r.fontInfo.Atlas.Height, bounds.Bottom/r.fontInfo.Atlas.Height
-		uvLeft, uvRight := bounds.Left/r.fontInfo.Atlas.Width, bounds.Right/r.fontInfo.Atlas.Width
-		uvWidth, uvHeight := uvRight-uvLeft, uvTop-uvBottom
-		uvTL := mgl32.Vec2{uvLeft, 1.0 - uvTop}
-
-		pBounds := glyph.PlaneBounds
-		width, height := (pBounds.Right-pBounds.Left)*size, (pBounds.Top-pBounds.Bottom)*size
-		tl := mgl32.Vec2{x + pBounds.Left*size, y + (1-pBounds.Top+r.fontInfo.Metrics.Descender)*size}
+		uvWidth, uvHeight := glyph.UV.Width, glyph.UV.Height
+		uvTL := mgl32.Vec2{glyph.UV.Left, glyph.UV.Top}
+		width, height := glyph.Plane.Width*size, glyph.Plane.Height*size
+		tl := mgl32.Vec2{glyph.Plane.Left, glyph.Plane.Top}.Mul(size).Add(xy)
 
 		r.drawList.Vertices = append(r.drawList.Vertices,
 			tl, uvTL,
@@ -574,7 +560,7 @@ func (r *GLRenderer) AddText(x, y, size float32, color Color, text string) {
 			tl, uvTL,
 			tl.Add(mgl32.Vec2{width, height}), uvTL.Add(mgl32.Vec2{uvWidth, uvHeight}),
 			tl.Add(mgl32.Vec2{width, 0}), uvTL.Add(mgl32.Vec2{uvWidth, 0}))
-		x += glyph.Advance * size
+		xy[0] += glyph.Advance * size
 	}
 	r.drawList.Commands = append(r.drawList.Commands, NewDrawMSDFTextureCommand(r.fontTexture, offset, len(r.drawList.Vertices)-offset, color, pxRange))
 }
