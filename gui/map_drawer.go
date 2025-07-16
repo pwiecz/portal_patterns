@@ -354,6 +354,47 @@ func (w *MapDrawer) ScrollToPortal(guid string) {
 	})
 	w.MapChanged()
 }
+
+func (w *MapDrawer) ResetView() {
+	w.Async(func() {
+		if len(w.portals) == 0 {
+			w.zoom = 0
+			w.zoomPow = 1
+			w.x0 = 0
+			w.y0 = 0
+			w.portalUnderMouse = -1
+			w.redrawTiles()
+			return
+		}
+		minX, minY, maxX, maxY := math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64
+		for _, portal := range w.portals {
+			minX = math.Min(portal.coords.X, minX)
+			minY = math.Min(portal.coords.Y, minY)
+			maxX = math.Max(portal.coords.X, maxX)
+			maxY = math.Max(portal.coords.Y, maxY)
+		}
+		numTilesX := math.Ceil(float64(w.width) / 256)
+		numTilesY := math.Ceil(float64(w.height) / 256)
+		for w.zoom = 19; w.zoom >= 0; w.zoom-- {
+			zoomPow := math.Pow(2., float64(w.zoom))
+			minXTile, minYTile := math.Floor(minX*zoomPow), math.Floor(minY*zoomPow)
+			maxXTile, maxYTile := math.Floor(maxX*zoomPow), math.Floor(maxY*zoomPow)
+			if maxXTile-minXTile+1 <= numTilesX && maxYTile-minYTile+1 <= numTilesY {
+				break
+			}
+		}
+		if w.zoom < 0 {
+			w.zoom = 0
+		}
+		w.zoomPow = math.Pow(2., float64(w.zoom))
+		w.x0 = (maxX+minX)*0.5*w.zoomPow*256 - float64(w.width)*0.5
+		w.y0 = (maxY+minY)*0.5*w.zoomPow*256 - float64(w.height)*0.5
+		w.portalUnderMouse = -1
+		w.redrawTiles()
+	})
+	w.MapChanged()
+}
+
 func (w *MapDrawer) OnMapChanged(callback func()) {
 	w.onMapChangedCallbacks = append(w.onMapChangedCallbacks, callback)
 }
@@ -393,43 +434,6 @@ func (w *MapDrawer) Update() {
 		w.drawCopyrightLabel()
 	}
 	w.renderer.Render(w.width, w.height)
-}
-
-func (w *MapDrawer) ResetView() {
-	if len(w.portals) == 0 {
-		w.zoom = 0
-		w.zoomPow = 1
-		w.x0 = 0
-		w.y0 = 0
-		w.portalUnderMouse = -1
-		w.redrawTiles()
-		return
-	}
-	minX, minY, maxX, maxY := math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64
-	for _, portal := range w.portals {
-		minX = math.Min(portal.coords.X, minX)
-		minY = math.Min(portal.coords.Y, minY)
-		maxX = math.Max(portal.coords.X, maxX)
-		maxY = math.Max(portal.coords.Y, maxY)
-	}
-	numTilesX := math.Ceil(float64(w.width) / 256)
-	numTilesY := math.Ceil(float64(w.height) / 256)
-	for w.zoom = 19; w.zoom >= 0; w.zoom-- {
-		zoomPow := math.Pow(2., float64(w.zoom))
-		minXTile, minYTile := math.Floor(minX*zoomPow), math.Floor(minY*zoomPow)
-		maxXTile, maxYTile := math.Floor(maxX*zoomPow), math.Floor(maxY*zoomPow)
-		if maxXTile-minXTile+1 <= numTilesX && maxYTile-minYTile+1 <= numTilesY {
-			break
-		}
-	}
-	if w.zoom < 0 {
-		w.zoom = 0
-	}
-	w.zoomPow = math.Pow(2., float64(w.zoom))
-	w.x0 = (maxX+minX)*0.5*w.zoomPow*256 - float64(w.width)*0.5
-	w.y0 = (maxY+minY)*0.5*w.zoomPow*256 - float64(w.height)*0.5
-	w.portalUnderMouse = -1
-	w.redrawTiles()
 }
 
 func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
