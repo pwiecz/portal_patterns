@@ -115,6 +115,7 @@ func errorToString(err uint32) string {
 	}
 }
 
+//lint:ignore U1000 this functions is not used right now, but is useful for debugging rendering issues
 func checkForOpenGLErrors(info string) {
 	if err := gl.GetError(); err != gl.NO_ERROR {
 		fmt.Fprintln(os.Stderr, info, "OpenGL error:", errorToString(err))
@@ -141,22 +142,20 @@ func (c DrawCommand) Render(r *GLRenderer) {
 		case TriangleStrip:
 			gl.DrawArrays(gl.TRIANGLE_STRIP, int32(c.PositionOffset), int32(c.ElementCount))
 		}
-		checkForOpenGLErrors("mesh:DrawArrays")
 		gl.DisableVertexAttribArray(uint32(r.meshShader.positionLocation))
 	case DrawTextureCommand:
 		if r.lastShader != r.textureShader.handle {
 			gl.UseProgram(r.textureShader.handle)
 			r.lastShader = r.textureShader.handle
 		}
-		gl.VertexAttribPointerWithOffset(uint32(r.textureShader.positionLocation), 2, gl.FLOAT, false, 0, uintptr(r.drawList.unitRectOffset))
+		gl.VertexAttribPointerWithOffset(uint32(r.textureShader.positionLocation), 2, gl.FLOAT, false, 0, 0)
 		gl.EnableVertexAttribArray(uint32(r.textureShader.positionLocation))
 		matrix := r.projectionMatrix.Mul4(c.Matrix)
 		gl.UniformMatrix4fv(r.textureShader.matrixLocation, 1, false, &matrix[0])
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, c.TextureId)
 		gl.Uniform1i(r.textureShader.textureLocation, 0)
-		gl.DrawArrays(gl.TRIANGLES, 0, 6)
-		checkForOpenGLErrors("texture:DrawArrays")
+		gl.DrawArrays(gl.TRIANGLES, int32(r.drawList.unitRectOffset), 6)
 		gl.DisableVertexAttribArray(uint32(r.textureShader.positionLocation))
 	case DrawMSDFTextureCommand:
 		if r.lastShader != r.msdfShader.handle {
@@ -167,8 +166,8 @@ func (c DrawCommand) Render(r *GLRenderer) {
 		stride := 2 * elemSize
 		gl.EnableVertexAttribArray(uint32(r.msdfShader.positionLocation))
 		gl.EnableVertexAttribArray(uint32(r.msdfShader.uvLocation))
-		gl.VertexAttribPointerWithOffset(uint32(r.msdfShader.positionLocation), 2, gl.FLOAT, false, int32(stride), uintptr(c.PositionOffset)*uintptr(elemSize))
-		gl.VertexAttribPointerWithOffset(uint32(r.msdfShader.uvLocation), 2, gl.FLOAT, false, int32(stride), uintptr(c.PositionOffset+1)*uintptr(elemSize))
+		gl.VertexAttribPointerWithOffset(uint32(r.msdfShader.positionLocation), 2, gl.FLOAT, false, int32(stride), uintptr(c.PositionOffset)*elemSize)
+		gl.VertexAttribPointerWithOffset(uint32(r.msdfShader.uvLocation), 2, gl.FLOAT, false, int32(stride), uintptr(c.PositionOffset+1)*elemSize)
 		gl.UniformMatrix4fv(r.msdfShader.matrixLocation, 1, false, &r.projectionMatrix[0])
 		gl.Uniform4fv(r.msdfShader.colorLocation, 1, &c.Color[0])
 		gl.ActiveTexture(gl.TEXTURE0)
@@ -176,7 +175,6 @@ func (c DrawCommand) Render(r *GLRenderer) {
 		gl.Uniform1i(r.msdfShader.textureLocation, 0)
 		gl.Uniform1f(r.msdfShader.pxRangeLocation, c.PxRange)
 		gl.DrawArrays(gl.TRIANGLES, 0, int32(c.ElementCount))
-		checkForOpenGLErrors("msdf:DrawArrays")
 		gl.DisableVertexAttribArray(uint32(r.msdfShader.positionLocation))
 		gl.DisableVertexAttribArray(uint32(r.msdfShader.uvLocation))
 	}
@@ -484,42 +482,6 @@ func (r *GLRenderer) AddSelectionButton(x, y float32, color1, color2 Color) {
 	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(Triangles, matrix, r.drawList.unitRectOffset, 6, color2))
 
 }
-func (r *GLRenderer) AddRoundedRectFilled(x0, y0, x1, y1, radius float32, color Color) {
-	offset := len(r.drawList.Vertices)
-	r.drawList.Vertices = append(r.drawList.Vertices, mgl32.Vec2{x1, y0 + radius})
-	const numSegments = 20
-	const angleStep = 2 * math.Pi / numSegments
-	addPoint := func(x, y float32, i int) {
-		angle := angleStep * float64(i)
-		c, s := float32(math.Cos(angle)), float32(math.Sin(angle))
-		r.drawList.Vertices = append(r.drawList.Vertices, mgl32.Vec2{x + c*radius, y + s*radius})
-	}
-	{
-		x, y := x1-radius, y1-radius
-		for i := 0; i <= numSegments/4; i++ {
-			addPoint(x, y, i)
-		}
-	}
-	{
-		x, y := x0+radius, y1-radius
-		for i := numSegments / 4; i <= numSegments/2; i++ {
-			addPoint(x, y, i)
-		}
-	}
-	{
-		x, y := x0+radius, y0+radius
-		for i := numSegments / 2; i <= 3*numSegments/4; i++ {
-			addPoint(x, y, i)
-		}
-	}
-	{
-		x, y := x1-radius, y0+radius
-		for i := 3 * numSegments / 4; i <= numSegments; i++ {
-			addPoint(x, y, i)
-		}
-	}
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleFan, mgl32.Ident4(), offset, numSegments+5, color))
-}
 
 func (r *GLRenderer) AddRect(x0, y0, x1, y1, thickness float32, color Color) {
 	offset := len(r.drawList.Vertices)
@@ -546,7 +508,7 @@ func (r *GLRenderer) Render(width, height float32) {
 		0.0, 0.0, -1.0, 0.0,
 		-1.0, 1.0, 0.0, 1.0,
 	}
-	gl.BufferData(gl.ARRAY_BUFFER, len(r.drawList.Vertices)*2*4, unsafe.Pointer(unsafe.SliceData(r.drawList.Vertices)), gl.STREAM_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, len(r.drawList.Vertices)*2*4, gl.Ptr(r.drawList.Vertices), gl.STREAM_DRAW)
 	for _, cmd := range r.drawList.Commands {
 		cmd.Render(r)
 	}
@@ -618,8 +580,7 @@ func (r *GLRenderer) AddText(x, y, size float32, color Color, text string) {
 }
 
 func DeleteTexture(tex uint32) {
-	texIx := uint32(tex)
-	gl.DeleteTextures(1, &texIx)
+	gl.DeleteTextures(1, &tex)
 }
 func NewTexture(img image.Image) uint32 {
 	rgba, ok := img.(*image.RGBA)
