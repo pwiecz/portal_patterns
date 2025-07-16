@@ -113,6 +113,9 @@ func (w *MapWindow) ZoomIn() {
 func (w *MapWindow) ZoomOut() {
 	w.mapDrawer.ZoomOut(int(w.mapDrawer.width/2), int(w.mapDrawer.height/2))
 }
+func (w *MapWindow) ResetView() {
+	w.mapDrawer.ResetView()
+}
 func (w *MapWindow) setCursor() {
 	if !w.isMouseIn {
 		w.parent.SetCursor(fltk.CURSOR_DEFAULT)

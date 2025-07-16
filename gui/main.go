@@ -75,6 +75,7 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	menuBar.AddEx("&Select/&Rectangular Selection", fltk.ALT+int('r'), w.onRectangularSelection, 0)
 	menuBar.AddEx("&View/Zoom &In", fltk.CTRL+int('+'), w.onZoomIn, 0)
 	menuBar.AddEx("&View/Zoom &Out", fltk.CTRL+int('-'), w.onZoomOut, 0)
+	menuBar.AddEx("&View/&Reset View", fltk.CTRL+int('r'), w.onResetView, 0)
 	mainPack.Fixed(menuBar, 30)
 	pack := fltk.NewFlex(0, 0, 1600, 870)
 	pack.SetType(fltk.ROW)
@@ -308,6 +309,10 @@ func (w *MainWindow) onZoomIn() {
 }
 func (w *MainWindow) onZoomOut() {
 	w.mapWindow.ZoomOut()
+	w.mapWindow.Redraw()
+}
+func (w *MainWindow) onResetView() {
+	w.mapWindow.ResetView()
 	w.mapWindow.Redraw()
 }
 func (w *MainWindow) onLoadPressed() {

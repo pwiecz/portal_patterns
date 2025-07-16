@@ -163,11 +163,11 @@ func (c DrawCommand) Render(r *GLRenderer) {
 			r.lastShader = r.msdfShader.handle
 		}
 		elemSize := unsafe.Sizeof(r.drawList.Vertices[0])
-		stride := 2 * elemSize
+		stride := int32(2 * elemSize)
 		gl.EnableVertexAttribArray(uint32(r.msdfShader.positionLocation))
 		gl.EnableVertexAttribArray(uint32(r.msdfShader.uvLocation))
-		gl.VertexAttribPointerWithOffset(uint32(r.msdfShader.positionLocation), 2, gl.FLOAT, false, int32(stride), uintptr(c.PositionOffset)*elemSize)
-		gl.VertexAttribPointerWithOffset(uint32(r.msdfShader.uvLocation), 2, gl.FLOAT, false, int32(stride), uintptr(c.PositionOffset+1)*elemSize)
+		gl.VertexAttribPointerWithOffset(uint32(r.msdfShader.positionLocation), 2, gl.FLOAT, false, stride, uintptr(c.PositionOffset)*elemSize)
+		gl.VertexAttribPointerWithOffset(uint32(r.msdfShader.uvLocation), 2, gl.FLOAT, false, stride, uintptr(c.PositionOffset+1)*elemSize)
 		gl.UniformMatrix4fv(r.msdfShader.matrixLocation, 1, false, &r.projectionMatrix[0])
 		gl.Uniform4fv(r.msdfShader.colorLocation, 1, &c.Color[0])
 		gl.ActiveTexture(gl.TEXTURE0)

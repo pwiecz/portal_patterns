@@ -393,19 +393,25 @@ func (w *MapDrawer) Update() {
 	w.drawCopyrightLabel()
 }
 
-func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
-	minX, minY, maxX, maxY := math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64
-	for _, portal := range portals {
-		mapCoords := projection.FromLatLng(portal.LatLng)
-		mapCoords.X = (mapCoords.X + 180) / 360
-		mapCoords.Y = (180 - mapCoords.Y) / 360
-		minX = math.Min(mapCoords.X, minX)
-		minY = math.Min(mapCoords.Y, minY)
-		maxX = math.Max(mapCoords.X, maxX)
-		maxY = math.Max(mapCoords.Y, maxY)
+func (w *MapDrawer) ResetView() {
+	if len(w.portals) == 0 {
+		w.zoom = 0
+		w.zoomPow = 1
+		w.x0 = 0
+		w.y0 = 0
+		w.portalUnderMouse = -1
+		w.redrawTiles()
+		return
 	}
-	numTilesX := math.Ceil(float64(w.width) / 256.)
-	numTilesY := math.Ceil(float64(w.height) / 256.)
+	minX, minY, maxX, maxY := math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64
+	for _, portal := range w.portals {
+		minX = math.Min(portal.coords.X, minX)
+		minY = math.Min(portal.coords.Y, minY)
+		maxX = math.Max(portal.coords.X, maxX)
+		maxY = math.Max(portal.coords.Y, maxY)
+	}
+	numTilesX := math.Ceil(float64(w.width) / 256)
+	numTilesY := math.Ceil(float64(w.height) / 256)
 	for w.zoom = 19; w.zoom >= 0; w.zoom-- {
 		zoomPow := math.Pow(2., float64(w.zoom))
 		minXTile, minYTile := math.Floor(minX*zoomPow), math.Floor(minY*zoomPow)
@@ -418,10 +424,16 @@ func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
 		w.zoom = 0
 	}
 	w.zoomPow = math.Pow(2., float64(w.zoom))
-	w.x0 = (maxX+minX)*w.zoomPow*0.5*256.0 - float64(w.width)*0.5
-	w.y0 = (maxY+minY)*w.zoomPow*0.5*256.0 - float64(w.height)*0.5
+	w.x0 = (maxX+minX)*0.5*w.zoomPow*256 - float64(w.width)*0.5
+	w.y0 = (maxY+minY)*0.5*w.zoomPow*256 - float64(w.height)*0.5
+	w.portalUnderMouse = -1
+	w.redrawTiles()
+}
+
+func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
 	w.portals = make([]mapPortal, 0, len(portals))
 	w.portalIndex = NewPortalIndex(portals)
+	w.portalIndices = map[string]int{}
 	w.portalDrawOrder = w.portalDrawOrder[:0]
 	if len(portals) == 0 {
 		w.zoom = 0
@@ -449,7 +461,7 @@ func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
 		w.portalDrawOrder = append(w.portalDrawOrder, i)
 	}
 	w.portalUnderMouse = -1
-
+	w.ResetView()
 	w.redrawTiles()
 }
 
