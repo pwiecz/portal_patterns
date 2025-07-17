@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"math/rand"
+	"slices"
 	"time"
 
 	"github.com/golang/geo/s2"
@@ -39,6 +40,7 @@ func newHomogeneousTab(portals *Portals) *homogeneousTab {
 	t.maxDepth.SetMaximum(8)
 	t.maxDepth.SetValue(6)
 	t.maxDepth.SetType(fltk.SPINNER_INT_INPUT)
+	t.maxDepth.SetCallback(t.stateChanged)
 	maxDepthPack.End()
 	t.Add(maxDepthPack)
 
@@ -49,6 +51,7 @@ func newHomogeneousTab(portals *Portals) *homogeneousTab {
 	t.innerPortals.Add("Arbitrary", func() {})
 	t.innerPortals.Add("Spread around (slow)", func() {})
 	t.innerPortals.SetValue(0)
+	t.innerPortals.SetCallback(t.stateChanged)
 	innerPortalsPack.End()
 	t.Add(innerPortalsPack)
 
@@ -57,10 +60,12 @@ func newHomogeneousTab(portals *Portals) *homogeneousTab {
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.topLevel = fltk.NewChoice(0, 0, 200, 30, "Top level triangle:")
 	t.topLevel.Add("Smallest area", func() {})
+	t.topLevel.Add("Smallest sides", func() {})
 	t.topLevel.Add("Largest area", func() {})
 	t.topLevel.Add("Most Equilateral", func() {})
 	t.topLevel.Add("Random", func() {})
 	t.topLevel.SetValue(0)
+	t.topLevel.SetCallback(t.stateChanged)
 	topLevelPack.End()
 	t.Add(topLevelPack)
 
@@ -68,6 +73,7 @@ func newHomogeneousTab(portals *Portals) *homogeneousTab {
 	purePack.SetType(fltk.HORIZONTAL)
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.pure = fltk.NewCheckButton(0, 0, 200, 30, "Pure")
+	t.SetCallback(t.stateChanged)
 	purePack.End()
 	t.Add(purePack)
 
@@ -97,10 +103,12 @@ func (t *homogeneousTab) onSearch(progressFunc func(int, int), onSearchDone func
 	case 0:
 		options = append(options, lib.HomogeneousSmallestArea{})
 	case 1:
-		options = append(options, lib.HomogeneousLargestArea{})
+		options = append(options, lib.HomogeneousSmallestSides{})
 	case 2:
-		options = append(options, lib.HomogeneousMostEquilateralTriangle{})
+		options = append(options, lib.HomogeneousLargestArea{})
 	case 3:
+		options = append(options, lib.HomogeneousMostEquilateralTriangle{})
+	case 4:
 		rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 		options = append(options, lib.HomogeneousRandom{Rand: rand})
 	}
@@ -164,6 +172,7 @@ func (t *homogeneousTab) enableSelectedPortals() {
 	for guid := range t.portals.selectedPortals {
 		delete(t.portals.disabledPortals, guid)
 	}
+	t.stateChanged()
 }
 
 func (t *homogeneousTab) disableSelectedPortals() {
@@ -171,6 +180,7 @@ func (t *homogeneousTab) disableSelectedPortals() {
 		t.portals.disabledPortals[guid] = struct{}{}
 		delete(t.cornerPortals, guid)
 	}
+	t.stateChanged()
 }
 
 func (t *homogeneousTab) makeSelectedPortalsCorners() {
@@ -178,11 +188,13 @@ func (t *homogeneousTab) makeSelectedPortalsCorners() {
 		delete(t.portals.disabledPortals, guid)
 		t.cornerPortals[guid] = struct{}{}
 	}
+	t.stateChanged()
 }
 func (t *homogeneousTab) unmakeSelectedPortalsCorners() {
 	for guid := range t.portals.selectedPortals {
 		delete(t.cornerPortals, guid)
 	}
+	t.stateChanged()
 }
 
 func (t *homogeneousTab) contextMenu() *menu {
@@ -252,6 +264,17 @@ type homogeneousState struct {
 	SolutionText  string   `json:"solutionText"`
 }
 
+func (s *homogeneousState) equal(rhs homogeneousState) bool {
+	return s.MaxDepth == rhs.MaxDepth &&
+		s.InnerPortals == rhs.InnerPortals &&
+		s.TopLevel == rhs.TopLevel &&
+		s.Pure == rhs.Pure &&
+		slices.Equal(s.CornerPortals, rhs.CornerPortals) &&
+		s.Depth == rhs.Depth &&
+		slices.Equal(s.Solution, rhs.Solution) &&
+		s.SolutionText == rhs.SolutionText
+}
+
 func (t *homogeneousTab) state() homogeneousState {
 	state := homogeneousState{
 		MaxDepth:     int(t.maxDepth.Value()),
@@ -269,10 +292,12 @@ func (t *homogeneousTab) state() homogeneousState {
 	case 0:
 		state.TopLevel = "SmallestArea"
 	case 1:
-		state.TopLevel = "LargestArea"
+		state.TopLevel = "SmallestSides"
 	case 2:
-		state.TopLevel = "MostEquilateral"
+		state.TopLevel = "LargestArea"
 	case 3:
+		state.TopLevel = "MostEquilateral"
+	case 4:
 		state.TopLevel = "Random"
 	}
 	for cornerGUID := range t.cornerPortals {
@@ -300,12 +325,14 @@ func (t *homogeneousTab) load(state homogeneousState) error {
 	switch state.TopLevel {
 	case "SmallestArea":
 		t.topLevel.SetValue(0)
-	case "LargestArea":
+	case "SmallestSides":
 		t.topLevel.SetValue(1)
-	case "MostEquilateral":
+	case "LargestArea":
 		t.topLevel.SetValue(2)
-	case "Random":
+	case "MostEquilateral":
 		t.topLevel.SetValue(3)
+	case "Random":
+		t.topLevel.SetValue(4)
 	default:
 		return fmt.Errorf("imvalid homogeneous.topLevel value \"%s\"", state.TopLevel)
 	}

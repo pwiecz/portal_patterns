@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"time"
 
 	"github.com/golang/geo/s2"
@@ -35,6 +36,7 @@ func NewPortals() *Portals {
 type MainWindow struct {
 	*fltk.Window
 	configuration      *configuration.Configuration
+	menuBar            *fltk.MenuBar
 	add, reset         *fltk.Button
 	search             *fltk.Button
 	export             *fltk.Button
@@ -55,6 +57,11 @@ type MainWindow struct {
 	threeCorners       *threeCornersTab
 	selectedTab        int
 	searchInProgress   bool
+	filename           string
+	undoStates         []state
+	redoStates         []state
+	undoMenuId         int
+	redoMenuId         int
 }
 
 func NewMainWindow(conf *configuration.Configuration) *MainWindow {
@@ -67,20 +74,24 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	w.Begin()
 	mainPack := fltk.NewFlex(0, 0, 1600, 900)
 	mainPack.SetType(fltk.COLUMN)
-	menuBar := fltk.NewMenuBar(0, 0, 1600, 30)
-	menuBar.AddEx("&File/&Load", fltk.CTRL+int('o'), w.onLoadPressed, 0)
-	menuBar.AddEx("&File/&Save", fltk.CTRL+int('s'), w.onSavePressed, 0)
-	menuBar.AddEx("&Select/Select &All", fltk.CTRL+int('a'), w.onSelectAll, 0)
-	menuBar.AddEx("&Select/&Invert", fltk.CTRL+int('i'), w.onInvertSelection, 0)
-	menuBar.AddEx("&Select/&Rectangular Selection", fltk.ALT+int('r'), w.onRectangularSelection, 0)
-	menuBar.AddEx("&View/Zoom &In", fltk.CTRL+int('+'), w.onZoomIn, 0)
-	menuBar.AddEx("&View/Zoom &Out", fltk.CTRL+int('-'), w.onZoomOut, 0)
-	menuBar.AddEx("&View/&Reset View", fltk.CTRL+int('r'), w.onResetView, 0)
-	menuBar.AddEx("&View/Scroll Up", fltk.CTRL+fltk.UP, w.onScrollUp, 0)
-	menuBar.AddEx("&View/Scroll Down", fltk.CTRL+fltk.DOWN, w.onScrollDown, 0)
-	menuBar.AddEx("&View/Scroll Left", fltk.CTRL+fltk.LEFT, w.onScrollLeft, 0)
-	menuBar.AddEx("&View/Scroll Right", fltk.CTRL+fltk.RIGHT, w.onScrollRight, 0)
-	mainPack.Fixed(menuBar, 30)
+	w.menuBar = fltk.NewMenuBar(0, 0, 1600, 30)
+	w.menuBar.SetGlobal()
+	w.menuBar.AddEx("&File/&Load", fltk.CTRL+int('o'), w.onLoadPressed, 0)
+	w.menuBar.AddEx("&File/&Save", fltk.CTRL+int('s'), w.onSavePressed, 0)
+	w.menuBar.AddEx("&File/Save as...", fltk.CTRL+fltk.ALT+int('s'), w.onSaveAsPressed, 0)
+	w.undoMenuId = w.menuBar.AddEx("&Edit/&Undo", fltk.CTRL+int('z'), w.onUndo, fltk.MENU_INACTIVE)
+	w.redoMenuId = w.menuBar.AddEx("&Edit/&Redo", fltk.CTRL+int('x'), w.onRedo, fltk.MENU_INACTIVE)
+	w.menuBar.AddEx("&Select/Select &All", fltk.CTRL+int('a'), w.onSelectAll, 0)
+	w.menuBar.AddEx("&Select/&Invert", fltk.CTRL+int('i'), w.onInvertSelection, 0)
+	w.menuBar.AddEx("&Select/&Rectangular Selection", fltk.ALT+int('r'), w.onRectangularSelection, 0)
+	w.menuBar.AddEx("&View/Zoom &In", fltk.CTRL+int('+'), w.onZoomIn, 0)
+	w.menuBar.AddEx("&View/Zoom &Out", fltk.CTRL+int('-'), w.onZoomOut, 0)
+	w.menuBar.AddEx("&View/&Reset View", fltk.CTRL+int('r'), w.onResetView, 0)
+	w.menuBar.AddEx("&View/Scroll Up", fltk.CTRL+fltk.UP, w.onScrollUp, 0)
+	w.menuBar.AddEx("&View/Scroll Down", fltk.CTRL+fltk.DOWN, w.onScrollDown, 0)
+	w.menuBar.AddEx("&View/Scroll Left", fltk.CTRL+fltk.LEFT, w.onScrollLeft, 0)
+	w.menuBar.AddEx("&View/Scroll Right", fltk.CTRL+fltk.RIGHT, w.onScrollRight, 0)
+	mainPack.Fixed(w.menuBar, 30)
 	pack := fltk.NewFlex(0, 0, 1600, 870)
 	pack.SetType(fltk.ROW)
 	tileFetcher := osm.NewMapTiles()
@@ -125,12 +136,19 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	rightPack.Fixed(w.tabs, 200)
 	w.tabs.SetCallbackCondition(fltk.WhenChanged)
 	w.homogeneous = newHomogeneousTab(w.portals)
+	w.homogeneous.setStateChangedCallback(w.stateChanged)
 	w.herringbone = newHerringboneTab(w.portals)
+	w.herringbone.setStateChangedCallback(w.stateChanged)
 	w.doubleHerringbone = newDoubleHerringboneTab(w.portals)
+	w.doubleHerringbone.setStateChangedCallback(w.stateChanged)
 	w.cobweb = newCobwebTab(w.portals)
+	w.cobweb.setStateChangedCallback(w.stateChanged)
 	w.droneFlight = newDroneFlightTab(w.portals)
+	w.droneFlight.setStateChangedCallback(w.stateChanged)
 	w.flipField = newFlipFieldTab(w.portals)
+	w.flipField.setStateChangedCallback(w.stateChanged)
 	w.threeCorners = newThreeCornersTab(w.portals)
+	w.threeCorners.setStateChangedCallback(w.stateChanged)
 	w.tabs.Add(w.homogeneous)
 	w.tabs.Add(w.herringbone)
 	w.tabs.Add(w.doubleHerringbone)
@@ -178,6 +196,9 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	mainPack.End()
 	w.End()
 	w.Resizable(mainPack)
+
+	w.undoStates = []state{w.currentState()}
+
 	return w
 }
 
@@ -237,6 +258,7 @@ func (w *MainWindow) onTabSelected(selectedIx int) {
 	}
 	w.mapWindow.Redraw()
 	w.portalList.Redraw()
+	w.stateChanged()
 }
 
 func (w *MainWindow) onRectangularSelection() {
@@ -356,11 +378,26 @@ func (w *MainWindow) onLoadPressed() {
 		w.onResetPortalsPressed()
 		return
 	}
+	w.filename = filename
 	w.SetLabel(filepath.Base(filename))
+	w.undoStates = []state{w.currentState()}
+	w.redoStates = nil
+	w.menuBar.SetMode(w.undoMenuId, fltk.MENU_INACTIVE)
+	w.menuBar.SetMode(w.redoMenuId, fltk.MENU_INACTIVE)
 }
 func (w *MainWindow) onSavePressed() {
+	if w.filename == "" {
+		w.onSaveAsPressed()
+		return
+	}
+	w.saveProjectToFile(w.filename)
+}
+func (w *MainWindow) onSaveAsPressed() {
 	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "PP files (*.pp)", fltk.FileChooser_CREATE, "Select project file")
 	fileChooser.SetPreview(false)
+	if w.filename != "" {
+		fileChooser.SetValue(w.filename)
+	}
 	defer fileChooser.Destroy()
 	fileChooser.Popup()
 	selectedFilenames := fileChooser.Selection()
@@ -381,6 +418,9 @@ func (w *MainWindow) onSavePressed() {
 			return
 		}
 	}
+	w.saveProjectToFile(filename)
+}
+func (w *MainWindow) saveProjectToFile(filename string) {
 	file, err := os.Create(filename)
 	if err != nil {
 		fltk.MessageBox("Error saving", "Couldn't create file "+filename+"\n"+err.Error())
@@ -391,8 +431,51 @@ func (w *MainWindow) onSavePressed() {
 		fltk.MessageBox("Error saving", "Error while saving to "+filename+"\n"+err.Error())
 		return
 	}
+	w.filename = filename
 	w.SetLabel(filepath.Base(filename))
+	w.undoStates = []state{w.currentState()}
+	w.redoStates = nil
+	w.menuBar.SetMode(w.undoMenuId, fltk.MENU_INACTIVE)
+	w.menuBar.SetMode(w.redoMenuId, fltk.MENU_INACTIVE)
 }
+
+func (w *MainWindow) onUndo() {
+	if len(w.undoStates) <= 1 {
+		return
+	}
+	w.redoStates = append(w.redoStates, w.undoStates[len(w.undoStates)-1])
+	if len(w.redoStates) == 1 {
+		w.menuBar.SetMode(w.redoMenuId, 0)
+	}
+	w.undoStates = w.undoStates[:len(w.undoStates)-1]
+	if err := w.loadState(w.undoStates[len(w.undoStates)-1]); err != nil {
+		fmt.Fprintln(os.Stderr, "undo error:", err)
+	}
+	if len(w.undoStates) == 1 {
+		w.SetLabel(w.filename)
+		w.menuBar.SetMode(w.undoMenuId, fltk.MENU_INACTIVE)
+	}
+	w.mapWindow.Redraw()
+}
+func (w *MainWindow) onRedo() {
+	if len(w.redoStates) == 0 {
+		return
+	}
+	w.undoStates = append(w.undoStates, w.redoStates[len(w.redoStates)-1])
+	if len(w.undoStates) == 2 {
+		w.SetLabel("*" + w.filename)
+		w.menuBar.SetMode(w.undoMenuId, 0)
+	}
+	w.redoStates = w.redoStates[:len(w.redoStates)-1]
+	if err := w.loadState(w.undoStates[len(w.undoStates)-1]); err != nil {
+		fmt.Fprintln(os.Stderr, "redo error:", err)
+	}
+	if len(w.redoStates) == 0 {
+		w.menuBar.SetMode(w.redoMenuId, fltk.MENU_INACTIVE)
+	}
+	w.mapWindow.Redraw()
+}
+
 func (w *MainWindow) onAddPortalsPressed() {
 	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "JSON files (*.json)\tCSV files (*.csv)", fltk.FileChooser_MULTI, "Select portals file")
 	fileChooser.SetPreview(false)
@@ -405,6 +488,7 @@ func (w *MainWindow) onAddPortalsPressed() {
 	for _, filename := range selectedFilenames {
 		w.onPortalsFileSelected(filename)
 	}
+	w.stateChanged()
 }
 
 func (w *MainWindow) onPortalsFileSelected(filename string) {
@@ -496,6 +580,7 @@ func (w *MainWindow) onResetPortalsPressed() {
 	w.droneFlight.onReset()
 	w.flipField.onReset()
 	w.threeCorners.onReset()
+	w.filename = ""
 	w.SetLabel("")
 	w.mapWindow.Redraw()
 }
@@ -543,6 +628,7 @@ func (w *MainWindow) onSearchDone() {
 		w.solutionLabel.SetLabel("No solution found")
 		w.mapWindow.SetPaths(nil)
 	}
+	w.stateChanged()
 	w.mapWindow.Redraw()
 }
 func (w *MainWindow) onExportPressed() {
@@ -572,6 +658,18 @@ func (w *MainWindow) onCopyPressed() {
 	fltk.CopyToClipboard(w.selectedPattern().solutionDrawToolsString())
 }
 
+func (w *MainWindow) stateChanged() {
+	s := w.currentState()
+	if s.equal(w.undoStates[len(w.undoStates)-1]) {
+		return
+	}
+	w.undoStates = append(w.undoStates, s)
+	if len(w.undoStates) == 2 {
+		w.SetLabel("*" + w.filename)
+		w.menuBar.SetMode(w.undoMenuId, 0)
+	}
+}
+
 type state struct {
 	Portals           []lib.Portal           `json:"portals"`
 	DisabledPortals   []string               `json:"disabledPortals"`
@@ -586,8 +684,22 @@ type state struct {
 	ThreeCorners      threeCornersState      `json:"threeCorners"`
 }
 
-func (w *MainWindow) encode(writer io.Writer) error {
-	s := state{
+func (s state) equal(rhs state) bool {
+	return slices.Equal(s.Portals, rhs.Portals) &&
+		slices.Equal(s.DisabledPortals, rhs.DisabledPortals) &&
+		slices.Equal(s.SelectedPortals, rhs.SelectedPortals) &&
+		s.SelectedTab == rhs.SelectedTab &&
+		s.Homogeneous.equal(rhs.Homogeneous) &&
+		s.Herringbone.equal(rhs.Herringbone) &&
+		s.DoubleHerringbone.equal(rhs.DoubleHerringbone) &&
+		s.Cobweb.equal(rhs.Cobweb) &&
+		s.DroneFlight.equal(rhs.DroneFlight) &&
+		s.FlipField.equal(rhs.FlipField) &&
+		s.ThreeCorners.equal(rhs.ThreeCorners)
+}
+
+func (w *MainWindow) currentState() state {
+	return state{
 		Portals:           w.portals.portals,
 		SelectedTab:       w.selectedTab,
 		Homogeneous:       w.homogeneous.state(),
@@ -598,6 +710,10 @@ func (w *MainWindow) encode(writer io.Writer) error {
 		FlipField:         w.flipField.state(),
 		ThreeCorners:      w.threeCorners.state(),
 	}
+}
+
+func (w *MainWindow) encode(writer io.Writer) error {
+	s := w.currentState()
 
 	s.DisabledPortals = maps.Keys(w.portals.disabledPortals)
 	s.SelectedPortals = maps.Keys(w.portals.selectedPortals)
@@ -610,6 +726,9 @@ func (w *MainWindow) decode(reader io.Reader) error {
 	if err != nil {
 		return err
 	}
+	return w.loadState(s)
+}
+func (w *MainWindow) loadState(s state) error {
 	w.portals.portals = s.Portals
 	w.portals.portalMap = make(map[string]lib.Portal)
 	for _, portal := range w.portals.portals {

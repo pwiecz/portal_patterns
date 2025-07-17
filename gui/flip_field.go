@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"runtime"
+	"slices"
 
 	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
@@ -41,6 +42,7 @@ func newFlipFieldTab(portals *Portals) *flipFieldTab {
 	t.numBackbonePortals = fltk.NewSpinner(0, 0, 200, 30, "Num backbone portals:")
 	t.numBackbonePortals.SetType(fltk.SPINNER_INT_INPUT)
 	t.numBackbonePortals.SetValue(16)
+	t.numBackbonePortals.SetCallback(t.stateChanged)
 	t.exactly = fltk.NewCheckButton(0, 0, 200, 30, "Exactly")
 	numBackbonePortalsPack.End()
 	t.Add(numBackbonePortalsPack)
@@ -51,6 +53,7 @@ func newFlipFieldTab(portals *Portals) *flipFieldTab {
 	t.maxFlipPortals = fltk.NewSpinner(0, 0, 200, 30, "Max flip portals:")
 	t.maxFlipPortals.SetType(fltk.SPINNER_INT_INPUT)
 	t.maxFlipPortals.SetValue(9999)
+	t.maxFlipPortals.SetCallback(t.stateChanged)
 	maxFlipPortalsPack.End()
 	t.Add(maxFlipPortalsPack)
 
@@ -59,6 +62,7 @@ func newFlipFieldTab(portals *Portals) *flipFieldTab {
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.simpleBackbone = fltk.NewCheckButton(0, 0, 200, 30, "Simple backbone")
 	t.simpleBackbone.SetValue(false)
+	t.simpleBackbone.SetCallback(t.stateChanged)
 	simpleBackbonePack.End()
 
 	t.Add(simpleBackbonePack)
@@ -242,6 +246,17 @@ type flipFieldState struct {
 	Backbone           []string `json:"backbone"`
 	FlipPortals        []string `json:"flipPortals"`
 	SolutionText       string   `json:"solutionText"`
+}
+
+func (s flipFieldState) equal(rhs flipFieldState) bool {
+	return slices.Equal(s.BasePortals, rhs.BasePortals) &&
+		s.NumBackbonePortals == rhs.NumBackbonePortals &&
+		s.Exactly == rhs.Exactly &&
+		s.MaxFlipPortals == rhs.MaxFlipPortals &&
+		s.SimpleBackbone == rhs.SimpleBackbone &&
+		slices.Equal(s.Backbone, rhs.Backbone) &&
+		slices.Equal(s.FlipPortals, rhs.FlipPortals) &&
+		s.SolutionText == rhs.SolutionText
 }
 
 func (t *flipFieldTab) state() flipFieldState {

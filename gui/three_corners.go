@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image/color"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -129,12 +130,14 @@ func (t *threeCornersTab) enableSelectedPortals() {
 	for guid := range t.portals.selectedPortals {
 		delete(t.portals.disabledPortals, guid)
 	}
+	t.stateChanged()
 }
 
 func (t *threeCornersTab) disableSelectedPortals() {
 	for guid := range t.portals.selectedPortals {
 		t.portals.disabledPortals[guid] = struct{}{}
 	}
+	t.stateChanged()
 }
 func (t *threeCornersTab) setSelectedGroup(groups []int) {
 	for guid := range t.portals.selectedPortals {
@@ -158,6 +161,7 @@ func (t *threeCornersTab) setSelectedGroup(groups []int) {
 			}
 		}
 	}
+	t.stateChanged()
 }
 
 func (t *threeCornersTab) disableSelectedIn0123() {
@@ -300,6 +304,14 @@ type threeCornersState struct {
 	PortalsNot2  []string      `json:"portalsNot2"`
 	Solution     []indexedGuid `json:"solution"`
 	SolutionText string        `json:"solutionText"`
+}
+
+func (s threeCornersState) equal(rhs threeCornersState) bool {
+	return slices.Equal(s.PortalsNot0, rhs.PortalsNot0) &&
+		slices.Equal(s.PortalsNot1, rhs.PortalsNot1) &&
+		slices.Equal(s.PortalsNot2, rhs.PortalsNot2) &&
+		slices.Equal(s.Solution, rhs.Solution) &&
+		s.SolutionText == rhs.SolutionText
 }
 
 func (t *threeCornersTab) state() threeCornersState {

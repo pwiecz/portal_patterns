@@ -10,8 +10,9 @@ import (
 
 type baseTab struct {
 	*fltk.Pack
-	portals *Portals
-	pattern pattern
+	portals              *Portals
+	pattern              pattern
+	stateChangedCallback func()
 }
 
 func newBaseTab(name string, portals *Portals, pattern pattern) *baseTab {
@@ -68,6 +69,19 @@ func (t *baseTab) disabledPortals() []lib.Portal {
 		}
 	}
 	return portals
+}
+
+func (t *baseTab) setStateChangedCallback(callback func()) {
+	if t.stateChangedCallback != nil {
+		panic("state changed callback already specified")
+	}
+	t.stateChangedCallback = callback
+}
+func (t *baseTab) stateChanged() {
+	if t.stateChangedCallback == nil {
+		return
+	}
+	t.stateChangedCallback()
 }
 
 func portalsToPoints(portals []lib.Portal) []s2.Point {

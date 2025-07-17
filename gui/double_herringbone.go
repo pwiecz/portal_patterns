@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"runtime"
+	"slices"
 
 	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
@@ -90,6 +91,7 @@ func (t *doubleHerringboneTab) enableSelectedPortals() {
 	for guid := range t.portals.selectedPortals {
 		delete(t.portals.disabledPortals, guid)
 	}
+	t.stateChanged()
 }
 
 func (t *doubleHerringboneTab) disableSelectedPortals() {
@@ -97,6 +99,7 @@ func (t *doubleHerringboneTab) disableSelectedPortals() {
 		t.portals.disabledPortals[guid] = struct{}{}
 		delete(t.basePortals, guid)
 	}
+	t.stateChanged()
 }
 
 func (t *doubleHerringboneTab) makeSelectedPortalsBase() {
@@ -104,11 +107,13 @@ func (t *doubleHerringboneTab) makeSelectedPortalsBase() {
 		delete(t.portals.disabledPortals, guid)
 		t.basePortals[guid] = struct{}{}
 	}
+	t.stateChanged()
 }
 func (t *doubleHerringboneTab) unmakeSelectedPortalsBase() {
 	for guid := range t.portals.selectedPortals {
 		delete(t.basePortals, guid)
 	}
+	t.stateChanged()
 }
 
 func (t *doubleHerringboneTab) contextMenu() *menu {
@@ -174,6 +179,15 @@ type doubleHerringboneState struct {
 	Spine0       []string `json:"spine0"`
 	Spine1       []string `json:"spine1"`
 	SolutionText string   `json:"solutionText"`
+}
+
+func (s doubleHerringboneState) equal(rhs doubleHerringboneState) bool {
+	return slices.Equal(s.BasePortals, rhs.BasePortals) &&
+		s.B0 == rhs.B0 &&
+		s.B1 == rhs.B1 &&
+		slices.Equal(s.Spine0, rhs.Spine0) &&
+		slices.Equal(s.Spine1, rhs.Spine1) &&
+		s.SolutionText == rhs.SolutionText
 }
 
 func (t *doubleHerringboneTab) state() doubleHerringboneState {

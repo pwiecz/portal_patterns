@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"runtime"
+	"slices"
 
 	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
@@ -32,6 +33,7 @@ func newDroneFlightTab(portals *Portals) *droneFlightTab {
 	fltk.NewBox(fltk.NO_BOX, 0, 0, 200, 30)
 	t.useLongJumps = fltk.NewCheckButton(200, 0, 200, 30, "Use long jumps (key needed)")
 	t.useLongJumps.SetValue(false)
+	t.useLongJumps.SetCallback(t.stateChanged)
 	useLongJumpsPack.End()
 	t.Add(useLongJumpsPack)
 
@@ -42,6 +44,7 @@ func newDroneFlightTab(portals *Portals) *droneFlightTab {
 	t.optimizeFor.Add("Least keys needed", func() {})
 	t.optimizeFor.Add("Least jumps", func() {})
 	t.optimizeFor.SetValue(0)
+	t.optimizeFor.SetCallback(t.stateChanged)
 	optimizeForPack.End()
 	t.Add(optimizeForPack)
 
@@ -140,6 +143,7 @@ func (t *droneFlightTab) enableSelectedPortals() {
 	for guid := range t.portals.selectedPortals {
 		delete(t.portals.disabledPortals, guid)
 	}
+	t.stateChanged()
 }
 
 func (t *droneFlightTab) disableSelectedPortals() {
@@ -152,6 +156,7 @@ func (t *droneFlightTab) disableSelectedPortals() {
 			t.endPortal = ""
 		}
 	}
+	t.stateChanged()
 }
 func (t *droneFlightTab) makeSelectedPortalStart() {
 	if len(t.portals.selectedPortals) != 1 {
@@ -162,9 +167,11 @@ func (t *droneFlightTab) makeSelectedPortalStart() {
 		t.startPortal = guid
 		delete(t.portals.disabledPortals, guid)
 	}
+	t.stateChanged()
 }
 func (t *droneFlightTab) unmakeSelectedPortalStart() {
 	t.startPortal = ""
+	t.stateChanged()
 }
 func (t *droneFlightTab) makeSelectedPortalEnd() {
 	if len(t.portals.selectedPortals) != 1 {
@@ -174,9 +181,11 @@ func (t *droneFlightTab) makeSelectedPortalEnd() {
 		t.endPortal = guid
 		delete(t.portals.disabledPortals, guid)
 	}
+	t.stateChanged()
 }
 func (t *droneFlightTab) unmakeSelectedPortalEnd() {
 	t.endPortal = ""
+	t.stateChanged()
 }
 
 func (t *droneFlightTab) contextMenu() *menu {
@@ -237,6 +246,16 @@ type droneFlightState struct {
 	StartPortal  string   `json:"startPortal"`
 	EndPortal    string   `json:"endPortal"`
 	SolutionText string   `json:"solutionText"`
+}
+
+func (s droneFlightState) equal(rhs droneFlightState) bool {
+	return s.UseLongJumps == rhs.UseLongJumps &&
+		s.OptimizeFor == rhs.OptimizeFor &&
+		slices.Equal(s.Solution, rhs.Solution) &&
+		slices.Equal(s.Keys, rhs.Keys) &&
+		s.StartPortal == rhs.StartPortal &&
+		s.EndPortal == rhs.EndPortal &&
+		s.SolutionText == rhs.SolutionText
 }
 
 func (t *droneFlightTab) state() droneFlightState {

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image/color"
+	"slices"
 
 	"github.com/golang/geo/s2"
 	"github.com/pwiecz/go-fltk"
@@ -84,6 +85,7 @@ func (t *cobwebTab) enableSelectedPortals() {
 	for guid := range t.portals.selectedPortals {
 		delete(t.portals.disabledPortals, guid)
 	}
+	t.stateChanged()
 }
 
 func (t *cobwebTab) disableSelectedPortals() {
@@ -91,6 +93,7 @@ func (t *cobwebTab) disableSelectedPortals() {
 		t.portals.disabledPortals[guid] = struct{}{}
 		delete(t.cornerPortals, guid)
 	}
+	t.stateChanged()
 }
 
 func (t *cobwebTab) makeSelectedPortalsCorners() {
@@ -98,11 +101,13 @@ func (t *cobwebTab) makeSelectedPortalsCorners() {
 		delete(t.portals.disabledPortals, guid)
 		t.cornerPortals[guid] = struct{}{}
 	}
+	t.stateChanged()
 }
 func (t *cobwebTab) unmakeSelectedPortalsCorners() {
 	for guid := range t.portals.selectedPortals {
 		delete(t.cornerPortals, guid)
 	}
+	t.stateChanged()
 }
 func (t *cobwebTab) contextMenu() *menu {
 	var aSelectedGUID string
@@ -164,6 +169,12 @@ type cobwebState struct {
 	CornerPortals []string `json:"cornerPortals"`
 	Solution      []string `json:"solution"`
 	SolutionText  string   `json:"solutionText"`
+}
+
+func (s cobwebState) equal(rhs cobwebState) bool {
+	return slices.Equal(s.CornerPortals, rhs.CornerPortals) &&
+		slices.Equal(s.Solution, rhs.Solution) &&
+		s.SolutionText == rhs.SolutionText
 }
 
 func (t *cobwebTab) state() cobwebState {
