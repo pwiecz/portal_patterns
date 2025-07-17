@@ -32,6 +32,8 @@ func newDoubleHerringboneTab(portals *Portals) *doubleHerringboneTab {
 
 func (t *doubleHerringboneTab) onReset() {
 	t.basePortals = make(map[string]struct{})
+	t.b0 = lib.Portal{}
+	t.b1 = lib.Portal{}
 	t.spine0 = nil
 	t.spine1 = nil
 	t.solutionText = ""
