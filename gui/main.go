@@ -452,7 +452,7 @@ func (w *MainWindow) onUndo() {
 		fmt.Fprintln(os.Stderr, "undo error:", err)
 	}
 	if len(w.undoStates) == 1 {
-		w.SetLabel(w.filename)
+		w.SetLabel(filepath.Base(w.filename))
 		w.menuBar.SetMode(w.undoMenuId, fltk.MENU_INACTIVE)
 	}
 	w.mapWindow.Redraw()
@@ -463,7 +463,7 @@ func (w *MainWindow) onRedo() {
 	}
 	w.undoStates = append(w.undoStates, w.redoStates[len(w.redoStates)-1])
 	if len(w.undoStates) == 2 {
-		w.SetLabel("*" + w.filename)
+		w.SetLabel("*" + filepath.Base(w.filename))
 		w.menuBar.SetMode(w.undoMenuId, 0)
 	}
 	w.redoStates = w.redoStates[:len(w.redoStates)-1]
@@ -665,7 +665,7 @@ func (w *MainWindow) stateChanged() {
 	}
 	w.undoStates = append(w.undoStates, s)
 	if len(w.undoStates) == 2 {
-		w.SetLabel("*" + w.filename)
+		w.SetLabel("*" + filepath.Base(w.filename))
 		w.menuBar.SetMode(w.undoMenuId, 0)
 	}
 }
