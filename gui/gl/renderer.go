@@ -41,7 +41,7 @@ var fontData string
 var fontJSONData string
 
 const PortalCircleRadius = 7.0
-const portalCircleThickness = 1.0
+const portalCircleThickness = 2.0
 const circleSegmentCount = 20
 
 type Color [4]float32
