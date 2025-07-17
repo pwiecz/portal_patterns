@@ -105,9 +105,6 @@ func numFlipFields(numFlipPortals, numBackbonePortals int) int {
 	return numFlipPortals * (2*numBackbonePortals - 3)
 }
 
-func sliceContains(slice []portalIndex, ix portalIndex) bool {
-	return slices.Contains(slice, ix)
-}
 func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]portalData, []portalData, float64) {
 	if ccw {
 		f.candidates = portalsLeftOfLine(f.portals, p0, p1, f.candidates[:0])
@@ -139,7 +136,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			segCCW := newCCWQuery(f.backbone[pos-1].LatLng, f.backbone[pos].LatLng)
 			tripleIndexBase := (uint64(f.backbone[pos-1].Index)*numAllPortals + uint64(f.backbone[pos].Index)) * numAllPortals
 			for i, candidate := range f.candidates {
-				if sliceContains(f.fixedBaseIndices, candidate.Index) {
+				if slices.Contains(f.fixedBaseIndices, candidate.Index) {
 					continue
 				}
 				tripleIndex := tripleIndexBase + uint64(candidate.Index)
@@ -183,7 +180,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			}
 		}
 		// Check if appending a new backbone portal would improve the solution.
-		if !sliceContains(f.fixedBaseIndices, f.backbone[len(f.backbone)-1].Index) {
+		if !slices.Contains(f.fixedBaseIndices, f.backbone[len(f.backbone)-1].Index) {
 			pos := len(f.backbone) - 1
 			zeroLast := newCCWQuery(f.backbone[0].LatLng, f.backbone[pos].LatLng)
 			for i, candidate := range f.portals {
@@ -216,7 +213,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			}
 		}
 		// Check if prepending a new backbone portal would improve the solution.
-		if !sliceContains(f.fixedBaseIndices, f.backbone[0].Index) {
+		if !slices.Contains(f.fixedBaseIndices, f.backbone[0].Index) {
 			zeroLast := newCCWQuery(f.backbone[0].LatLng, f.backbone[len(f.backbone)-1].LatLng)
 			for i, candidate := range f.portals {
 				if f.backbone[len(f.backbone)-1].Index == candidate.Index || f.backbone[0].Index == candidate.Index {
