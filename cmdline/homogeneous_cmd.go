@@ -17,7 +17,7 @@ type homogeneousCmd struct {
 	pretty          *bool
 	largestArea     *bool
 	smallestArea    *bool
-	smallestSide    *bool
+	smallestSides   *bool
 	mostEquilateral *bool
 	random          *bool
 	pure            *bool
@@ -32,7 +32,7 @@ func NewHomogeneousCmd() homogeneousCmd {
 		pretty:          flags.Bool("pretty", false, "try to split the top triangle into large regular web of triangles (slow)"),
 		largestArea:     flags.Bool("largest_area", false, "pick the top triangle having the largest possible area"),
 		smallestArea:    flags.Bool("smallest_area", false, "pick the top triangle having the smallest possible area (default)"),
-		smallestSide:    flags.Bool("smallest_sides", false, "pick the top triangle having the smallest sides"),
+		smallestSides:   flags.Bool("smallest_sides", false, "pick the top triangle having the smallest sides"),
 		mostEquilateral: flags.Bool("most_equilateral", false, "pick the top triangle being the most equilateral"),
 		random:          flags.Bool("random", false, "pick a random top triangle"),
 		pure:            flags.Bool("pure", false, "consider only pure homogeneous fields (those that use all the portals inside the top level triangle)"),
@@ -59,7 +59,7 @@ func (h *homogeneousCmd) Run(args []string, output io.Writer, numWorkers int, pr
 	if *h.maxDepth < 1 {
 		log.Fatalln("-max_depth must by at least 1")
 	}
-	if btoi(*h.largestArea)+btoi(*h.smallestArea)+btoi(*h.smallestSide)+btoi(*h.mostEquilateral)+btoi(*h.random) > 1 {
+	if btoi(*h.largestArea)+btoi(*h.smallestArea)+btoi(*h.smallestSides)+btoi(*h.mostEquilateral)+btoi(*h.random) > 1 {
 		log.Fatalln("only one of -largest_area -smallest_area -smallest_sides -most_equilateral -random can be specified at the same time")
 	}
 	fileArgs := h.flags.Args()
@@ -92,8 +92,8 @@ func (h *homogeneousCmd) Run(args []string, output io.Writer, numWorkers int, pr
 		options = append(options, lib.HomogeneousLargestArea{})
 	} else if *h.smallestArea {
 		options = append(options, lib.HomogeneousSmallestArea{})
-	} else if *h.smallestSide {
-		options = append(options, lib.HomogeneousSmallestSide{})
+	} else if *h.smallestSides {
+		options = append(options, lib.HomogeneousSmallestSides{})
 	} else if *h.mostEquilateral {
 		options = append(options, lib.HomogeneousMostEquilateralTriangle{})
 	} else if *h.random {
