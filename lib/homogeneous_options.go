@@ -84,13 +84,27 @@ type HomogeneousSmallestArea struct{}
 func (h HomogeneousSmallestArea) requires2() bool { return false }
 
 func (h HomogeneousSmallestArea) apply(params *homogeneousParams) {
-	params.topLevelScorer = smallestTriangleScorer{}
+	params.topLevelScorer = smallestAreaTriangleScorer{}
 }
 func (h HomogeneousSmallestArea) apply2(params *homogeneous2Params) {
-	params.topLevelScorer = smallestTriangleScorer{}
+	params.topLevelScorer = smallestAreaTriangleScorer{}
 }
 func (h HomogeneousSmallestArea) applyPure(params *homogeneousPureParams) {
-	params.scorer = smallestTriangleScorer{}
+	params.scorer = smallestAreaTriangleScorer{}
+}
+
+type HomogeneousSmallestSides struct{}
+
+func (h HomogeneousSmallestSides) requires2() bool { return false }
+
+func (h HomogeneousSmallestSides) apply(params *homogeneousParams) {
+	params.topLevelScorer = smallestSidesTriangleScorer{}
+}
+func (h HomogeneousSmallestSides) apply2(params *homogeneous2Params) {
+	params.topLevelScorer = smallestSidesTriangleScorer{}
+}
+func (h HomogeneousSmallestSides) applyPure(params *homogeneousPureParams) {
+	params.scorer = smallestSidesTriangleScorer{}
 }
 
 type HomogeneousMostEquilateralTriangle struct{}
@@ -179,7 +193,7 @@ type homogeneousParams struct {
 func defaultHomogeneousParams() homogeneousParams {
 	return homogeneousParams{
 		maxDepth:       6,
-		topLevelScorer: smallestTriangleScorer{},
+		topLevelScorer: smallestAreaTriangleScorer{},
 		progressFunc:   func(int, int) {},
 	}
 }
@@ -216,7 +230,7 @@ type homogeneousPureParams struct {
 func defaultHomogeneousPureParams() homogeneousPureParams {
 	return homogeneousPureParams{
 		maxDepth:     6,
-		scorer:       smallestTriangleScorer{},
+		scorer:       smallestAreaTriangleScorer{},
 		numWorkers:   runtime.GOMAXPROCS(0),
 		progressFunc: func(int, int) {},
 	}
