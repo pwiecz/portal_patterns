@@ -411,13 +411,10 @@ func (w *MapDrawer) ResetView() {
 			maxX = math.Max(portal.coords.X, maxX)
 			maxY = math.Max(portal.coords.Y, maxY)
 		}
-		numTilesX := math.Ceil(float64(w.width) / 256)
-		numTilesY := math.Ceil(float64(w.height) / 256)
 		for w.zoom = 19; w.zoom >= 0; w.zoom-- {
 			zoomPow := math.Pow(2., float64(w.zoom))
-			minXTile, minYTile := math.Floor(minX*zoomPow), math.Floor(minY*zoomPow)
-			maxXTile, maxYTile := math.Floor(maxX*zoomPow), math.Floor(maxY*zoomPow)
-			if maxXTile-minXTile+1 <= numTilesX && maxYTile-minYTile+1 <= numTilesY {
+			width, height := (maxX-minX)*zoomPow*256, (maxY-minY)*zoomPow*256
+			if width <= float64(w.width) && height <= float64(w.height) {
 				break
 			}
 		}
