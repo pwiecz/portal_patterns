@@ -103,7 +103,7 @@ func (t *flipFieldTab) onSearch(progressFunc func(int, int), onSearchDone func()
 		backbone, flipPortals := lib.LargestFlipField(portals, options...)
 		fltk.Awake(func() {
 			t.backbone, t.flipPortals = backbone, flipPortals
-			t.solutionText = fmt.Sprintf("Num backbone portals: %d, num flip portals: %d", len(t.backbone), len(t.flipPortals))
+			t.solutionText = fmt.Sprintf("Num backbone portals: %d, num flip portals: %d (%d fields)", len(t.backbone), len(t.flipPortals), len(t.flipPortals)*(2*len(t.backbone)-3))
 			t.searchingFinished = true
 			onSearchDone()
 		})
