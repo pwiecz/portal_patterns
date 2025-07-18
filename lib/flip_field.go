@@ -6,7 +6,11 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-// LargestFlipField -
+// LargestFlipField - find way two create most fields by repeatedly flipping portals from a set
+// (first returned slice) and linking them to all the portals in the other set (second returned slice).
+// Portals that are being linked to should first be linked together, such that the polygon created by
+// linking consecutive portals from the slice and also linking first and last portal from the slice
+// is fully linked inside.
 func LargestFlipField(portals []Portal, options ...FlipFieldOption) ([]Portal, []Portal) {
 	params := defaultFlipFieldParams()
 	for _, option := range options {
@@ -30,7 +34,7 @@ type bestFlipFieldQuery struct {
 	candidates  []portalData
 	flipPortals []portalData
 	portals     []portalData
-	// Best solution found so far, we can abort early if we're sure we won't improve current best solution
+	// Best solution found so far. We can abort early if we're sure we won't improve current best solution
 	bestSolution       int
 	maxBackbonePortals int
 	numPortalLimit     PortalLimit
