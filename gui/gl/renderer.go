@@ -341,7 +341,7 @@ type GLRenderer struct {
 	lastShader       uint32
 	vertexBuffer     uint32
 	projectionMatrix mgl32.Mat4
-	fontTexture      uint32
+	fontTexture      Texture
 	fontInfo         MSDFInfo
 }
 
@@ -496,9 +496,9 @@ func (r *GLRenderer) AddRect(x0, y0, x1, y1, thickness float32, color Color) {
 	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleStrip, mgl32.Ident4(), offset, 10, color))
 }
 
-func (r *GLRenderer) AddImage(textureId uint32, x0, y0, x1, y1 float32) {
+func (r *GLRenderer) AddImage(textureId Texture, x0, y0, x1, y1 float32) {
 	matrix := mgl32.Translate3D(x0, y0, 0).Mul4(mgl32.Scale3D(x1-x0, y1-y0, 0))
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawTextureCommand(textureId, matrix, r.drawList.unitRectOffset))
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawTextureCommand(uint32(textureId), matrix, r.drawList.unitRectOffset))
 }
 
 func (r *GLRenderer) Render(width, height float32) {
@@ -559,13 +559,16 @@ func (r *GLRenderer) AddText(x, y, size float32, color Color, text string) {
 			tl.Add(mgl32.Vec2{width, 0}), uvTL.Add(mgl32.Vec2{uvWidth, 0}))
 		xy[0] += glyph.Advance * size
 	}
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawMSDFTextureCommand(r.fontTexture, offset, len(r.drawList.Vertices)-offset, color, pxRange))
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawMSDFTextureCommand(uint32(r.fontTexture), offset, len(r.drawList.Vertices)-offset, color, pxRange))
 }
 
-func DeleteTexture(tex uint32) {
-	gl.DeleteTextures(1, &tex)
+type Texture uint32
+
+func DeleteTexture(tex Texture) {
+	texId := uint32(tex)
+	gl.DeleteTextures(1, &texId)
 }
-func NewTexture(img image.Image) uint32 {
+func NewTexture(img image.Image) Texture {
 	rgba, ok := img.(*image.RGBA)
 	if !ok {
 		rgba = image.NewRGBA(img.Bounds())
@@ -593,5 +596,5 @@ func NewTexture(img image.Image) uint32 {
 		gl.UNSIGNED_BYTE,
 		gl.Ptr(rgba.Pix))
 
-	return texture
+	return Texture(texture)
 }

@@ -28,6 +28,10 @@ var purple = gl.ToColor(color.NRGBA{100, 50, 225, 175})
 var transparent = gl.ToColor(color.NRGBA{0, 0, 0, 0})
 
 const fontSize = 18
+const (
+	ZoomedIn    = true
+	NotZoomedIn = false
+)
 
 type mapPortal struct {
 	latLng      s2.LatLng
@@ -110,11 +114,16 @@ func (c *lockedTileCache) Add(coord osm.TileCoord, img image.Image) {
 	c.cache.Add(coord, img)
 }
 
+type Texture struct {
+	Texture    gl.Texture
+	IsZoomedIn bool
+}
+
 type MapDrawer struct {
 	renderer                   *gl.GLRenderer
 	initialized                bool
 	tileCache                  *lockedTileCache
-	mapTiles                   map[osm.TileCoord]uint32
+	mapTiles                   map[osm.TileCoord]Texture
 	missingTiles               *lockedCoordSet
 	portals                    []mapPortal
 	portalIndex                *PortalIndex
@@ -140,7 +149,7 @@ type MapDrawer struct {
 func NewMapDrawer(width, height int, tileFetcher *osm.MapTiles) *MapDrawer {
 	w := &MapDrawer{
 		tileCache:          newLockedTileCache(1000),
-		mapTiles:           make(map[osm.TileCoord]uint32),
+		mapTiles:           make(map[osm.TileCoord]Texture),
 		missingTiles:       newLockedCoordSet(),
 		defaultPortalColor: gl.ToColor(color.NRGBA{255, 127, 0, 127}),
 		tileFetcher:        tileFetcher,
@@ -155,7 +164,7 @@ func NewMapDrawer(width, height int, tileFetcher *osm.MapTiles) *MapDrawer {
 func (w *MapDrawer) Destroy() {
 	if w.renderer != nil {
 		for _, texture := range w.mapTiles {
-			gl.DeleteTexture(texture)
+			gl.DeleteTexture(texture.Texture)
 		}
 		w.renderer.Dispose()
 		w.renderer = nil
@@ -544,7 +553,7 @@ func (w *MapDrawer) drawAllTiles() {
 	for coord, tex := range w.mapTiles {
 		dx := float32(coord.X)*256 - float32(w.x0)
 		dy := float32(coord.Y)*256 - float32(w.y0)
-		w.renderer.AddImage(uint32(tex), dx, dy, dx+256, dy+256)
+		w.renderer.AddImage(tex.Texture, dx, dy, dx+256, dy+256)
 	}
 }
 func (w *MapDrawer) drawAllPortals() {
@@ -612,7 +621,7 @@ func (w *MapDrawer) onTileRead(coord osm.TileCoord, img image.Image) {
 	wrappedCoord.X %= maxCoord
 	w.tileCache.Add(wrappedCoord, img)
 	w.missingTiles.Remove(coord)
-	w.Async(func() { w.showTile(coord, img) })
+	w.Async(func() { w.showTile(coord, img, NotZoomedIn) })
 	w.MapChanged()
 }
 func (w *MapDrawer) redrawTiles() {
@@ -632,9 +641,9 @@ func (w *MapDrawer) redrawTiles() {
 	w.tileFetcher.CancelRequestsExcept(tileCoords)
 	for coord, tex := range w.mapTiles {
 		if _, ok := tileCoords[coord]; !ok {
-			gl.DeleteTexture(tex)
+			gl.DeleteTexture(tex.Texture)
 			delete(w.mapTiles, coord)
-		} else {
+		} else if !tex.IsZoomedIn {
 			delete(tileCoords, coord)
 		}
 	}
@@ -643,11 +652,15 @@ func (w *MapDrawer) redrawTiles() {
 		w.tryShowTile(coord)
 	}
 }
-func (w *MapDrawer) showTile(coord osm.TileCoord, img image.Image) {
-	if tex, ok := w.mapTiles[coord]; ok {
-		gl.DeleteTexture(tex)
+func (w *MapDrawer) showTile(coord osm.TileCoord, img image.Image, isZoomedIn bool) {
+	tex, ok := w.mapTiles[coord]
+	if ok && isZoomedIn {
+		return
 	}
-	w.mapTiles[coord] = gl.NewTexture(img)
+	gl.DeleteTexture(tex.Texture)
+	w.mapTiles[coord] = Texture{
+		Texture:    gl.NewTexture(img),
+		IsZoomedIn: isZoomedIn}
 	w.MapChanged()
 }
 
@@ -682,27 +695,28 @@ func (w *MapDrawer) tryShowTile(coord osm.TileCoord) {
 		wrappedCoord.X += maxCoord
 	}
 	wrappedCoord.X %= maxCoord
-	tileImage := w.tileCache.Get(wrappedCoord)
-	if tileImage != nil {
+	if tileImage := w.tileCache.Get(wrappedCoord); tileImage != nil {
 		w.missingTiles.Remove(coord)
-	} else {
-		go func() {
-			w.fetchTile(coord)
-		}()
-		if wrappedCoord.Zoom > 0 {
-			w.missingTiles.Insert(coord)
-			zoomedOutCoord := osm.TileCoord{X: wrappedCoord.X / 2, Y: wrappedCoord.Y / 2, Zoom: wrappedCoord.Zoom - 1}
-			if zoomedOutTileImage := w.tileCache.Get(zoomedOutCoord); zoomedOutTileImage != nil {
-				sourceX := (wrappedCoord.X % 2) * 128
-				sourceY := (wrappedCoord.Y % 2) * 128
+		w.showTile(coord, tileImage, NotZoomedIn)
+		return
+	}
 
-				img := image.NewRGBA(zoomedOutTileImage.Bounds())
-				draw.NearestNeighbor.Scale(img, img.Bounds(), zoomedOutTileImage, image.Rect(sourceX, sourceY, sourceX+128, sourceY+128), draw.Over, nil)
-				tileImage = img
-			}
-		}
+	go func() {
+		w.fetchTile(coord)
+	}()
+
+	if wrappedCoord.Zoom == 0 {
+		return
 	}
-	if tileImage != nil {
-		w.showTile(coord, tileImage)
+	zoomedOutCoord := osm.TileCoord{X: wrappedCoord.X / 2, Y: wrappedCoord.Y / 2, Zoom: wrappedCoord.Zoom - 1}
+	zoomedOutTileImage := w.tileCache.Get(zoomedOutCoord)
+	if zoomedOutTileImage == nil {
+		return
 	}
+	sourceX := (wrappedCoord.X % 2) * 128
+	sourceY := (wrappedCoord.Y % 2) * 128
+
+	img := image.NewRGBA(zoomedOutTileImage.Bounds())
+	draw.NearestNeighbor.Scale(img, img.Bounds(), zoomedOutTileImage, image.Rect(sourceX, sourceY, sourceX+128, sourceY+128), draw.Over, nil)
+	w.showTile(coord, img, ZoomedIn)
 }

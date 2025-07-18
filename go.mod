@@ -12,4 +12,4 @@ require (
 	golang.org/x/image v0.18.0
 )
 
-// replace github.com/pwiecz/go-fltk v0.0.0-20250715055018-baaa728eb34f => ../go-fltk
+// replace github.com/pwiecz/go-fltk v0.0.0-20250717141518-883d000afe4c => ../go-fltk
