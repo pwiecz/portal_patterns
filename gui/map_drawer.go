@@ -610,13 +610,8 @@ func (w *MapDrawer) SetPaths(paths [][]s2.Point) {
 	w.MapChanged()
 }
 func (w *MapDrawer) onTileRead(coord osm.TileCoord, img image.Image) {
-	wrappedCoord := coord
-	maxCoord := 1 << coord.Zoom
-	for wrappedCoord.X < 0 {
-		wrappedCoord.X += maxCoord
-	}
-	wrappedCoord.X %= maxCoord
-	w.tileCache.Add(wrappedCoord, img)
+	mapCoord := coord.Normalized()
+	w.tileCache.Add(mapCoord, img)
 	w.missingTiles.Remove(coord)
 	w.Async(func() { w.showTile(coord, img, NotZoomedIn) })
 	w.MapChanged()
@@ -686,13 +681,8 @@ func (w *MapDrawer) fetchTile(coord osm.TileCoord) {
 }
 
 func (w *MapDrawer) tryShowTile(coord osm.TileCoord) {
-	wrappedCoord := coord
-	maxCoord := 1 << coord.Zoom
-	for wrappedCoord.X < 0 {
-		wrappedCoord.X += maxCoord
-	}
-	wrappedCoord.X %= maxCoord
-	if tileImage := w.tileCache.Get(wrappedCoord); tileImage != nil {
+	mapCoord := coord.Normalized()
+	if tileImage := w.tileCache.Get(mapCoord); tileImage != nil {
 		w.missingTiles.Remove(coord)
 		w.showTile(coord, tileImage, NotZoomedIn)
 		return
@@ -702,16 +692,16 @@ func (w *MapDrawer) tryShowTile(coord osm.TileCoord) {
 		w.fetchTile(coord)
 	}()
 
-	if wrappedCoord.Zoom == 0 {
+	if mapCoord.Zoom == 0 {
 		return
 	}
-	zoomedOutCoord := osm.TileCoord{X: wrappedCoord.X / 2, Y: wrappedCoord.Y / 2, Zoom: wrappedCoord.Zoom - 1}
+	zoomedOutCoord := osm.TileCoord{X: mapCoord.X / 2, Y: mapCoord.Y / 2, Zoom: mapCoord.Zoom - 1}
 	zoomedOutTileImage := w.tileCache.Get(zoomedOutCoord)
 	if zoomedOutTileImage == nil {
 		return
 	}
-	sourceX := (wrappedCoord.X % 2) * 128
-	sourceY := (wrappedCoord.Y % 2) * 128
+	sourceX := (mapCoord.X % 2) * 128
+	sourceY := (mapCoord.Y % 2) * 128
 
 	img := image.NewRGBA(zoomedOutTileImage.Bounds())
 	draw.NearestNeighbor.Scale(img, img.Bounds(), zoomedOutTileImage, image.Rect(sourceX, sourceY, sourceX+128, sourceY+128), draw.Over, nil)

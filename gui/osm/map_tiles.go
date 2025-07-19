@@ -24,6 +24,18 @@ var ErrBusy = errors.New("too many simultaneous requests")
 type TileCoord struct {
 	X, Y, Zoom int
 }
+
+func (t TileCoord) Normalized() TileCoord {
+	c := TileCoord{t.X, t.Y, t.Zoom}
+	maxCoord := 1 << t.Zoom
+	for c.X < 0 {
+		c.X += maxCoord
+	}
+	c.X %= maxCoord
+	return c
+
+}
+
 type requestResult struct {
 	img image.Image
 	err error
@@ -89,10 +101,7 @@ func (m *MapTiles) GetTile(coord TileCoord) (image.Image, error) {
 		return nil, fmt.Errorf("invalid x,y coords %v", coord)
 	}
 
-	for coord.X < 0 {
-		coord.X += maxCoord
-	}
-	coord.X %= maxCoord
+	coord = coord.Normalized()
 
 	m.requestsInFlightMutex.Lock()
 	if _, ok := m.requestsInFlight[coord]; ok {
