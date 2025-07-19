@@ -7,13 +7,13 @@ import (
 
 type PortalIndex struct {
 	portalShapeIndex     *s2.ShapeIndex
-	shapeIndexIdToPortal map[int32]int
+	shapeIndexIDToPortal map[int32]int
 }
 
 func NewPortalIndex(portals []lib.Portal) *PortalIndex {
 	index := &PortalIndex{
 		portalShapeIndex:     s2.NewShapeIndex(),
-		shapeIndexIdToPortal: make(map[int32]int),
+		shapeIndexIDToPortal: make(map[int32]int),
 	}
 	for i, portal := range portals {
 		portalPoint := s2.PointFromLatLng(portal.LatLng)
@@ -23,7 +23,7 @@ func NewPortalIndex(portals []lib.Portal) *PortalIndex {
 		}
 		cell := s2.CellFromCellID(portalCells[0])
 		portalID := index.portalShapeIndex.Add(s2.PolygonFromCell(cell))
-		index.shapeIndexIdToPortal[portalID] = i
+		index.shapeIndexIDToPortal[portalID] = i
 	}
 	return index
 }
@@ -37,6 +37,6 @@ func (i *PortalIndex) ClosestPortal(point s2.Point) (int, bool) {
 		return 0, false
 	}
 	shapeID := result[0].ShapeID()
-	portalIx, ok := i.shapeIndexIdToPortal[shapeID]
+	portalIx, ok := i.shapeIndexIDToPortal[shapeID]
 	return portalIx, ok
 }

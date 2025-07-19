@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	MAX_DOWNLOAD_THREADS = 2
-	MAX_ZOOM_LEVEL       = 19
+	maxDownloadThreads = 2
+	MaxZoomLevel       = 19
 )
 
 var ErrBusy = errors.New("too many simultaneous requests")
@@ -53,7 +53,7 @@ func NewMapTiles() *MapTiles {
 	}
 	semaphore := make(chan empty, 50)
 	e := empty{}
-	for range MAX_DOWNLOAD_THREADS {
+	for range maxDownloadThreads {
 		semaphore <- e
 	}
 	mapTiles := &MapTiles{
@@ -81,7 +81,7 @@ func (m *MapTiles) GetTile(coord TileCoord) (image.Image, error) {
 	if coord.Zoom < 0 || coord.Y < 0 {
 		return nil, fmt.Errorf("negative tile coordinates %v", coord)
 	}
-	if coord.Zoom > MAX_ZOOM_LEVEL {
+	if coord.Zoom > MaxZoomLevel {
 		return nil, fmt.Errorf("too high zoom factor %v", coord)
 	}
 	maxCoord := 1 << coord.Zoom

@@ -56,6 +56,7 @@ func newDroneFlightTab(portals *Portals) *droneFlightTab {
 func (t *droneFlightTab) onReset() {
 	t.solution = nil
 	t.keys = nil
+	t.searchingFinished = false
 	t.solutionText = ""
 	t.startPortal = ""
 	t.endPortal = ""
@@ -77,10 +78,10 @@ func (t *droneFlightTab) onSearch(progressFunc func(int, int), onSearchDone func
 	}
 	portals := t.enabledPortals()
 	for i, portal := range portals {
-		if t.startPortal == portal.Guid {
+		if t.startPortal == portal.GUID {
 			options = append(options, lib.DroneFlightStartPortalIndex(i))
 		}
-		if t.endPortal == portal.Guid {
+		if t.endPortal == portal.GUID {
 			options = append(options, lib.DroneFlightEndPortalIndex(i))
 		}
 	}
@@ -272,10 +273,10 @@ func (t *droneFlightTab) state() droneFlightState {
 		state.OptimizeFor = "LeastJumps"
 	}
 	for _, solutionPortal := range t.solution {
-		state.Solution = append(state.Solution, solutionPortal.Guid)
+		state.Solution = append(state.Solution, solutionPortal.GUID)
 	}
 	for _, keyPortal := range t.keys {
-		state.Keys = append(state.Keys, keyPortal.Guid)
+		state.Keys = append(state.Keys, keyPortal.GUID)
 	}
 	return state
 }

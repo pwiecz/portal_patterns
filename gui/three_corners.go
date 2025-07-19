@@ -37,6 +37,7 @@ func (t *threeCornersTab) onReset() {
 	t.portalsNot0 = make(map[string]struct{})
 	t.portalsNot1 = make(map[string]struct{})
 	t.portalsNot2 = make(map[string]struct{})
+	t.searchingFinished = false
 	t.solution = nil
 	t.solutionText = ""
 }
@@ -44,13 +45,13 @@ func (t *threeCornersTab) onSearch(progressFunc func(int, int), onSearchDone fun
 	portals := t.enabledPortals()
 	var portals0, portals1, portals2 []lib.Portal
 	for _, portal := range portals {
-		if _, ok := t.portalsNot0[portal.Guid]; !ok {
+		if _, ok := t.portalsNot0[portal.GUID]; !ok {
 			portals0 = append(portals0, portal)
 		}
-		if _, ok := t.portalsNot1[portal.Guid]; !ok {
+		if _, ok := t.portalsNot1[portal.GUID]; !ok {
 			portals1 = append(portals1, portal)
 		}
-		if _, ok := t.portalsNot2[portal.Guid]; !ok {
+		if _, ok := t.portalsNot2[portal.GUID]; !ok {
 			portals2 = append(portals2, portal)
 		}
 	}
@@ -110,13 +111,14 @@ func (t *threeCornersTab) portalColor(guid string) (color.Color, color.Color) {
 	groups := t.portalGroups(guid)
 	col := color.NRGBA{0, 0, 0, 128}
 	for _, group := range groups {
-		if group == 0 {
+		switch group {
+		case 0:
 			col.R = 255
-		} else if group == 1 {
+		case 1:
 			col.G = 255
-		} else if group == 2 {
+		case 2:
 			col.B = 255
-		} else {
+		default:
 			panic(fmt.Errorf("unexpected group: %d", group))
 		}
 	}
@@ -150,13 +152,14 @@ func (t *threeCornersTab) setSelectedGroup(groups []int) {
 		t.portalsNot1[guid] = struct{}{}
 		t.portalsNot2[guid] = struct{}{}
 		for _, group := range groups {
-			if group == 0 {
+			switch group {
+			case 0:
 				delete(t.portalsNot0, guid)
-			} else if group == 1 {
+			case 1:
 				delete(t.portalsNot1, guid)
-			} else if group == 2 {
+			case 2:
 				delete(t.portalsNot2, guid)
-			} else {
+			default:
 				panic(fmt.Errorf("unexpected group %d", group))
 			}
 		}
@@ -294,15 +297,15 @@ func (t *threeCornersTab) contextMenu() *menu {
 	return menu
 }
 
-type indexedGuid struct {
+type indexedGUID struct {
 	Index int    `json:"index"`
-	Guid  string `json:"guid"`
+	GUID  string `json:"guid"`
 }
 type threeCornersState struct {
 	PortalsNot0  []string      `json:"portalsNot0"`
 	PortalsNot1  []string      `json:"portalsNot1"`
 	PortalsNot2  []string      `json:"portalsNot2"`
-	Solution     []indexedGuid `json:"solution"`
+	Solution     []indexedGUID `json:"solution"`
 	SolutionText string        `json:"solutionText"`
 }
 
@@ -327,7 +330,7 @@ func (t *threeCornersTab) state() threeCornersState {
 	}
 	for _, solutionPortal := range t.solution {
 		state.Solution = append(state.Solution,
-			indexedGuid{Index: solutionPortal.Index, Guid: solutionPortal.Portal.Guid})
+			indexedGUID{Index: solutionPortal.Index, GUID: solutionPortal.Portal.GUID})
 	}
 	state.SolutionText = t.solutionText
 	return state
@@ -357,8 +360,8 @@ func (t *threeCornersTab) load(state threeCornersState) error {
 	}
 	t.solution = nil
 	for _, solutionPortal := range state.Solution {
-		if portal, ok := t.portals.portalMap[solutionPortal.Guid]; !ok {
-			return fmt.Errorf("unknown cobwewb solution portal %s", solutionPortal.Guid)
+		if portal, ok := t.portals.portalMap[solutionPortal.GUID]; !ok {
+			return fmt.Errorf("unknown cobwewb solution portal %s", solutionPortal.GUID)
 		} else {
 			t.solution = append(t.solution, lib.IndexedPortal{Index: solutionPortal.Index, Portal: portal})
 		}

@@ -51,7 +51,7 @@ func (l *PortalList) SetPortals(portals []lib.Portal) {
 	l.portals = portals
 	l.portalIndices = make(map[string]int)
 	for i, portal := range l.portals {
-		l.portalIndices[portal.Guid] = i
+		l.portalIndices[portal.GUID] = i
 	}
 	l.portalState = make(map[string]string)
 	l.SetRowCount(len(portals))
@@ -87,7 +87,7 @@ func (l *PortalList) drawCallback(context fltk.TableContext, row, column, x, y, 
 		if column == 0 {
 			fltk.Draw(l.portals[row].Name, x, y, w, h, fltk.ALIGN_LEFT)
 		} else if column == 1 {
-			stateText, ok := l.portalState[l.portals[row].Guid]
+			stateText, ok := l.portalState[l.portals[row].GUID]
 			if !ok {
 				stateText = "Normal"
 			}
@@ -136,7 +136,7 @@ func (l *PortalList) onSelectionMaybeChanged() {
 	for i := 0; i < len(l.portals); i++ {
 		if l.IsRowSelected(i) {
 			numSelectedRows++
-			guid := l.portals[i].Guid
+			guid := l.portals[i].GUID
 			if _, ok := l.selectedPortals[guid]; !ok {
 				selectionChanged = true
 				break
@@ -152,7 +152,7 @@ func (l *PortalList) onSelectionMaybeChanged() {
 		}
 		for i := 0; i < len(l.portals); i++ {
 			if l.IsRowSelected(i) {
-				l.selectedPortals[l.portals[i].Guid] = struct{}{}
+				l.selectedPortals[l.portals[i].GUID] = struct{}{}
 			}
 		}
 		if l.selectionChangeCallback != nil {

@@ -49,7 +49,7 @@ func appendPortalsBetween(depth int, p Portal, ll s2.LatLng, portals []Portal) [
 		midPoint := s2.PointFromLatLng(p.LatLng).Add(
 			diff.Mul(float64(i) / float64(depth)))
 		midLL := s2.LatLngFromPoint(s2.Point{Vector: midPoint})
-		midPortal := Portal{Guid: p.Guid + fmt.Sprintf("%d", i), LatLng: midLL}
+		midPortal := Portal{GUID: p.GUID + fmt.Sprintf("%d", i), LatLng: midLL}
 		portals = append(portals, midPortal)
 	}
 	return portals
@@ -60,9 +60,9 @@ func generateCobwebPortals(depth int) []Portal {
 	ll1 := s2.LatLngFromDegrees(20, 22)
 	ll2 := s2.LatLngFromDegrees(21, 21)
 	portals := []Portal{
-		{Guid: "a", LatLng: ll0},
-		{Guid: "b", LatLng: ll1},
-		{Guid: "c", LatLng: ll2}}
+		{GUID: "a", LatLng: ll0},
+		{GUID: "b", LatLng: ll1},
+		{GUID: "c", LatLng: ll2}}
 	midLL := s2.LatLngFromDegrees((20+20+21)/3., (20+22+21)/3.)
 	portals = appendPortalsBetween(depth, portals[0], midLL, portals)
 	portals = appendPortalsBetween(depth, portals[1], midLL, portals)

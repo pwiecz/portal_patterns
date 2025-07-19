@@ -58,7 +58,7 @@ type flipFieldParams struct {
 func defaultFlipFieldParams() flipFieldParams {
 	return flipFieldParams{
 		maxBackbonePortals:  16,
-		backbonePortalLimit: EQUAL,
+		backbonePortalLimit: Equal,
 		fixedBaseIndices:    nil,
 		maxFlipPortals:      0,
 		simpleBackbone:      false,

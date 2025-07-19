@@ -75,18 +75,18 @@ type DrawCommand struct {
 	Type           DrawCommandType
 	Mode           Mode
 	Matrix         mgl32.Mat4
-	TextureId      uint32
+	TextureID      uint32
 	Color          Color
 	PositionOffset int
 	ElementCount   int
 	PxRange        float32
 }
 
-func NewDrawTextureCommand(textureId uint32, matrix mgl32.Mat4, positionOffset int) DrawCommand {
-	return DrawCommand{Type: DrawTextureCommand, TextureId: textureId, Matrix: matrix, PositionOffset: positionOffset}
+func NewDrawTextureCommand(textureID uint32, matrix mgl32.Mat4, positionOffset int) DrawCommand {
+	return DrawCommand{Type: DrawTextureCommand, TextureID: textureID, Matrix: matrix, PositionOffset: positionOffset}
 }
-func NewDrawMSDFTextureCommand(textureId uint32, positionOffset, elementCount int, color Color, pxRange float32) DrawCommand {
-	return DrawCommand{Type: DrawMSDFTextureCommand, TextureId: textureId, PositionOffset: positionOffset, ElementCount: elementCount, Color: color, PxRange: pxRange}
+func NewDrawMSDFTextureCommand(textureID uint32, positionOffset, elementCount int, color Color, pxRange float32) DrawCommand {
+	return DrawCommand{Type: DrawMSDFTextureCommand, TextureID: textureID, PositionOffset: positionOffset, ElementCount: elementCount, Color: color, PxRange: pxRange}
 }
 func NewDrawMeshCommand(mode Mode, matrix mgl32.Mat4, positionOffset, elementCount int, color Color) DrawCommand {
 	return DrawCommand{Type: DrawMeshCommand, Mode: mode, Matrix: matrix, PositionOffset: positionOffset, ElementCount: elementCount, Color: color}
@@ -154,7 +154,7 @@ func (c DrawCommand) Render(i int, r *GLRenderer) {
 		matrix := r.projectionMatrix.Mul4(zMtx.Mul4(c.Matrix))
 		gl.UniformMatrix4fv(r.textureShader.matrixLocation, 1, false, &matrix[0])
 		gl.ActiveTexture(gl.TEXTURE0)
-		gl.BindTexture(gl.TEXTURE_2D, c.TextureId)
+		gl.BindTexture(gl.TEXTURE_2D, c.TextureID)
 		gl.Uniform1i(r.textureShader.textureLocation, 0)
 		gl.DrawArrays(gl.TRIANGLES, int32(r.drawList.unitRectOffset), 6)
 		gl.DisableVertexAttribArray(uint32(r.textureShader.positionLocation))
@@ -173,7 +173,7 @@ func (c DrawCommand) Render(i int, r *GLRenderer) {
 		gl.UniformMatrix4fv(r.msdfShader.matrixLocation, 1, false, &matrix[0])
 		gl.Uniform4fv(r.msdfShader.colorLocation, 1, &c.Color[0])
 		gl.ActiveTexture(gl.TEXTURE0)
-		gl.BindTexture(gl.TEXTURE_2D, c.TextureId)
+		gl.BindTexture(gl.TEXTURE_2D, c.TextureID)
 		gl.Uniform1i(r.msdfShader.textureLocation, 0)
 		gl.Uniform1f(r.msdfShader.pxRangeLocation, c.PxRange)
 		gl.DrawArrays(gl.TRIANGLES, 0, int32(c.ElementCount))
@@ -496,9 +496,9 @@ func (r *GLRenderer) AddRect(x0, y0, x1, y1, thickness float32, color Color) {
 	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleStrip, mgl32.Ident4(), offset, 10, color))
 }
 
-func (r *GLRenderer) AddImage(textureId Texture, x0, y0, x1, y1 float32) {
+func (r *GLRenderer) AddImage(textureID Texture, x0, y0, x1, y1 float32) {
 	matrix := mgl32.Translate3D(x0, y0, 0).Mul4(mgl32.Scale3D(x1-x0, y1-y0, 0))
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawTextureCommand(uint32(textureId), matrix, r.drawList.unitRectOffset))
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawTextureCommand(uint32(textureID), matrix, r.drawList.unitRectOffset))
 }
 
 func (r *GLRenderer) Render(width, height float32) {
@@ -565,8 +565,8 @@ func (r *GLRenderer) AddText(x, y, size float32, color Color, text string) {
 type Texture uint32
 
 func DeleteTexture(tex Texture) {
-	texId := uint32(tex)
-	gl.DeleteTextures(1, &texId)
+	texID := uint32(tex)
+	gl.DeleteTextures(1, &texID)
 }
 func NewTexture(img image.Image) Texture {
 	rgba, ok := img.(*image.RGBA)

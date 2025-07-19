@@ -37,13 +37,14 @@ func (t *doubleHerringboneTab) onReset() {
 	t.b1 = lib.Portal{}
 	t.spine0 = nil
 	t.spine1 = nil
+	t.searchingFinished = false
 	t.solutionText = ""
 }
 func (t *doubleHerringboneTab) onSearch(progressFunc func(int, int), onSearchDone func()) {
 	portals := t.enabledPortals()
 	base := []int{}
 	for i, portal := range portals {
-		if _, ok := t.basePortals[portal.Guid]; ok {
+		if _, ok := t.basePortals[portal.GUID]; ok {
 			base = append(base, i)
 		}
 	}
@@ -192,18 +193,18 @@ func (s doubleHerringboneState) equal(rhs doubleHerringboneState) bool {
 
 func (t *doubleHerringboneTab) state() doubleHerringboneState {
 	state := doubleHerringboneState{
-		B0:           t.b0.Guid,
-		B1:           t.b1.Guid,
+		B0:           t.b0.GUID,
+		B1:           t.b1.GUID,
 		SolutionText: t.solutionText,
 	}
 	for baseGUID := range t.basePortals {
 		state.BasePortals = append(state.BasePortals, baseGUID)
 	}
 	for _, spine0Portal := range t.spine0 {
-		state.Spine0 = append(state.Spine0, spine0Portal.Guid)
+		state.Spine0 = append(state.Spine0, spine0Portal.GUID)
 	}
 	for _, spine1Portal := range t.spine1 {
-		state.Spine1 = append(state.Spine1, spine1Portal.Guid)
+		state.Spine1 = append(state.Spine1, spine1Portal.GUID)
 	}
 	return state
 }

@@ -25,8 +25,8 @@ func LargestFlipField(portals []Portal, options ...FlipFieldOption) ([]Portal, [
 type PortalLimit int
 
 const (
-	EQUAL      PortalLimit = 0
-	LESS_EQUAL PortalLimit = 1
+	Equal     PortalLimit = 0
+	LessEqual PortalLimit = 1
 )
 
 type bestFlipFieldQuery struct {
@@ -129,7 +129,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 		}
 		bestNumFields := numFlipFields(len(f.flipPortals), len(f.backbone))
 		bestBackboneLength := backboneLength
-		if f.numPortalLimit == EQUAL {
+		if f.numPortalLimit == Equal {
 			bestNumFields = 0
 		}
 		bestCandidate := -1
@@ -321,7 +321,7 @@ func (f *bestFlipFieldQuery) findBestFlipField(p0, p1 portalData, ccw bool) ([]p
 			}
 		}
 	}
-	if f.numPortalLimit != EQUAL || len(f.backbone) == f.maxBackbonePortals {
+	if f.numPortalLimit != Equal || len(f.backbone) == f.maxBackbonePortals {
 		numFlipPortals := len(f.flipPortals)
 		if f.maxFlipPortals > 0 && numFlipPortals > f.maxFlipPortals {
 			numFlipPortals = f.maxFlipPortals
@@ -364,7 +364,7 @@ func LargestFlipFieldST(portals []Portal, params flipFieldParams) ([]Portal, []P
 				if len(b) <= 2 || !hasAllElementsInThePair(fixedBaseIndices, b[0].Index, b[len(b)-1].Index) {
 					continue
 				}
-				if params.backbonePortalLimit != EQUAL || len(b) == params.maxBackbonePortals {
+				if params.backbonePortalLimit != Equal || len(b) == params.maxBackbonePortals {
 					numFlipPortals := len(f)
 					if params.maxFlipPortals > 0 && numFlipPortals > params.maxFlipPortals {
 						numFlipPortals = params.maxFlipPortals

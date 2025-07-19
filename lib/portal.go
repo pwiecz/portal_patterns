@@ -17,7 +17,7 @@ import (
 
 // Portal - portal with geographic coordinates in s2.Point format
 type Portal struct {
-	Guid   string
+	GUID   string
 	Name   string
 	LatLng s2.LatLng
 }
@@ -36,7 +36,7 @@ type PortalCoordinates struct {
 
 // PortalInfo - portal with geographic coordinated in textual format
 type PortalInfo struct {
-	Guid        string            `json:"guid"`
+	GUID        string            `json:"guid"`
 	Name        string            `json:"title"`
 	Coordinates PortalCoordinates `json:"coordinates"`
 }
@@ -49,12 +49,12 @@ func ParseFile(filename string) ([]Portal, error) {
 	if err != nil {
 		return nil, err
 	}
-	allGuids := make(map[string]struct{})
+	allGUIDs := make(map[string]struct{})
 	for _, p := range portalInfo {
-		if _, ok := allGuids[p.Guid]; ok {
-			return nil, fmt.Errorf("duplicate guid: \"%s\"", p.Guid)
+		if _, ok := allGUIDs[p.GUID]; ok {
+			return nil, fmt.Errorf("duplicate guid: \"%s\"", p.GUID)
 		}
-		allGuids[p.Guid] = struct{}{}
+		allGUIDs[p.GUID] = struct{}{}
 	}
 	return portalInfoToPortal(portalInfo)
 }
@@ -144,7 +144,7 @@ func parseCSVFileAsPortalInfo(filename string) ([]PortalInfo, error) {
 			return nil, errors.New("cannot parse longitude: \"" + record[3] + "\"")
 		}
 		portalCoordinates := PortalCoordinates{Lat: record[2], Lng: record[3]}
-		portals = append(portals, PortalInfo{Guid: record[0], Name: record[1], Coordinates: portalCoordinates})
+		portals = append(portals, PortalInfo{GUID: record[0], Name: record[1], Coordinates: portalCoordinates})
 		if len(portals) >= math.MaxUint16-1 {
 			return nil, errors.New("too many portals")
 		}
@@ -184,7 +184,7 @@ func portalInfoToPortal(portalInfo []PortalInfo) ([]Portal, error) {
 			return nil, errors.New("cannot parse longitude: \"" + latlng.Lng + "\"")
 		}
 		point := s2.LatLngFromDegrees(lat, lng)
-		portals = append(portals, Portal{Guid: portal.Guid, Name: portal.Name, LatLng: point})
+		portals = append(portals, Portal{GUID: portal.GUID, Name: portal.Name, LatLng: point})
 		if len(portals) >= math.MaxUint16-1 {
 			return nil, errors.New("too many portals")
 		}

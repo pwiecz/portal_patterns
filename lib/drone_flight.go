@@ -199,13 +199,13 @@ func prepareDroneGraph(portalsData []portalData, useLongJumps bool, reverseRoute
 	cellPortals := make(map[s2.CellID][]portalData)
 	portalCells := make([]s2.CellID, len(portalsData))
 	for _, p := range portalsData {
-		cellId := s2.CellFromPoint(p.LatLng).ID()
-		if cellId.Level() < 16 {
-			panic(fmt.Errorf("got cell level: %d", cellId.Level()))
+		cellID := s2.CellFromPoint(p.LatLng).ID()
+		if cellID.Level() < 16 {
+			panic(fmt.Errorf("got cell level: %d", cellID.Level()))
 		}
-		cellId = cellId.Parent(16)
-		cellPortals[cellId] = append(cellPortals[cellId], p)
-		portalCells[p.Index] = cellId
+		cellID = cellID.Parent(16)
+		cellPortals[cellID] = append(cellPortals[cellID], p)
+		portalCells[p.Index] = cellID
 	}
 	neighbours := make([][]droneFlightNeighbour, len(portalsData))
 
@@ -215,9 +215,9 @@ func prepareDroneGraph(portalsData []portalData, useLongJumps bool, reverseRoute
 			// A circle for which we don't require key.
 			circle := s2.CapFromCenterAngle(p.LatLng, s1.Angle(droneFlightNeighbourCellRange/RadiansToMeters))
 			cellsInCircle := s2.FloodFillRegionCovering(circle, portalCells[p.Index])
-			for _, cellId := range cellsInCircle {
-				cellsInSmallCircle[cellId] = struct{}{}
-				for _, np := range cellPortals[cellId] {
+			for _, cellID := range cellsInCircle {
+				cellsInSmallCircle[cellID] = struct{}{}
+				for _, np := range cellPortals[cellID] {
 					if np.Index == p.Index {
 						continue
 					}
@@ -233,11 +233,11 @@ func prepareDroneGraph(portalsData []portalData, useLongJumps bool, reverseRoute
 			// We need a key to fly to portals in this larger circle.
 			circle := s2.CapFromCenterAngle(p.LatLng, s1.Angle(droneFlightMaxRange/RadiansToMeters))
 			cellsInCircle := s2.FloodFillRegionCovering(circle, portalCells[p.Index])
-			for _, cellId := range cellsInCircle {
-				if _, ok := cellsInSmallCircle[cellId]; ok {
+			for _, cellID := range cellsInCircle {
+				if _, ok := cellsInSmallCircle[cellID]; ok {
 					continue
 				}
-				for _, np := range cellPortals[cellId] {
+				for _, np := range cellPortals[cellID] {
 					if np.Index == p.Index {
 						continue
 					}

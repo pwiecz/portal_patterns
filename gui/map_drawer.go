@@ -273,7 +273,7 @@ func (w *MapDrawer) PortalsInsideSelection() map[string]struct{} {
 }
 func (w *MapDrawer) ZoomIn(x, y int) {
 	w.Async(func() {
-		if w.zoom < osm.MAX_ZOOM_LEVEL {
+		if w.zoom < osm.MaxZoomLevel {
 			w.zoom++
 			w.zoomPow *= 2.0
 			w.x0 = (w.x0+float64(x))*2.0 - float64(x)
@@ -411,7 +411,7 @@ func (w *MapDrawer) ResetView() {
 			maxX = math.Max(portal.coords.X, maxX)
 			maxY = math.Max(portal.coords.Y, maxY)
 		}
-		for w.zoom = 19; w.zoom >= 0; w.zoom-- {
+		for w.zoom = osm.MaxZoomLevel; w.zoom >= 0; w.zoom-- {
 			zoomPow := math.Pow(2., float64(w.zoom))
 			width, height := (maxX-minX)*zoomPow*256, (maxY-minY)*zoomPow*256
 			if width <= float64(w.width) && height <= float64(w.height) {
@@ -495,10 +495,10 @@ func (w *MapDrawer) onNewPortals(portals []lib.Portal) {
 			fillColor:   w.defaultPortalColor,
 			strokeColor: transparent,
 			name:        portal.Name,
-			guid:        portal.Guid,
+			guid:        portal.GUID,
 			drawOrder:   i,
 		})
-		w.portalIndices[portal.Guid] = i
+		w.portalIndices[portal.GUID] = i
 		w.portalDrawOrder = append(w.portalDrawOrder, i)
 	}
 	w.portalUnderMouse = -1

@@ -62,20 +62,25 @@ func generateHerringbonePortals(length int) []Portal {
 	base0 := s2.LatLngFromDegrees(20, 20)
 	base1 := s2.LatLngFromDegrees(20, 22)
 	portals := []Portal{
-		{Guid: "b0", LatLng: base0},
-		{Guid: "b1", LatLng: base1}}
+		{GUID: "b0", LatLng: base0},
+		{GUID: "b1", LatLng: base1}}
 	lat := 20.01
 	for i := range length {
-		portals = append(portals, Portal{Guid: "bb" + strconv.Itoa(i), LatLng: s2.LatLngFromDegrees(lat, 21)})
+		portals = append(portals, Portal{GUID: "bb" + strconv.Itoa(i), LatLng: s2.LatLngFromDegrees(lat, 21)})
 		lat += 0.01
 	}
 	return portals
 }
 
 func TestHerringboneSyntheticPortals(t *testing.T) {
-	portals := generateHerringbonePortals(30)
+	portals := generateHerringbonePortals(150)
 	b0, b1, backbone := LargestHerringbone(portals, []int{}, 1, func(int, int) {})
-	checkValidHerringboneResult(30, b0, b1, backbone, t)
+	checkValidHerringboneResult(150, b0, b1, backbone, t)
+}
+func TestHerringboneMTSyntheticPortals(t *testing.T) {
+	portals := generateHerringbonePortals(150)
+	b0, b1, backbone := LargestHerringbone(portals, []int{}, 8, func(int, int) {})
+	checkValidHerringboneResult(150, b0, b1, backbone, t)
 }
 
 func benchmarkHerringbone(length int, b *testing.B) {
@@ -84,7 +89,17 @@ func benchmarkHerringbone(length int, b *testing.B) {
 		LargestHerringbone(portals, []int{}, 1, func(int, int) {})
 	}
 }
+func benchmarkHerringboneMT(length int, b *testing.B) {
+	portals := generateHerringbonePortals(length)
+	for b.Loop() {
+		LargestHerringbone(portals, []int{}, 8, func(int, int) {})
+	}
+}
 
 func BenchmarkHerringbone50(b *testing.B)  { benchmarkHerringbone(50, b) }
 func BenchmarkHerringbone100(b *testing.B) { benchmarkHerringbone(100, b) }
 func BenchmarkHerringbone150(b *testing.B) { benchmarkHerringbone(150, b) }
+
+func BenchmarkHerringboneMT50(b *testing.B)  { benchmarkHerringboneMT(50, b) }
+func BenchmarkHerringboneMT100(b *testing.B) { benchmarkHerringboneMT(100, b) }
+func BenchmarkHerringboneMT150(b *testing.B) { benchmarkHerringboneMT(150, b) }

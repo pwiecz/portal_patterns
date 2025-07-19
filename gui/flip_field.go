@@ -76,17 +76,18 @@ func (t *flipFieldTab) onReset() {
 	t.basePortals = make(map[string]struct{})
 	t.backbone = nil
 	t.flipPortals = nil
+	t.searchingFinished = false
 	t.solutionText = ""
 }
 func (t *flipFieldTab) onSearch(progressFunc func(int, int), onSearchDone func()) {
-	numPortalLimit := lib.LESS_EQUAL
+	numPortalLimit := lib.LessEqual
 	if t.exactly.Value() {
-		numPortalLimit = lib.EQUAL
+		numPortalLimit = lib.Equal
 	}
 	portals := t.enabledPortals()
 	base := []int{}
 	for i, portal := range portals {
-		if _, ok := t.basePortals[portal.Guid]; ok {
+		if _, ok := t.basePortals[portal.GUID]; ok {
 			base = append(base, i)
 		}
 	}
@@ -271,10 +272,10 @@ func (t *flipFieldTab) state() flipFieldState {
 		state.BasePortals = append(state.BasePortals, baseGUID)
 	}
 	for _, backbonePortal := range t.backbone {
-		state.Backbone = append(state.Backbone, backbonePortal.Guid)
+		state.Backbone = append(state.Backbone, backbonePortal.GUID)
 	}
 	for _, flipPortal := range t.flipPortals {
-		state.FlipPortals = append(state.FlipPortals, flipPortal.Guid)
+		state.FlipPortals = append(state.FlipPortals, flipPortal.GUID)
 	}
 	return state
 }

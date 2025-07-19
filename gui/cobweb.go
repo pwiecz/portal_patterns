@@ -32,13 +32,14 @@ func newCobwebTab(portals *Portals) *cobwebTab {
 func (t *cobwebTab) onReset() {
 	t.cornerPortals = make(map[string]struct{})
 	t.solution = nil
+	t.searchingFinished = false
 	t.solutionText = ""
 }
 func (t *cobwebTab) onSearch(progressFunc func(int, int), onSearchDone func()) {
 	portals := t.enabledPortals()
 	corners := []int{}
 	for i, portal := range portals {
-		if _, ok := t.cornerPortals[portal.Guid]; ok {
+		if _, ok := t.cornerPortals[portal.GUID]; ok {
 			corners = append(corners, i)
 		}
 	}
@@ -183,7 +184,7 @@ func (t *cobwebTab) state() cobwebState {
 		state.CornerPortals = append(state.CornerPortals, cornerGUID)
 	}
 	for _, solutionPortal := range t.solution {
-		state.Solution = append(state.Solution, solutionPortal.Guid)
+		state.Solution = append(state.Solution, solutionPortal.GUID)
 	}
 	state.SolutionText = t.solutionText
 	return state

@@ -85,6 +85,7 @@ func newHomogeneousTab(portals *Portals) *homogeneousTab {
 func (t *homogeneousTab) onReset() {
 	t.cornerPortals = make(map[string]struct{})
 	t.depth = 0
+	t.searchingFinished = false
 	t.solution = nil
 	t.solutionText = ""
 }
@@ -119,7 +120,7 @@ func (t *homogeneousTab) onSearch(progressFunc func(int, int), onSearchDone func
 	}
 	corners := []int{}
 	for i, portal := range portals {
-		if _, ok := t.cornerPortals[portal.Guid]; ok {
+		if _, ok := t.cornerPortals[portal.GUID]; ok {
 			corners = append(corners, i)
 		}
 	}
@@ -304,7 +305,7 @@ func (t *homogeneousTab) state() homogeneousState {
 		state.CornerPortals = append(state.CornerPortals, cornerGUID)
 	}
 	for _, solutionPortal := range t.solution {
-		state.Solution = append(state.Solution, solutionPortal.Guid)
+		state.Solution = append(state.Solution, solutionPortal.GUID)
 	}
 	return state
 }

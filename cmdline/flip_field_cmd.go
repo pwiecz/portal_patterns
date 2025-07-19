@@ -61,9 +61,9 @@ func (f *flipFieldCmd) Run(args []string, numWorkers int, output io.Writer, prog
 
 	var numPortalLimit lib.PortalLimit
 	if f.numBackbonePortals.Exactly {
-		numPortalLimit = lib.EQUAL
+		numPortalLimit = lib.Equal
 	} else {
-		numPortalLimit = lib.LESS_EQUAL
+		numPortalLimit = lib.LessEqual
 	}
 	numFlipFieldWorkers := runtime.GOMAXPROCS(0)
 	if numWorkers > 0 {

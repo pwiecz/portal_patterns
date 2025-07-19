@@ -37,7 +37,7 @@ type MainWindow struct {
 	*fltk.Window
 	configuration      *configuration.Configuration
 	menuBar            *fltk.MenuBar
-	add, reset         *fltk.Button
+	add                *fltk.Button
 	search             *fltk.Button
 	export             *fltk.Button
 	copy               *fltk.Button
@@ -60,8 +60,10 @@ type MainWindow struct {
 	filename           string
 	undoStates         []state
 	redoStates         []state
-	undoMenuId         int
-	redoMenuId         int
+	newMenuID          int
+	loadMenuID         int
+	undoMenuID         int
+	redoMenuID         int
 }
 
 func NewMainWindow(conf *configuration.Configuration) *MainWindow {
@@ -76,11 +78,12 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	mainPack.SetType(fltk.COLUMN)
 	w.menuBar = fltk.NewMenuBar(0, 0, 1600, 30)
 	w.menuBar.SetGlobal()
-	w.menuBar.AddEx("&File/&Load", fltk.CTRL+int('o'), w.onLoadPressed, 0)
+	w.newMenuID = w.menuBar.AddEx("&File/&New", fltk.CTRL+int('n'), w.onNewPressed, 0)
+	w.loadMenuID = w.menuBar.AddEx("&File/&Load", fltk.CTRL+int('o'), w.onLoadPressed, 0)
 	w.menuBar.AddEx("&File/&Save", fltk.CTRL+int('s'), w.onSavePressed, 0)
 	w.menuBar.AddEx("&File/Save as...", fltk.CTRL+fltk.ALT+int('s'), w.onSaveAsPressed, 0)
-	w.undoMenuId = w.menuBar.AddEx("&Edit/&Undo", fltk.CTRL+int('z'), w.onUndo, fltk.MENU_INACTIVE)
-	w.redoMenuId = w.menuBar.AddEx("&Edit/&Redo", fltk.CTRL+int('x'), w.onRedo, fltk.MENU_INACTIVE)
+	w.undoMenuID = w.menuBar.AddEx("&Edit/&Undo", fltk.CTRL+int('z'), w.onUndo, fltk.MENU_INACTIVE)
+	w.redoMenuID = w.menuBar.AddEx("&Edit/&Redo", fltk.CTRL+int('x'), w.onRedo, fltk.MENU_INACTIVE)
 	w.menuBar.AddEx("&Select/Select &All", fltk.CTRL+int('a'), w.onSelectAll, 0)
 	w.menuBar.AddEx("&Select/&Invert", fltk.CTRL+int('i'), w.onInvertSelection, 0)
 	w.menuBar.AddEx("&Select/&Rectangular Selection", fltk.ALT+int('r'), w.onRectangularSelection, 0)
@@ -120,17 +123,10 @@ func NewMainWindow(conf *configuration.Configuration) *MainWindow {
 	rightPack := fltk.NewFlex(0, 0, 700, 870)
 	pack.Fixed(rightPack, 700)
 	rightPack.SetType(fltk.COLUMN)
-	topButtonPack := fltk.NewFlex(0, 0, 700, 30)
-	rightPack.Fixed(topButtonPack, 30)
-	topButtonPack.SetType(fltk.ROW)
-	topButtonPack.SetSpacing(5)
 
 	w.add = fltk.NewButton(0, 0, 101, 30, "Add portals")
+	rightPack.Fixed(w.add, 30)
 	w.add.SetCallback(w.onAddPortalsPressed)
-	w.reset = fltk.NewButton(0, 0, 113, 30, "Reset portals")
-	w.reset.Deactivate()
-	w.reset.SetCallback(w.onResetPortalsPressed)
-	topButtonPack.End()
 
 	w.tabs = fltk.NewTabs(0, 0, 700, 200)
 	rightPack.Fixed(w.tabs, 200)
@@ -268,15 +264,15 @@ func (w *MainWindow) onRectangularSelection() {
 func (w *MainWindow) onSelectAll() {
 	selection := make(map[string]struct{})
 	for _, portal := range w.portals.portals {
-		selection[portal.Guid] = struct{}{}
+		selection[portal.GUID] = struct{}{}
 	}
 	w.OnSelectionChanged(selection)
 }
 func (w *MainWindow) onInvertSelection() {
 	selection := make(map[string]struct{})
 	for _, portal := range w.portals.portals {
-		if _, ok := w.portals.selectedPortals[portal.Guid]; !ok {
-			selection[portal.Guid] = struct{}{}
+		if _, ok := w.portals.selectedPortals[portal.GUID]; !ok {
+			selection[portal.GUID] = struct{}{}
 		}
 	}
 	w.OnSelectionChanged(selection)
@@ -375,15 +371,15 @@ func (w *MainWindow) onLoadPressed() {
 	defer file.Close()
 	if err := w.decode(file); err != nil {
 		fltk.MessageBox("Error loading", "Error while loading "+filename+"\n"+err.Error())
-		w.onResetPortalsPressed()
+		w.onNewPressed()
 		return
 	}
 	w.filename = filename
 	w.SetLabel(filepath.Base(filename))
 	w.undoStates = []state{w.currentState()}
 	w.redoStates = nil
-	w.menuBar.SetMode(w.undoMenuId, fltk.MENU_INACTIVE)
-	w.menuBar.SetMode(w.redoMenuId, fltk.MENU_INACTIVE)
+	w.menuBar.SetMode(w.undoMenuID, fltk.MENU_INACTIVE)
+	w.menuBar.SetMode(w.redoMenuID, fltk.MENU_INACTIVE)
 }
 func (w *MainWindow) onSavePressed() {
 	if w.filename == "" {
@@ -435,8 +431,8 @@ func (w *MainWindow) saveProjectToFile(filename string) {
 	w.SetLabel(filepath.Base(filename))
 	w.undoStates = []state{w.currentState()}
 	w.redoStates = nil
-	w.menuBar.SetMode(w.undoMenuId, fltk.MENU_INACTIVE)
-	w.menuBar.SetMode(w.redoMenuId, fltk.MENU_INACTIVE)
+	w.menuBar.SetMode(w.undoMenuID, fltk.MENU_INACTIVE)
+	w.menuBar.SetMode(w.redoMenuID, fltk.MENU_INACTIVE)
 }
 
 func (w *MainWindow) onUndo() {
@@ -445,7 +441,7 @@ func (w *MainWindow) onUndo() {
 	}
 	w.redoStates = append(w.redoStates, w.undoStates[len(w.undoStates)-1])
 	if len(w.redoStates) == 1 {
-		w.menuBar.SetMode(w.redoMenuId, 0)
+		w.menuBar.SetMode(w.redoMenuID, 0)
 	}
 	w.undoStates = w.undoStates[:len(w.undoStates)-1]
 	if err := w.loadState(w.undoStates[len(w.undoStates)-1]); err != nil {
@@ -453,7 +449,7 @@ func (w *MainWindow) onUndo() {
 	}
 	if len(w.undoStates) == 1 {
 		w.SetLabel(filepath.Base(w.filename))
-		w.menuBar.SetMode(w.undoMenuId, fltk.MENU_INACTIVE)
+		w.menuBar.SetMode(w.undoMenuID, fltk.MENU_INACTIVE)
 	}
 	w.mapWindow.Redraw()
 }
@@ -464,14 +460,14 @@ func (w *MainWindow) onRedo() {
 	w.undoStates = append(w.undoStates, w.redoStates[len(w.redoStates)-1])
 	if len(w.undoStates) == 2 {
 		w.SetLabel("*" + filepath.Base(w.filename))
-		w.menuBar.SetMode(w.undoMenuId, 0)
+		w.menuBar.SetMode(w.undoMenuID, 0)
 	}
 	w.redoStates = w.redoStates[:len(w.redoStates)-1]
 	if err := w.loadState(w.undoStates[len(w.undoStates)-1]); err != nil {
 		fmt.Fprintln(os.Stderr, "redo error:", err)
 	}
 	if len(w.redoStates) == 0 {
-		w.menuBar.SetMode(w.redoMenuId, fltk.MENU_INACTIVE)
+		w.menuBar.SetMode(w.redoMenuID, fltk.MENU_INACTIVE)
 	}
 	w.mapWindow.Redraw()
 }
@@ -518,9 +514,6 @@ func (w *MainWindow) onPortalsChanged() {
 	} else {
 		w.search.Deactivate()
 	}
-	if len(w.portals.portals) > 0 {
-		w.reset.Activate()
-	}
 	w.mapWindow.Redraw()
 	w.portalList.Redraw()
 }
@@ -529,20 +522,20 @@ func (w *MainWindow) addPortals(portals []lib.Portal) {
 	portalMap := maps.Clone(w.portals.portalMap)
 	newPortals := ([]lib.Portal)(nil)
 	for _, portal := range portals {
-		if existing, ok := portalMap[portal.Guid]; ok {
+		if existing, ok := portalMap[portal.GUID]; ok {
 			if existing.LatLng.Lat != portal.LatLng.Lat ||
 				existing.LatLng.Lng != portal.LatLng.Lng {
 				if existing.Name == portal.Name {
-					fltk.MessageBox("Conflicting portals", "Portal with guid \""+portal.Guid+"\" already loaded with different location\n"+
+					fltk.MessageBox("Conflicting portals", "Portal with guid \""+portal.GUID+"\" already loaded with different location\n"+
 						portal.Name+"\n"+portal.LatLng.String()+" vs "+existing.LatLng.String())
 					return
 				}
-				fltk.MessageBox("Conflicting portals", "Portal with guid \""+portal.Guid+"\" already loaded with different name and location\n"+
+				fltk.MessageBox("Conflicting portals", "Portal with guid \""+portal.GUID+"\" already loaded with different name and location\n"+
 					portal.Name+" vs "+existing.Name+"\n"+portal.LatLng.String()+" vs "+existing.LatLng.String())
 				return
 			}
 		} else {
-			portalMap[portal.Guid] = portal
+			portalMap[portal.GUID] = portal
 			newPortals = append(newPortals, portal)
 		}
 	}
@@ -559,13 +552,12 @@ func (w *MainWindow) addPortals(portals []lib.Portal) {
 	w.portals.portalMap = portalMap
 }
 
-func (w *MainWindow) onResetPortalsPressed() {
+func (w *MainWindow) onNewPressed() {
 	w.portals.portals = w.portals.portals[:0]
 	w.portals.portalMap = make(map[string]lib.Portal)
 	w.portals.selectedPortals = make(map[string]struct{})
 	w.portals.disabledPortals = make(map[string]struct{})
 	w.progress.SetValue(0)
-	w.reset.Deactivate()
 	w.search.Deactivate()
 	w.export.Deactivate()
 	w.copy.Deactivate()
@@ -587,8 +579,11 @@ func (w *MainWindow) onResetPortalsPressed() {
 
 func (w *MainWindow) onSearchPressed() {
 	w.searchInProgress = true
+	w.menuBar.SetMode(w.newMenuID, fltk.MENU_INACTIVE)
+	w.menuBar.SetMode(w.loadMenuID, fltk.MENU_INACTIVE)
+	w.menuBar.SetMode(w.undoMenuID, fltk.MENU_INACTIVE)
+	w.menuBar.SetMode(w.redoMenuID, fltk.MENU_INACTIVE)
 	w.add.Deactivate()
-	w.reset.Deactivate()
 	w.search.Deactivate()
 	w.export.Deactivate()
 	w.copy.Deactivate()
@@ -614,8 +609,11 @@ func (w *MainWindow) progressCallback(val, max int) {
 func (w *MainWindow) onSearchDone() {
 	w.searchInProgress = false
 	w.progress.SetValue(w.progress.Maximum())
+	w.menuBar.SetMode(w.newMenuID, 0)
+	w.menuBar.SetMode(w.loadMenuID, 0)
+	w.menuBar.SetMode(w.undoMenuID, 0)
+	w.menuBar.SetMode(w.redoMenuID, 0)
 	w.add.Activate()
-	w.reset.Activate()
 	w.search.Activate()
 	w.portalList.Activate()
 	selectedPattern := w.selectedPattern()
@@ -666,7 +664,7 @@ func (w *MainWindow) stateChanged() {
 	w.undoStates = append(w.undoStates, s)
 	if len(w.undoStates) == 2 {
 		w.SetLabel("*" + filepath.Base(w.filename))
-		w.menuBar.SetMode(w.undoMenuId, 0)
+		w.menuBar.SetMode(w.undoMenuID, 0)
 	}
 }
 
@@ -732,7 +730,7 @@ func (w *MainWindow) loadState(s state) error {
 	w.portals.portals = s.Portals
 	w.portals.portalMap = make(map[string]lib.Portal)
 	for _, portal := range w.portals.portals {
-		w.portals.portalMap[portal.Guid] = portal
+		w.portals.portalMap[portal.GUID] = portal
 	}
 	w.portals.disabledPortals = make(map[string]struct{})
 	for _, disabledGUID := range s.DisabledPortals {

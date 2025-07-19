@@ -59,16 +59,16 @@ func generateDoubleHerringbonePortals(length0, length1 int) []Portal {
 	base0 := s2.LatLngFromDegrees(20, 20)
 	base1 := s2.LatLngFromDegrees(20, 22)
 	portals := []Portal{
-		{Guid: "b0", LatLng: base0},
-		{Guid: "b1", LatLng: base1}}
+		{GUID: "b0", LatLng: base0},
+		{GUID: "b1", LatLng: base1}}
 	lat := 20.01
 	for i := range length0 {
-		portals = append(portals, Portal{Guid: "bb0" + strconv.Itoa(i), LatLng: s2.LatLngFromDegrees(lat, 21)})
+		portals = append(portals, Portal{GUID: "bb0" + strconv.Itoa(i), LatLng: s2.LatLngFromDegrees(lat, 21)})
 		lat += 0.01
 	}
 	lat = 19.99
 	for i := range length1 {
-		portals = append(portals, Portal{Guid: "bb1" + strconv.Itoa(i), LatLng: s2.LatLngFromDegrees(lat, 21)})
+		portals = append(portals, Portal{GUID: "bb1" + strconv.Itoa(i), LatLng: s2.LatLngFromDegrees(lat, 21)})
 		lat -= 0.01
 	}
 	return portals
