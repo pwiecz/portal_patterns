@@ -41,7 +41,7 @@ var fontData string
 var fontJSONData string
 
 const PortalCircleRadius = 7.0
-const portalCircleThickness = 2.0
+const portalCircleThickness = 3.0
 const circleSegmentCount = 20
 
 type Color [4]float32
@@ -80,6 +80,7 @@ type DrawCommand struct {
 	PositionOffset int
 	ElementCount   int
 	PxRange        float32
+	AAWidth        float32
 }
 
 func NewDrawTextureCommand(textureID uint32, matrix mgl32.Mat4, positionOffset int) DrawCommand {
@@ -88,8 +89,8 @@ func NewDrawTextureCommand(textureID uint32, matrix mgl32.Mat4, positionOffset i
 func NewDrawMSDFTextureCommand(textureID uint32, positionOffset, elementCount int, color Color, pxRange float32) DrawCommand {
 	return DrawCommand{Type: DrawMSDFTextureCommand, TextureID: textureID, PositionOffset: positionOffset, ElementCount: elementCount, Color: color, PxRange: pxRange}
 }
-func NewDrawMeshCommand(mode Mode, matrix mgl32.Mat4, positionOffset, elementCount int, color Color) DrawCommand {
-	return DrawCommand{Type: DrawMeshCommand, Mode: mode, Matrix: matrix, PositionOffset: positionOffset, ElementCount: elementCount, Color: color}
+func NewDrawMeshCommand(mode Mode, matrix mgl32.Mat4, positionOffset, elementCount int, color Color, aaWidth float32) DrawCommand {
+	return DrawCommand{Type: DrawMeshCommand, Mode: mode, Matrix: matrix, PositionOffset: positionOffset, ElementCount: elementCount, Color: color, AAWidth: aaWidth}
 }
 
 func errorToString(err uint32) string {
@@ -130,45 +131,51 @@ func (c DrawCommand) Render(i int, r *GLRenderer) {
 			gl.UseProgram(r.meshShader.handle)
 			r.lastShader = r.meshShader.handle
 		}
-		gl.VertexAttribPointerWithOffset(uint32(r.meshShader.positionLocation), 2, gl.FLOAT, false, 0, 0)
+		stride := int32(3 * 4)
+		gl.VertexAttribPointerWithOffset(uint32(r.meshShader.positionLocation), 2, gl.FLOAT, false, stride, uintptr(c.PositionOffset)*4)
 		gl.EnableVertexAttribArray(uint32(r.meshShader.positionLocation))
+		gl.VertexAttribPointerWithOffset(uint32(r.meshShader.distLocation), 1, gl.FLOAT, false, stride, uintptr(c.PositionOffset)*4+2*4)
+		gl.EnableVertexAttribArray(uint32(r.meshShader.distLocation))
 		matrix := r.projectionMatrix.Mul4(zMtx.Mul4(c.Matrix))
 		gl.UniformMatrix4fv(r.meshShader.matrixLocation, 1, false, &matrix[0])
 		gl.Uniform4fv(r.meshShader.colorLocation, 1, &c.Color[0])
+		gl.Uniform1fv(r.meshShader.aaWidthLocation, 1, &c.AAWidth)
 		switch c.Mode {
 		case Triangles:
-			gl.DrawArrays(gl.TRIANGLES, int32(c.PositionOffset), int32(c.ElementCount))
+			gl.DrawArrays(gl.TRIANGLES, 0, int32(c.ElementCount))
 		case TriangleFan:
-			gl.DrawArrays(gl.TRIANGLE_FAN, int32(c.PositionOffset), int32(c.ElementCount))
+			gl.DrawArrays(gl.TRIANGLE_FAN, 0, int32(c.ElementCount))
 		case TriangleStrip:
-			gl.DrawArrays(gl.TRIANGLE_STRIP, int32(c.PositionOffset), int32(c.ElementCount))
+			gl.DrawArrays(gl.TRIANGLE_STRIP, 0, int32(c.ElementCount))
 		}
 		gl.DisableVertexAttribArray(uint32(r.meshShader.positionLocation))
+		gl.DisableVertexAttribArray(uint32(r.meshShader.distLocation))
 	case DrawTextureCommand:
 		if r.lastShader != r.textureShader.handle {
 			gl.UseProgram(r.textureShader.handle)
 			r.lastShader = r.textureShader.handle
 		}
-		gl.VertexAttribPointerWithOffset(uint32(r.textureShader.positionLocation), 2, gl.FLOAT, false, 0, 0)
+		stride := int32(3 * 4)
+		gl.VertexAttribPointerWithOffset(uint32(r.textureShader.positionLocation), 2, gl.FLOAT, false, stride, uintptr(r.drawList.unitRectOffset)*4)
 		gl.EnableVertexAttribArray(uint32(r.textureShader.positionLocation))
 		matrix := r.projectionMatrix.Mul4(zMtx.Mul4(c.Matrix))
 		gl.UniformMatrix4fv(r.textureShader.matrixLocation, 1, false, &matrix[0])
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, c.TextureID)
 		gl.Uniform1i(r.textureShader.textureLocation, 0)
-		gl.DrawArrays(gl.TRIANGLES, int32(r.drawList.unitRectOffset), 6)
+		gl.DrawArrays(gl.TRIANGLES, 0, 6)
 		gl.DisableVertexAttribArray(uint32(r.textureShader.positionLocation))
 	case DrawMSDFTextureCommand:
 		if r.lastShader != r.msdfShader.handle {
 			gl.UseProgram(r.msdfShader.handle)
 			r.lastShader = r.msdfShader.handle
 		}
-		elemSize := unsafe.Sizeof(r.drawList.Vertices[0])
+		elemSize := uintptr(2 * 4)
 		stride := int32(2 * elemSize)
 		gl.EnableVertexAttribArray(uint32(r.msdfShader.positionLocation))
 		gl.EnableVertexAttribArray(uint32(r.msdfShader.uvLocation))
-		gl.VertexAttribPointerWithOffset(uint32(r.msdfShader.positionLocation), 2, gl.FLOAT, false, stride, uintptr(c.PositionOffset)*elemSize)
-		gl.VertexAttribPointerWithOffset(uint32(r.msdfShader.uvLocation), 2, gl.FLOAT, false, stride, uintptr(c.PositionOffset+1)*elemSize)
+		gl.VertexAttribPointerWithOffset(uint32(r.msdfShader.positionLocation), 2, gl.FLOAT, false, stride, uintptr(c.PositionOffset)*4)
+		gl.VertexAttribPointerWithOffset(uint32(r.msdfShader.uvLocation), 2, gl.FLOAT, false, stride, uintptr(c.PositionOffset)*4+elemSize)
 		matrix := r.projectionMatrix.Mul4(zMtx)
 		gl.UniformMatrix4fv(r.msdfShader.matrixLocation, 1, false, &matrix[0])
 		gl.Uniform4fv(r.msdfShader.colorLocation, 1, &c.Color[0])
@@ -184,7 +191,7 @@ func (c DrawCommand) Render(i int, r *GLRenderer) {
 
 type DrawList struct {
 	Commands                         []DrawCommand
-	Vertices                         []mgl32.Vec2
+	Vertices                         []float32
 	unitRectOffset                   int
 	filledCircleOffset               int
 	circleOffset                     int
@@ -195,17 +202,23 @@ type DrawList struct {
 
 func (d *DrawList) Init() {
 	d.unitRectOffset = len(d.Vertices)
-	d.Vertices = append(d.Vertices, mgl32.Vec2{0, 0}, mgl32.Vec2{0, 1}, mgl32.Vec2{1, 1}, mgl32.Vec2{0, 0}, mgl32.Vec2{1, 1}, mgl32.Vec2{1, 0})
+	d.Vertices = append(d.Vertices,
+		0, 0, -1,
+		0, 1, 1,
+		1, 1, 1,
+		0, 0, -1,
+		1, 1, 1,
+		1, 0, -1)
 
 	const angleStep = 2 * math.Pi / circleSegmentCount
 
 	d.filledCircleOffset = len(d.Vertices)
 
-	d.Vertices = append(d.Vertices, mgl32.Vec2{0, 0})
+	d.Vertices = append(d.Vertices, 0, 0, 0)
 	for i := range circleSegmentCount + 1 {
 		angle := angleStep * float64(i)
-		cs := mgl32.Vec2{float32(math.Cos(angle)), float32(math.Sin(angle))}
-		d.Vertices = append(d.Vertices, cs.Mul(PortalCircleRadius))
+		c, s := float32(math.Cos(angle)), float32(math.Sin(angle))
+		d.Vertices = append(d.Vertices, c*PortalCircleRadius, s*PortalCircleRadius, 1)
 	}
 
 	const outerRadius = PortalCircleRadius + portalCircleThickness/2
@@ -214,21 +227,23 @@ func (d *DrawList) Init() {
 	d.circleOffset = len(d.Vertices)
 	for i := range circleSegmentCount + 1 {
 		angle := angleStep * float64(i)
-		cs := mgl32.Vec2{float32(math.Cos(angle)), float32(math.Sin(angle))}
-		d.Vertices = append(d.Vertices, cs.Mul(outerRadius), cs.Mul(innerRadius))
+		c, s := float32(math.Cos(angle)), float32(math.Sin(angle))
+		d.Vertices = append(d.Vertices,
+			c*outerRadius, s*outerRadius, 1,
+			c*innerRadius, s*innerRadius, -1)
 	}
 
 	d.selectionButtonRoundedRectOffset = len(d.Vertices)
 	{
 		const radius = 5
 		const size = 40
+		d.Vertices = append(d.Vertices, size/2, size/2, 0)
 		addPoint := func(x, y float32, i int) {
 			angle := angleStep * float64(i)
-			cs := mgl32.Vec2{float32(math.Cos(angle)), float32(math.Sin(angle))}
-			xy := mgl32.Vec2{x, y}
-			d.Vertices = append(d.Vertices, cs.Mul(radius).Add(xy))
+			c, s := float32(math.Cos(angle)), float32(math.Sin(angle))
+			d.Vertices = append(d.Vertices, c*radius+x, s*radius+y, 1)
 		}
-		d.Vertices = append(d.Vertices, mgl32.Vec2{size, radius})
+		d.Vertices = append(d.Vertices, size, radius, 1)
 		for i := 0; i <= circleSegmentCount/4; i++ {
 			addPoint(size-radius, size-radius, i)
 		}
@@ -247,38 +262,15 @@ func (d *DrawList) Init() {
 	{
 		const thickness = 2.0
 		const size = 20.0
-		tl, tr, bl, br := mgl32.Vec2{0, 0}, mgl32.Vec2{size, 0}, mgl32.Vec2{0, size}, mgl32.Vec2{size, size}
-		offset1, offset2 := mgl32.Vec2{thickness / 2, thickness / 2}, mgl32.Vec2{thickness / 2, -thickness / 2}
+		t := float32(thickness / 2)
 		d.Vertices = append(d.Vertices,
-			tl.Sub(offset1), tl.Add(offset1),
-			tr.Add(offset2), tr.Sub(offset2),
-			br.Add(offset1), br.Sub(offset1),
-			bl.Sub(offset2), bl.Add(offset2),
-			tl.Sub(offset1), tl.Add(offset1))
+			-t, -t, -1, t, t, 1,
+			size+t, -t, -1, size-t, t, 1,
+			size+t, size+t, 1, size-t, size-t, -1,
+			-t, size+t, 1, t, size-t, -1,
+			-t, -t, -1, t, t, 1)
 	}
 	d.staticVertexCount = len(d.Vertices)
-}
-
-type meshShader struct {
-	handle           uint32
-	matrixLocation   int32
-	positionLocation int32
-	colorLocation    int32
-}
-type textureShader struct {
-	handle           uint32
-	matrixLocation   int32
-	positionLocation int32
-	textureLocation  int32
-}
-type msdfShader struct {
-	handle           uint32
-	matrixLocation   int32
-	uvLocation       int32
-	positionLocation int32
-	textureLocation  int32
-	colorLocation    int32
-	pxRangeLocation  int32
 }
 
 func newShader(vertexSource, fragmentSource string) (uint32, error) {
@@ -345,6 +337,30 @@ type GLRenderer struct {
 	fontInfo         MSDFInfo
 }
 
+type meshShader struct {
+	handle           uint32
+	matrixLocation   int32
+	positionLocation int32
+	distLocation     int32
+	colorLocation    int32
+	aaWidthLocation  int32
+}
+type textureShader struct {
+	handle           uint32
+	matrixLocation   int32
+	positionLocation int32
+	textureLocation  int32
+}
+type msdfShader struct {
+	handle           uint32
+	matrixLocation   int32
+	uvLocation       int32
+	positionLocation int32
+	textureLocation  int32
+	colorLocation    int32
+	pxRangeLocation  int32
+}
+
 func NewGLRenderer() (*GLRenderer, error) {
 	if err := gl.Init(); err != nil {
 		return nil, err
@@ -362,9 +378,17 @@ func NewGLRenderer() (*GLRenderer, error) {
 		if r.meshShader.positionLocation < 0 {
 			return nil, fmt.Errorf("failed to find Position attribute")
 		}
+		r.meshShader.distLocation = gl.GetAttribLocation(r.meshShader.handle, gl.Str("Dist\x00"))
+		if r.meshShader.distLocation < 0 {
+			return nil, fmt.Errorf("failed to find Dist attribute")
+		}
 		r.meshShader.colorLocation = gl.GetUniformLocation(r.meshShader.handle, gl.Str("Color\x00"))
 		if r.meshShader.colorLocation < 0 {
 			return nil, fmt.Errorf("failed to find Color uniform")
+		}
+		r.meshShader.aaWidthLocation = gl.GetUniformLocation(r.meshShader.handle, gl.Str("AAWidth\x00"))
+		if r.meshShader.aaWidthLocation < 0 {
+			return nil, fmt.Errorf("failed to find AAWidth uniform")
 		}
 	}
 	if handle, err := newShader(textureVertexShader, textureFragmentShader); err != nil {
@@ -452,12 +476,12 @@ func (r *GLRenderer) Dispose() {
 
 func (r *GLRenderer) AddCircleFilled(x, y float32, color Color) {
 	matrix := mgl32.Translate3D(x, y, 0)
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleFan, matrix, r.drawList.filledCircleOffset, circleSegmentCount+2, color))
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleFan, matrix, r.drawList.filledCircleOffset, circleSegmentCount+2, color, 0.1))
 }
 
 func (r *GLRenderer) AddCircle(x, y float32, color Color) {
 	matrix := mgl32.Translate3D(x, y, 0)
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleStrip, matrix, r.drawList.circleOffset, (circleSegmentCount+1)*2, color))
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleStrip, matrix, r.drawList.circleOffset, (circleSegmentCount+1)*2, color, 0.5))
 }
 
 func (r *GLRenderer) AddLine(x0, y0, x1, y1, thickness float32, color Color) {
@@ -465,35 +489,33 @@ func (r *GLRenderer) AddLine(x0, y0, x1, y1, thickness float32, color Color) {
 	angle := math.Atan2(dy, dx)
 	length := float32(math.Sqrt(dx*dx + dy*dy))
 	matrix := mgl32.Translate3D((x0+x1)/2, (y0+y1)/2, 0).Mul4(mgl32.HomogRotate3DZ(float32(angle)).Mul4(mgl32.Scale3D(length, thickness, 1).Mul4(mgl32.Translate3D(-0.5, -0.5, 0))))
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(Triangles, matrix, r.drawList.unitRectOffset, 6, color))
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(Triangles, matrix, r.drawList.unitRectOffset, 6, color, 1))
 }
 
 func (r *GLRenderer) AddRectFilled(x0, y0, x1, y1 float32, color Color) {
 	matrix := mgl32.Translate3D(x0, y0, 0).Mul4(mgl32.Scale3D(x1-x0, y1-y0, 1))
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(Triangles, matrix, r.drawList.unitRectOffset, 6, color))
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(Triangles, matrix, r.drawList.unitRectOffset, 6, color, 0))
 }
 
 func (r *GLRenderer) AddSelectionButton(x, y float32, color1, color2 Color) {
 	matrix := mgl32.Translate3D(x, y, 0)
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleFan, matrix, r.drawList.selectionButtonRoundedRectOffset, circleSegmentCount+5, color1))
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleFan, matrix, r.drawList.selectionButtonRoundedRectOffset, circleSegmentCount+6, color1, 0.1))
 	matrix = mgl32.Translate3D(10, 10, 0).Mul4(matrix)
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleStrip, matrix, r.drawList.selectionButtonRectOffset, 10, color2))
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleStrip, matrix, r.drawList.selectionButtonRectOffset, 10, color2, 0))
 	matrix = mgl32.Translate3D(3, 3, 0).Mul4(matrix).Mul4(mgl32.Scale3D(14, 14, 1))
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(Triangles, matrix, r.drawList.unitRectOffset, 6, color2))
-
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(Triangles, matrix, r.drawList.unitRectOffset, 6, color2, 0))
 }
 
 func (r *GLRenderer) AddRect(x0, y0, x1, y1, thickness float32, color Color) {
 	offset := len(r.drawList.Vertices)
-	tl, tr, bl, br := mgl32.Vec2{x0, y0}, mgl32.Vec2{x1, y0}, mgl32.Vec2{x0, y1}, mgl32.Vec2{x1, y1}
-	offset1, offset2 := mgl32.Vec2{thickness / 2, thickness / 2}, mgl32.Vec2{thickness / 2, -thickness / 2}
+	t := thickness / 2
 	r.drawList.Vertices = append(r.drawList.Vertices,
-		tl.Sub(offset1), tl.Add(offset1),
-		tr.Add(offset2), tr.Sub(offset2),
-		br.Add(offset1), br.Sub(offset1),
-		bl.Sub(offset2), bl.Add(offset2),
-		tl.Sub(offset1), tl.Add(offset1))
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleStrip, mgl32.Ident4(), offset, 10, color))
+		x0-t, y0-t, -1, x0+t, y0+t, 1,
+		x1+t, y0-t, 1, x1-1, y0+t, -1,
+		x1+t, y1+t, 1, x1-t, y1-t, -1,
+		x0-t, y1+t, 1, x0+t, y1-t, -1,
+		x0-t, y0-t, -1, x0+t, y0+t, 1)
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleStrip, mgl32.Ident4(), offset, 10, color, 0))
 }
 
 func (r *GLRenderer) AddImage(textureID Texture, x0, y0, x1, y1 float32) {
@@ -536,7 +558,6 @@ func (r *GLRenderer) AddText(x, y, size float32, color Color, text string) {
 	} else if pxRange < 2.0 {
 		fmt.Fprintf(os.Stderr, "low pxRange: %f\n", pxRange)
 	}
-	xy := mgl32.Vec2{x, y}
 	for _, rune := range text {
 		glyph, ok := r.fontInfo.Glyphs[rune]
 		if !ok {
@@ -546,20 +567,18 @@ func (r *GLRenderer) AddText(x, y, size float32, color Color, text string) {
 			continue
 		}
 		uvWidth, uvHeight := glyph.UV.Width, glyph.UV.Height
-		uvTL := mgl32.Vec2{glyph.UV.Left, glyph.UV.Top}
 		width, height := glyph.Plane.Width*size, glyph.Plane.Height*size
-		tl := mgl32.Vec2{glyph.Plane.Left, glyph.Plane.Top}.Mul(size).Add(xy)
 
 		r.drawList.Vertices = append(r.drawList.Vertices,
-			tl, uvTL,
-			tl.Add(mgl32.Vec2{0, height}), uvTL.Add(mgl32.Vec2{0, uvHeight}),
-			tl.Add(mgl32.Vec2{width, height}), uvTL.Add(mgl32.Vec2{uvWidth, uvHeight}),
-			tl, uvTL,
-			tl.Add(mgl32.Vec2{width, height}), uvTL.Add(mgl32.Vec2{uvWidth, uvHeight}),
-			tl.Add(mgl32.Vec2{width, 0}), uvTL.Add(mgl32.Vec2{uvWidth, 0}))
-		xy[0] += glyph.Advance * size
+			glyph.Plane.Left*size+x, glyph.Plane.Top*size+y, glyph.UV.Left, glyph.UV.Top,
+			glyph.Plane.Left*size+x, glyph.Plane.Top*size+y+height, glyph.UV.Left, glyph.UV.Top+uvHeight,
+			glyph.Plane.Left*size+x+width, glyph.Plane.Top*size+y+height, glyph.UV.Left+uvWidth, glyph.UV.Top+uvHeight,
+			glyph.Plane.Left*size+x, glyph.Plane.Top*size+y, glyph.UV.Left, glyph.UV.Top,
+			glyph.Plane.Left*size+x+width, glyph.Plane.Top*size+y+height, glyph.UV.Left+uvWidth, glyph.UV.Top+uvHeight,
+			glyph.Plane.Left*size+x+width, glyph.Plane.Top*size+y, glyph.UV.Left+uvWidth, glyph.UV.Top)
+		x += glyph.Advance * size
 	}
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawMSDFTextureCommand(uint32(r.fontTexture), offset, len(r.drawList.Vertices)-offset, color, pxRange))
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawMSDFTextureCommand(uint32(r.fontTexture), offset, 12*len(text), color, pxRange))
 }
 
 type Texture uint32

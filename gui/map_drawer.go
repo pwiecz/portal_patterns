@@ -569,7 +569,7 @@ func (w *MapDrawer) drawAllPaths() {
 			y0 := float32(path[i-1].Y*w.zoomPow*256 - w.y0)
 			x1 := float32(path[i].X*w.zoomPow*256 - w.x0)
 			y1 := float32(path[i].Y*w.zoomPow*256 - w.y0)
-			w.renderer.AddLine(x0, y0, x1, y1, 3, purple)
+			w.renderer.AddLine(x0, y0, x1, y1, 8, purple)
 		}
 	}
 }
