@@ -1,6 +1,7 @@
 package gl
 
 import (
+	"cmp"
 	_ "embed" // using embed for the shader sources
 	"fmt"
 	"image"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
-	"golang.org/x/exp/constraints"
 )
 
 //go:embed gl-shader/mesh.vert
@@ -485,7 +485,7 @@ func (r *GLRenderer) AddCircle(x, y float32, color Color) {
 	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleStrip, matrix, r.drawList.circleOffset, (circleSegmentCount+1)*2, color, 1/portalCircleThickness))
 }
 
-func clamp[T constraints.Ordered](f, low, high T) T {
+func clamp[T cmp.Ordered](f, low, high T) T {
 	if f < low {
 		return low
 	} else if f > high {
