@@ -45,6 +45,7 @@ func bestFlipFieldWorker(
 	q *bestFlipFieldMtQuery,
 	requestChannel, responseChannel chan flipFieldRequest,
 	wg *sync.WaitGroup) {
+	defer wg.Done()
 	var localBestNumFields int
 	candidates := make([]portalData, 0, len(q.portals))
 	for req := range requestChannel {
@@ -66,7 +67,6 @@ func bestFlipFieldWorker(
 		req.backboneLength = bl
 		responseChannel <- req
 	}
-	wg.Done()
 }
 
 func LargestFlipFieldMT(portals []Portal, params flipFieldParams) ([]Portal, []Portal) {

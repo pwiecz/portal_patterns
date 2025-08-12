@@ -52,6 +52,7 @@ func bestHerringboneWorker(
 	q *bestHerringboneMtQuery,
 	requestChannel, responseChannel chan herringboneRequest,
 	wg *sync.WaitGroup) {
+	defer wg.Done()
 	nodes := make([]herringboneNode, 0, len(q.portals))
 	weights := make([]float32, len(q.portals))
 	for req := range requestChannel {
@@ -62,7 +63,6 @@ func bestHerringboneWorker(
 		req.result = q.findBestHerringbone(req.p0, req.p1, nodes, weights, req.result)
 		responseChannel <- req
 	}
-	wg.Done()
 }
 
 // LargestHerringboneMT - Find largest possible multilayer of portals to be made, parallel version

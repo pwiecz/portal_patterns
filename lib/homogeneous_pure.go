@@ -76,6 +76,7 @@ func lvlNTriangleWorker(
 	q *lvlNTriangleQuery,
 	requestChannel, responseChannel chan lvlNTriangleRequest,
 	wg *sync.WaitGroup) {
+	defer wg.Done()
 	normalizedVector := func(b0, b1 s2.Point) r3.Vector {
 		// Let's care about memory consumption and not precompute
 		// the norms for each portal pair.
@@ -149,7 +150,6 @@ func lvlNTriangleWorker(
 		}
 		responseChannel <- req
 	}
-	wg.Done()
 }
 
 type edge struct {
@@ -169,6 +169,7 @@ func mergeTrianglesWorker(
 	triangles [][]portalIndex,
 	requestChannel, responseChannel chan mergeTrianglesRequest,
 	wg *sync.WaitGroup) {
+	defer wg.Done()
 	numPortals := uint32(len(portals))
 	for req := range requestChannel {
 		req.triangles = req.triangles[:0]
@@ -199,7 +200,6 @@ func mergeTrianglesWorker(
 		}
 		responseChannel <- req
 	}
-	wg.Done()
 }
 
 func findAllLvlNTriangles(portals []portalData, params homogeneousPureParams, level int) ([][]portalIndex, []edge) {
