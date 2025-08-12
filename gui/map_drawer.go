@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/golang/geo/r2"
 	"github.com/golang/geo/s2"
 	"github.com/golang/groupcache/lru"
@@ -563,14 +564,15 @@ func (w *MapDrawer) drawAllPortals() {
 	}
 }
 func (w *MapDrawer) drawAllPaths() {
+	var screenPath []mgl32.Vec2
 	for _, path := range w.paths {
-		for i := 1; i < len(path); i++ {
-			x0 := float32(path[i-1].X*w.zoomPow*256 - w.x0)
-			y0 := float32(path[i-1].Y*w.zoomPow*256 - w.y0)
-			x1 := float32(path[i].X*w.zoomPow*256 - w.x0)
-			y1 := float32(path[i].Y*w.zoomPow*256 - w.y0)
-			w.renderer.AddLine(x0, y0, x1, y1, 8, purple)
+		screenPath = screenPath[:0]
+		for _, p := range path {
+			x := float32(p.X*w.zoomPow*256 - w.x0)
+			y := float32(p.Y*w.zoomPow*256 - w.y0)
+			screenPath = append(screenPath, mgl32.Vec2{x, y})
 		}
+		w.renderer.AddPath(screenPath, 6, purple)
 	}
 }
 func (w *MapDrawer) drawSelectionButton() {

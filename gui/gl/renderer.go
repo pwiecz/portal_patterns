@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
+	"golang.org/x/exp/constraints"
 )
 
 //go:embed gl-shader/mesh.vert
@@ -40,7 +41,7 @@ var fontData string
 //go:embed font.json
 var fontJSONData string
 
-const PortalCircleRadius = 7.0
+const PortalCircleRadius = 8.0
 const portalCircleThickness = 3.0
 const circleSegmentCount = 20
 
@@ -476,12 +477,22 @@ func (r *GLRenderer) Dispose() {
 
 func (r *GLRenderer) AddCircleFilled(x, y float32, color Color) {
 	matrix := mgl32.Translate3D(x, y, 0)
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleFan, matrix, r.drawList.filledCircleOffset, circleSegmentCount+2, color, 0.1))
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleFan, matrix, r.drawList.filledCircleOffset, circleSegmentCount+2, color, 1/PortalCircleRadius))
 }
 
 func (r *GLRenderer) AddCircle(x, y float32, color Color) {
 	matrix := mgl32.Translate3D(x, y, 0)
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleStrip, matrix, r.drawList.circleOffset, (circleSegmentCount+1)*2, color, 0.5))
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleStrip, matrix, r.drawList.circleOffset, (circleSegmentCount+1)*2, color, 1/portalCircleThickness))
+}
+
+func clamp[T constraints.Ordered](f, low, high T) T {
+	if f < low {
+		return low
+	} else if f > high {
+		return high
+	} else {
+		return f
+	}
 }
 
 func (r *GLRenderer) AddLine(x0, y0, x1, y1, thickness float32, color Color) {
@@ -489,7 +500,109 @@ func (r *GLRenderer) AddLine(x0, y0, x1, y1, thickness float32, color Color) {
 	angle := math.Atan2(dy, dx)
 	length := float32(math.Sqrt(dx*dx + dy*dy))
 	matrix := mgl32.Translate3D((x0+x1)/2, (y0+y1)/2, 0).Mul4(mgl32.HomogRotate3DZ(float32(angle)).Mul4(mgl32.Scale3D(length, thickness, 1).Mul4(mgl32.Translate3D(-0.5, -0.5, 0))))
-	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(Triangles, matrix, r.drawList.unitRectOffset, 6, color, 1))
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(Triangles, matrix, r.drawList.unitRectOffset, 6, color, 2/thickness))
+}
+
+func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) {
+	offset := len(r.drawList.Vertices)
+	if len(path) <= 1 {
+		return
+	}
+	var prevPoint, prevDir, prevTranslationDir mgl32.Vec2
+	var prevLength float32
+	for i, point := range path {
+		if i == 0 {
+			prevPoint = point
+			continue
+		}
+		length := point.Sub(prevPoint).Len()
+		dir := point.Sub(prevPoint).Normalize()
+		rotatedDir := mgl32.Vec2{dir.Y(), -dir.X()}
+		translationDir := rotatedDir.Mul(thickness / 2)
+		if i == 1 {
+			v0 := prevPoint.Add(translationDir)
+			v1 := prevPoint.Sub(translationDir)
+			r.drawList.Vertices = append(r.drawList.Vertices,
+				v0.X(), v0.Y(), 1,
+				v1.X(), v1.Y(), -1)
+		} else {
+			sum := dir.Sub(prevDir)
+			var bisector mgl32.Vec2
+			if sum.LenSqr() < 1e-10 {
+				bisector = mgl32.Vec2{-dir.Y(), dir.X()}
+			} else {
+				bisector = sum.Normalize()
+			}
+			outerBisector := bisector.Mul(thickness / 2)
+			cosAngle := clamp(prevDir.Dot(mgl32.Vec2{-dir.X(), -dir.Y()}), -1, 1)
+			sinHalfAngle := float32(math.Sqrt(float64((1 - cosAngle) / 2)))
+			maxInnerBisectorLength := max(min(length, prevLength), thickness/2)
+			var innerBisectorLength float32
+			if sinHalfAngle < 1e-5 {
+				innerBisectorLength = maxInnerBisectorLength
+			} else {
+				innerBisectorLength = min(thickness/2/sinHalfAngle, maxInnerBisectorLength)
+			}
+			innerBisector := bisector.Mul(innerBisectorLength)
+			sinAngle := prevDir.X()*dir.Y() - prevDir.Y()*dir.X()
+
+			var innerJointPoint, outerJointPoint0, outerJointPoint1, outerJointPoint2, lastVertex mgl32.Vec3
+			lenV := len(r.drawList.Vertices)
+			if sinAngle < 0 {
+				lastVertex = mgl32.Vec3{r.drawList.Vertices[lenV-3], r.drawList.Vertices[lenV-2], r.drawList.Vertices[lenV-1]}
+				innerJointPoint = prevPoint.Add(innerBisector).Vec3(1)
+				outerJointPoint0 = prevPoint.Sub(prevTranslationDir).Vec3(-1)
+				outerJointPoint1 = prevPoint.Sub(outerBisector).Vec3(-1)
+				outerJointPoint2 = prevPoint.Sub(translationDir).Vec3(-1)
+			} else {
+				lastVertex = mgl32.Vec3{r.drawList.Vertices[lenV-6], r.drawList.Vertices[lenV-5], r.drawList.Vertices[lenV-4]}
+				innerJointPoint = prevPoint.Add(innerBisector).Vec3(-1)
+				outerJointPoint0 = prevPoint.Add(prevTranslationDir).Vec3(1)
+				outerJointPoint1 = prevPoint.Sub(outerBisector).Vec3(1)
+				outerJointPoint2 = prevPoint.Add(translationDir).Vec3(1)
+			}
+			r.drawList.Vertices = append(r.drawList.Vertices,
+				innerJointPoint.X(), innerJointPoint.Y(), innerJointPoint.Z(),
+				//
+				lastVertex.X(), lastVertex.Y(), lastVertex.Z(),
+				innerJointPoint.X(), innerJointPoint.Y(), innerJointPoint.Z(),
+				outerJointPoint0.X(), outerJointPoint0.Y(), outerJointPoint0.Z(),
+				//
+				innerJointPoint.X(), innerJointPoint.Y(), innerJointPoint.Z(),
+				outerJointPoint0.X(), outerJointPoint0.Y(), outerJointPoint0.Z(),
+				outerJointPoint1.X(), outerJointPoint1.Y(), outerJointPoint1.Z(),
+				//
+				innerJointPoint.X(), innerJointPoint.Y(), innerJointPoint.Z(),
+				outerJointPoint1.X(), outerJointPoint1.Y(), outerJointPoint1.Z(),
+				outerJointPoint2.X(), outerJointPoint2.Y(), outerJointPoint2.Z())
+			if sinAngle < 0 {
+				r.drawList.Vertices = append(r.drawList.Vertices,
+					innerJointPoint.X(), innerJointPoint.Y(), innerJointPoint.Z(),
+					outerJointPoint2.X(), outerJointPoint2.Y(), outerJointPoint2.Z())
+			} else {
+				r.drawList.Vertices = append(r.drawList.Vertices,
+					outerJointPoint2.X(), outerJointPoint2.Y(), outerJointPoint2.Z(),
+					innerJointPoint.X(), innerJointPoint.Y(), innerJointPoint.Z())
+			}
+		}
+		prevPoint = point
+		prevDir = dir
+		prevTranslationDir = translationDir
+		prevLength = length
+	}
+	{
+		lenV := len(r.drawList.Vertices)
+		lastVertex := mgl32.Vec3{r.drawList.Vertices[lenV-3], r.drawList.Vertices[lenV-2], r.drawList.Vertices[lenV-1]}
+		v0 := prevPoint.Add(prevTranslationDir)
+		v1 := prevPoint.Sub(prevTranslationDir)
+		r.drawList.Vertices = append(r.drawList.Vertices,
+			v0.X(), v0.Y(), 1,
+			lastVertex.X(), lastVertex.Y(), lastVertex.Z(),
+			v0.X(), v0.Y(), 1,
+			v1.X(), v1.Y(), -1)
+	}
+	count := (len(r.drawList.Vertices) - offset) / 3
+	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(Triangles, mgl32.Ident4(), offset, count, color, 2/thickness))
 }
 
 func (r *GLRenderer) AddRectFilled(x0, y0, x1, y1 float32, color Color) {

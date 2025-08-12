@@ -78,11 +78,7 @@ func (w *MapWindow) SetPortals(portals []lib.Portal) {
 	w.mapDrawer.SetPortals(portals)
 }
 func (w *MapWindow) SetPortalPaths(portalPaths [][]lib.Portal) {
-	paths := make([][]s2.Point, 0, len(portalPaths))
-	for _, portalPath := range portalPaths {
-		paths = append(paths, portalsToPoints(portalPath))
-	}
-	w.SetPaths(paths)
+	w.SetPaths(portalPathsToPointPaths(portalPaths))
 }
 func (w *MapWindow) SetPaths(paths [][]s2.Point) {
 	w.mapDrawer.SetPaths(paths)
