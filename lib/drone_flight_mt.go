@@ -121,11 +121,11 @@ func longestDroneFlightMT(portals []Portal, params droneFlightParams) ([]Portal,
 	if reverseRoute {
 		reverse(bestPath)
 	}
-	bestPortalPath := []Portal(nil)
+	bestPortalPath := make([]Portal, 0, len(bestPath))
 	for i := len(bestPath) - 1; i >= 0; i-- {
 		bestPortalPath = append(bestPortalPath, portals[bestPath[i]])
 	}
-	bestPortalKeysNeeded := []Portal(nil)
+	bestPortalKeysNeeded := make([]Portal, 0, len(bestKeysNeeded))
 	for _, index := range bestKeysNeeded {
 		bestPortalKeysNeeded = append(bestPortalKeysNeeded, portals[index])
 	}

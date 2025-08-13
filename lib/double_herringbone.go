@@ -61,15 +61,16 @@ func LargestDoubleHerringboneST(portals []Portal, fixedBaseIndices []int, progre
 }
 
 func DoubleHerringbonePolyline(b0, b1 Portal, result0, result1 []Portal) []Portal {
-	portalList := []Portal{b0, b1}
-	atIndex := 0
+	portalList := make([]Portal, 0, 2+len(result0)*2+len(result1)*2)
+	portalList = append(portalList, b0, b1)
+	baseIndex := 0
 	for _, portal := range result0 {
-		portalList = append(portalList, portal, portalList[atIndex])
-		atIndex = 1 - atIndex
+		portalList = append(portalList, portal, portalList[baseIndex])
+		baseIndex = 1 - baseIndex
 	}
 	for _, portal := range result1 {
-		portalList = append(portalList, portal, portalList[atIndex])
-		atIndex = 1 - atIndex
+		portalList = append(portalList, portal, portalList[baseIndex])
+		baseIndex = 1 - baseIndex
 	}
 	return portalList
 }

@@ -151,7 +151,8 @@ func CobwebPolyline(result []Portal) []Portal {
 	if len(result) < 3 {
 		return []Portal{}
 	}
-	portalList := []Portal{result[1], result[0]}
+	portalList := make([]Portal, 0, 2+(len(result)-2)*2)
+	portalList = append(portalList, result[1], result[0])
 	for _, portal := range result[2:] {
 		portalList = append(portalList, portal, portalList[len(portalList)-2])
 	}

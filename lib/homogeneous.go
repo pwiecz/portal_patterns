@@ -181,7 +181,7 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 			option.applyPure(&paramsPure)
 		}
 		resultIndices, bestDepth := deepestPureHomogeneous(portalsData, paramsPure)
-		result := []Portal{}
+		result := make([]Portal, 0, len(resultIndices))
 		for _, index := range resultIndices {
 			result = append(result, portals[index])
 		}
@@ -214,7 +214,7 @@ func DeepestHomogeneous(portals []Portal, options ...HomogeneousOption) ([]Porta
 	bestP, bestDepth := pickBestTopLevelTriangle(portalsData, params, q)
 	resultIndices := []portalIndex{bestP[0].Index, bestP[1].Index, bestP[2].Index}
 	resultIndices = append(resultIndices, homogeneousResultIndices(bestP[0].Index, bestP[1].Index, bestP[2].Index, bestDepth, q)...)
-	result := []Portal{}
+	result := make([]Portal, 0, len(resultIndices))
 	for _, index := range resultIndices {
 		result = append(result, portals[index])
 	}
