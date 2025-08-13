@@ -503,12 +503,19 @@ func (r *GLRenderer) AddLine(x0, y0, x1, y1, thickness float32, color Color) {
 	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(Triangles, matrix, r.drawList.unitRectOffset, 6, color, 2/thickness))
 }
 
+func rotate90CW(v mgl32.Vec2) mgl32.Vec2 {
+	return mgl32.Vec2{v.Y(), -v.X()}
+}
+func rotate90CCW(v mgl32.Vec2) mgl32.Vec2 {
+	return mgl32.Vec2{-v.Y(), v.X()}
+}
+
 func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) {
 	offset := len(r.drawList.Vertices)
 	if len(path) <= 1 {
 		return
 	}
-	var prevPoint, prevDir, prevTranslationDir mgl32.Vec2
+	var prevPoint, prevDir, prevTranslation mgl32.Vec2
 	var prevLength float32
 	for i, point := range path {
 		if i == 0 {
@@ -517,11 +524,10 @@ func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) 
 		}
 		length := point.Sub(prevPoint).Len()
 		dir := point.Sub(prevPoint).Normalize()
-		rotatedDir := mgl32.Vec2{dir.Y(), -dir.X()}
-		translationDir := rotatedDir.Mul(thickness / 2)
+		translation := rotate90CW(dir).Mul(thickness / 2)
 		if i == 1 {
-			v0 := prevPoint.Add(translationDir)
-			v1 := prevPoint.Sub(translationDir)
+			v0 := prevPoint.Add(translation)
+			v1 := prevPoint.Sub(translation)
 			r.drawList.Vertices = append(r.drawList.Vertices,
 				v0.X(), v0.Y(), 1,
 				v1.X(), v1.Y(), -1)
@@ -529,19 +535,19 @@ func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) 
 			sum := dir.Sub(prevDir)
 			var bisector mgl32.Vec2
 			if sum.LenSqr() < 1e-10 {
-				bisector = mgl32.Vec2{-dir.Y(), dir.X()}
+				bisector = rotate90CCW(dir)
 			} else {
 				bisector = sum.Normalize()
 			}
 			outerBisector := bisector.Mul(thickness / 2)
-			cosAngle := clamp(prevDir.Dot(mgl32.Vec2{-dir.X(), -dir.Y()}), -1, 1)
-			sinHalfAngle := float32(math.Sqrt(float64((1 - cosAngle) / 2)))
+			cosAngle := clamp(prevDir.Dot(dir.Mul(-1)), -1, 1)
+			invSinHalfAngle := float32(math.Sqrt(2 / float64((1 - cosAngle))))
 			maxInnerBisectorLength := max(min(length, prevLength), thickness/2)
 			var innerBisectorLength float32
-			if sinHalfAngle < 1e-5 {
+			if invSinHalfAngle > 1e5 {
 				innerBisectorLength = maxInnerBisectorLength
 			} else {
-				innerBisectorLength = min(thickness/2/sinHalfAngle, maxInnerBisectorLength)
+				innerBisectorLength = min(thickness/2*invSinHalfAngle, maxInnerBisectorLength)
 			}
 			innerBisector := bisector.Mul(innerBisectorLength)
 			sinAngle := prevDir.X()*dir.Y() - prevDir.Y()*dir.X()
@@ -551,15 +557,15 @@ func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) 
 			if sinAngle < 0 {
 				lastVertex = mgl32.Vec3{r.drawList.Vertices[lenV-3], r.drawList.Vertices[lenV-2], r.drawList.Vertices[lenV-1]}
 				innerJointPoint = prevPoint.Add(innerBisector).Vec3(1)
-				outerJointPoint0 = prevPoint.Sub(prevTranslationDir).Vec3(-1)
+				outerJointPoint0 = prevPoint.Sub(prevTranslation).Vec3(-1)
 				outerJointPoint1 = prevPoint.Sub(outerBisector).Vec3(-1)
-				outerJointPoint2 = prevPoint.Sub(translationDir).Vec3(-1)
+				outerJointPoint2 = prevPoint.Sub(translation).Vec3(-1)
 			} else {
 				lastVertex = mgl32.Vec3{r.drawList.Vertices[lenV-6], r.drawList.Vertices[lenV-5], r.drawList.Vertices[lenV-4]}
 				innerJointPoint = prevPoint.Add(innerBisector).Vec3(-1)
-				outerJointPoint0 = prevPoint.Add(prevTranslationDir).Vec3(1)
+				outerJointPoint0 = prevPoint.Add(prevTranslation).Vec3(1)
 				outerJointPoint1 = prevPoint.Sub(outerBisector).Vec3(1)
-				outerJointPoint2 = prevPoint.Add(translationDir).Vec3(1)
+				outerJointPoint2 = prevPoint.Add(translation).Vec3(1)
 			}
 			r.drawList.Vertices = append(r.drawList.Vertices,
 				innerJointPoint.X(), innerJointPoint.Y(), innerJointPoint.Z(),
@@ -587,14 +593,14 @@ func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) 
 		}
 		prevPoint = point
 		prevDir = dir
-		prevTranslationDir = translationDir
+		prevTranslation = translation
 		prevLength = length
 	}
 	{
 		lenV := len(r.drawList.Vertices)
 		lastVertex := mgl32.Vec3{r.drawList.Vertices[lenV-3], r.drawList.Vertices[lenV-2], r.drawList.Vertices[lenV-1]}
-		v0 := prevPoint.Add(prevTranslationDir)
-		v1 := prevPoint.Sub(prevTranslationDir)
+		v0 := prevPoint.Add(prevTranslation)
+		v1 := prevPoint.Sub(prevTranslation)
 		r.drawList.Vertices = append(r.drawList.Vertices,
 			v0.X(), v0.Y(), 1,
 			lastVertex.X(), lastVertex.Y(), lastVertex.Z(),
