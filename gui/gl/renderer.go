@@ -522,8 +522,8 @@ func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) 
 			v0 := prevPoint.Add(translation)
 			v1 := prevPoint.Sub(translation)
 			r.drawList.Vertices = append(r.drawList.Vertices,
-				v0.X(), v0.Y(), 1,
-				v1.X(), v1.Y(), -1)
+				v0.X(), v0.Y(), -1,
+				v1.X(), v1.Y(), 1)
 		} else {
 			sum := dir.Sub(prevDir)
 			var bisector mgl32.Vec2
@@ -615,10 +615,10 @@ func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) 
 		v0 := prevPoint.Add(prevTranslation)
 		v1 := prevPoint.Sub(prevTranslation)
 		r.drawList.Vertices = append(r.drawList.Vertices,
-			v0.X(), v0.Y(), 1,
+			v0.X(), v0.Y(), -1,
 			lastVertex[0], lastVertex[1], lastVertex[2],
-			v0.X(), v0.Y(), 1,
-			v1.X(), v1.Y(), -1)
+			v0.X(), v0.Y(), -1,
+			v1.X(), v1.Y(), 1)
 	}
 	count := (len(r.drawList.Vertices) - offset) / 3
 	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(Triangles, mgl32.Ident4(), offset, count, color, 2/thickness))
