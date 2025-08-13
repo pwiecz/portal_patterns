@@ -1,7 +1,6 @@
 package gl
 
 import (
-	"cmp"
 	_ "embed" // using embed for the shader sources
 	"fmt"
 	"image"
@@ -483,16 +482,6 @@ func (r *GLRenderer) AddCircleFilled(x, y float32, color Color) {
 func (r *GLRenderer) AddCircle(x, y float32, color Color) {
 	matrix := mgl32.Translate3D(x, y, 0)
 	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(TriangleStrip, matrix, r.drawList.circleOffset, (circleSegmentCount+1)*2, color, 1/portalCircleThickness))
-}
-
-func clamp[T cmp.Ordered](f, low, high T) T {
-	if f < low {
-		return low
-	} else if f > high {
-		return high
-	} else {
-		return f
-	}
 }
 
 func (r *GLRenderer) AddLine(x0, y0, x1, y1, thickness float32, color Color) {
