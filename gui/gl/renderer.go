@@ -510,6 +510,10 @@ func rotate90CCW(v mgl32.Vec2) mgl32.Vec2 {
 	return mgl32.Vec2{-v.Y(), v.X()}
 }
 
+func (r *GLRenderer) pushVertex(v mgl32.Vec3) {
+	r.drawList.Vertices = append(r.drawList.Vertices, v[0], v[1], v[2])
+}
+
 func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) {
 	offset := len(r.drawList.Vertices)
 	if len(path) <= 1 {
@@ -540,55 +544,75 @@ func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) 
 				bisector = sum.Normalize()
 			}
 			outerBisector := bisector.Mul(thickness / 2)
-			cosAngle := clamp(prevDir.Dot(dir.Mul(-1)), -1, 1)
-			invSinHalfAngle := float32(math.Sqrt(2 / float64((1 - cosAngle))))
-			maxInnerBisectorLength := max(min(length, prevLength), thickness/2)
-			var innerBisectorLength float32
-			if invSinHalfAngle > 1e5 {
-				innerBisectorLength = maxInnerBisectorLength
-			} else {
-				innerBisectorLength = min(thickness/2*invSinHalfAngle, maxInnerBisectorLength)
-			}
-			innerBisector := bisector.Mul(innerBisectorLength)
 			sinAngle := prevDir.X()*dir.Y() - prevDir.Y()*dir.X()
+			clockwise := sinAngle < 0
 
-			var innerJointPoint, outerJointPoint0, outerJointPoint1, outerJointPoint2, lastVertex mgl32.Vec3
+			var lastVertex []float32
+			var outerJointPoint0, outerJointPoint1, outerJointPoint2 mgl32.Vec3
+			// Endpoints of segments to intersect to calculate the inner joint point
+			var prevInnerPoint0, prevInnerPoint1, innerPoint0, innerPoint1 mgl32.Vec2
 			lenV := len(r.drawList.Vertices)
-			if sinAngle < 0 {
-				lastVertex = mgl32.Vec3{r.drawList.Vertices[lenV-3], r.drawList.Vertices[lenV-2], r.drawList.Vertices[lenV-1]}
-				innerJointPoint = prevPoint.Add(innerBisector).Vec3(1)
-				outerJointPoint0 = prevPoint.Sub(prevTranslation).Vec3(-1)
-				outerJointPoint1 = prevPoint.Sub(outerBisector).Vec3(-1)
-				outerJointPoint2 = prevPoint.Sub(translation).Vec3(-1)
-			} else {
-				lastVertex = mgl32.Vec3{r.drawList.Vertices[lenV-6], r.drawList.Vertices[lenV-5], r.drawList.Vertices[lenV-4]}
-				innerJointPoint = prevPoint.Add(innerBisector).Vec3(-1)
-				outerJointPoint0 = prevPoint.Add(prevTranslation).Vec3(1)
+			if clockwise {
+				lastVertex = r.drawList.Vertices[lenV-3 : lenV]
+				outerJointPoint0 = prevPoint.Sub(prevTranslation).Vec3(1)
 				outerJointPoint1 = prevPoint.Sub(outerBisector).Vec3(1)
-				outerJointPoint2 = prevPoint.Add(translation).Vec3(1)
-			}
-			r.drawList.Vertices = append(r.drawList.Vertices,
-				innerJointPoint.X(), innerJointPoint.Y(), innerJointPoint.Z(),
-				//
-				lastVertex.X(), lastVertex.Y(), lastVertex.Z(),
-				innerJointPoint.X(), innerJointPoint.Y(), innerJointPoint.Z(),
-				outerJointPoint0.X(), outerJointPoint0.Y(), outerJointPoint0.Z(),
-				//
-				innerJointPoint.X(), innerJointPoint.Y(), innerJointPoint.Z(),
-				outerJointPoint0.X(), outerJointPoint0.Y(), outerJointPoint0.Z(),
-				outerJointPoint1.X(), outerJointPoint1.Y(), outerJointPoint1.Z(),
-				//
-				innerJointPoint.X(), innerJointPoint.Y(), innerJointPoint.Z(),
-				outerJointPoint1.X(), outerJointPoint1.Y(), outerJointPoint1.Z(),
-				outerJointPoint2.X(), outerJointPoint2.Y(), outerJointPoint2.Z())
-			if sinAngle < 0 {
-				r.drawList.Vertices = append(r.drawList.Vertices,
-					innerJointPoint.X(), innerJointPoint.Y(), innerJointPoint.Z(),
-					outerJointPoint2.X(), outerJointPoint2.Y(), outerJointPoint2.Z())
+				outerJointPoint2 = prevPoint.Sub(translation).Vec3(1)
+
+				prevInnerPoint1 = prevPoint.Add(prevTranslation)
+				prevInnerPoint0 = prevInnerPoint1.Sub(prevDir.Mul(prevLength))
+				innerPoint0 = prevPoint.Add(translation)
+				innerPoint1 = point.Add(translation)
 			} else {
-				r.drawList.Vertices = append(r.drawList.Vertices,
-					outerJointPoint2.X(), outerJointPoint2.Y(), outerJointPoint2.Z(),
-					innerJointPoint.X(), innerJointPoint.Y(), innerJointPoint.Z())
+				lastVertex = r.drawList.Vertices[lenV-6 : lenV-3]
+				outerJointPoint0 = prevPoint.Add(prevTranslation).Vec3(-1)
+				outerJointPoint1 = prevPoint.Sub(outerBisector).Vec3(-1)
+				outerJointPoint2 = prevPoint.Add(translation).Vec3(-1)
+
+				prevInnerPoint1 = prevPoint.Sub(prevTranslation)
+				prevInnerPoint0 = prevInnerPoint1.Sub(prevDir.Mul(prevLength))
+				innerPoint0 = prevPoint.Sub(translation)
+				innerPoint1 = point.Sub(translation)
+			}
+			t := ((prevInnerPoint0.X()-innerPoint0.X())*(innerPoint0.Y()-innerPoint1.Y()) - (prevInnerPoint0.Y()-innerPoint0.Y())*(innerPoint0.X()-innerPoint1.X())) / ((prevInnerPoint0.X()-prevInnerPoint1.X())*(innerPoint0.Y()-innerPoint1.Y()) - (prevInnerPoint0.Y()-prevInnerPoint1.Y())*(innerPoint0.X()-innerPoint1.X()))
+			var innerJointPoint2 mgl32.Vec2
+			if t <= 0 {
+				innerJointPoint2 = prevPoint.Add(outerBisector)
+			} else if t <= 1 {
+				innerJointPoint2 = prevInnerPoint0.Add(prevInnerPoint1.Sub(prevInnerPoint0).Mul(t))
+			} else {
+				// If the segments doesn't seem to intersect pick the closer of endpoints.
+				if prevLength < length {
+					innerJointPoint2 = prevInnerPoint0
+				} else {
+					innerJointPoint2 = innerPoint1
+				}
+			}
+			var innerJointPoint mgl32.Vec3
+			if clockwise {
+				innerJointPoint = innerJointPoint2.Vec3(-1)
+			} else {
+				innerJointPoint = innerJointPoint2.Vec3(1)
+			}
+
+			r.pushVertex(innerJointPoint)
+			//
+			r.drawList.Vertices = append(r.drawList.Vertices, lastVertex...)
+			r.pushVertex(innerJointPoint)
+			r.pushVertex(outerJointPoint0)
+			//
+			r.pushVertex(innerJointPoint)
+			r.pushVertex(outerJointPoint0)
+			r.pushVertex(outerJointPoint1)
+			//
+			r.pushVertex(innerJointPoint)
+			r.pushVertex(outerJointPoint1)
+			r.pushVertex(outerJointPoint2)
+			if clockwise {
+				r.pushVertex(innerJointPoint)
+				r.pushVertex(outerJointPoint2)
+			} else {
+				r.pushVertex(outerJointPoint2)
+				r.pushVertex(innerJointPoint)
 			}
 		}
 		prevPoint = point
@@ -598,12 +622,12 @@ func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) 
 	}
 	{
 		lenV := len(r.drawList.Vertices)
-		lastVertex := mgl32.Vec3{r.drawList.Vertices[lenV-3], r.drawList.Vertices[lenV-2], r.drawList.Vertices[lenV-1]}
+		lastVertex := r.drawList.Vertices[lenV-3 : lenV]
 		v0 := prevPoint.Add(prevTranslation)
 		v1 := prevPoint.Sub(prevTranslation)
 		r.drawList.Vertices = append(r.drawList.Vertices,
 			v0.X(), v0.Y(), 1,
-			lastVertex.X(), lastVertex.Y(), lastVertex.Z(),
+			lastVertex[0], lastVertex[1], lastVertex[2],
 			v0.X(), v0.Y(), 1,
 			v1.X(), v1.Y(), -1)
 	}
