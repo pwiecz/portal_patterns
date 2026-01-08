@@ -2,12 +2,12 @@ github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6 h1:zDw5v7qm4yH7N8C8uWd+8I
 github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6/go.mod h1:9YTyiznxEY1fVinfM7RvRcjRHbw2xLBJ3AAGIT0I4Nw=
 github.com/go-gl/mathgl v1.2.0 h1:v2eOj/y1B2afDxF6URV1qCYmo1KW08lAMtTbOn3KXCY=
 github.com/go-gl/mathgl v1.2.0/go.mod h1:pf9+b5J3LFP7iZ4XXaVzZrCle0Q/vNpB/vDe5+3ulRE=
-github.com/golang/geo v0.0.0-20230421003525-6adc56603217 h1:HKlyj6in2JV6wVkmQ4XmG/EIm+SCYlPZ+V4GWit7Z+I=
-github.com/golang/geo v0.0.0-20230421003525-6adc56603217/go.mod h1:8wI0hitZ3a1IxZfeH3/5I97CI8i5cLGsYe7xNhQGs9U=
+github.com/golang/geo v0.0.0-20251229110840-fd652594c94c h1:YwQmVsfImAI/JdPFXE5EVwZHSC+zdtcJI2z/05O30Zw=
+github.com/golang/geo v0.0.0-20251229110840-fd652594c94c/go.mod h1:Mymr9kRGDc64JPr03TSZmuIBODZ3KyswLzm1xL0HFA8=
 github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da h1:oI5xCqsCo564l8iNU+DwB5epxmsaqB+rhGL0m5jtYqE=
 github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
-github.com/pwiecz/go-fltk v0.0.0-20250715055018-baaa728eb34f h1:TH7n7vV2p/tNtsVgehnFeGpIreT3+9i2SaFZb7wy4Ds=
-github.com/pwiecz/go-fltk v0.0.0-20250715055018-baaa728eb34f/go.mod h1:uMK5daOr9p+ba2BPs5QadbfaqqrHR5TGj13yWGsAsmw=
+github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
+github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
 github.com/pwiecz/go-fltk v0.0.0-20250717141518-883d000afe4c h1:E1qqHpkviRiDgJK1sPy4rIvS8vaB5p2X+HsbseO6KPg=
 github.com/pwiecz/go-fltk v0.0.0-20250717141518-883d000afe4c/go.mod h1:uMK5daOr9p+ba2BPs5QadbfaqqrHR5TGj13yWGsAsmw=
 golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 h1:k/i9J1pBpvlfR+9QsetwPyERsqu1GIbi967PQMq3Ivc=
