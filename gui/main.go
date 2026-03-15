@@ -490,7 +490,9 @@ func (w *MainWindow) onAddPortalsPressed() {
 func (w *MainWindow) onPortalsFileSelected(filename string) {
 	portalsDir, _ := filepath.Split(filename)
 	w.configuration.PortalsDirectory = portalsDir
-	configuration.SaveConfiguration(w.configuration)
+	if err := configuration.SaveConfiguration(w.configuration); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to save configuration (%v)\n", err)
+	}
 	portals, err := lib.ParseFile(filename)
 	if err != nil {
 		fltk.MessageBox("Error loading", "Couldn't read portals from file "+filename+"\n"+err.Error())
@@ -780,7 +782,11 @@ func (w *MainWindow) loadState(s state) error {
 
 func main() {
 	runtime.LockOSThread()
-	conf := configuration.LoadConfiguration()
+	conf, err := configuration.LoadConfiguration()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load configuration (%v). Using a default one\n", err)
+		conf = &configuration.Configuration{}
+	}
 	// Disable screen scaling, as we don't handle it well.
 	for i := 0; i < fltk.ScreenCount(); i++ {
 		fltk.SetScreenScale(i, 1.0)
