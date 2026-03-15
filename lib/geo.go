@@ -22,7 +22,7 @@ func (c ccwQuery) IsCCW(p s2.Point) bool {
 	return r3.Vector(c).Dot(p.Vector) > 0
 }
 
-// triangleQuery helps to answer question whethen a point is contained
+// triangleQuery helps to answer question whether a point is contained
 // inside triangle.
 type triangleQuery struct {
 	aCrossB, cCrossA, bCrossC r3.Vector
@@ -74,7 +74,7 @@ func (t *orderedCCWQuery) Ordered(b s2.Point) bool {
 		sign(t.cCrossO, b)
 }
 
-// triangleWedgeQuery helps to answer question wether a point is contained
+// triangleWedgeQuery helps to answer question whether a point is contained
 // inside a wedge which is a contained between semilines ab and ac, where angle
 // between ab and ac is < pi.
 type triangleWedgeQuery struct {

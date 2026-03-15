@@ -133,7 +133,7 @@ func parseCSVFileAsPortalInfo(filename string) ([]PortalInfo, error) {
 			return nil, fmt.Errorf("error: %v, in line %d", err, lineNo+1)
 		}
 		if len(record) != 4 {
-			return nil, fmt.Errorf("unexcepted number of fields: %d in line %d", len(record), lineNo+1)
+			return nil, fmt.Errorf("unexpected number of fields: %d in line %d", len(record), lineNo+1)
 		}
 		_, err = strconv.ParseFloat(record[2], 64)
 		if err != nil {
