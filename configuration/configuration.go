@@ -12,7 +12,7 @@ import (
 type Configuration struct {
 	PortalsDirectory string `json:"portals_directory"`
 	ProjectDirectory string `json:"project_directory"`
-	ExportDirectory string `json:"export_directory"`
+	ExportDirectory  string `json:"export_directory"`
 }
 
 func ConfigDir() (string, error) {
