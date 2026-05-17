@@ -354,7 +354,7 @@ func (w *MainWindow) onScrollRight() {
 	w.mapWindow.Redraw()
 }
 func (w *MainWindow) onLoadPressed() {
-	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "PP files (*.pp)", fltk.FileChooser_SINGLE, "Select project file")
+	fileChooser := fltk.NewFileChooser(w.configuration.ProjectDirectory, "PP files (*.pp)", fltk.FileChooser_SINGLE, "Select project file")
 	fileChooser.SetPreview(false)
 	defer fileChooser.Destroy()
 	fileChooser.Popup()
@@ -374,6 +374,13 @@ func (w *MainWindow) onLoadPressed() {
 		w.onNewPressed()
 		return
 	}
+
+	projectDir, _ := filepath.Split(filename)
+	w.configuration.ProjectDirectory = projectDir
+	if err := configuration.SaveConfiguration(w.configuration); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to save configuration (%v)\n", err)
+	}
+
 	w.filename = filename
 	w.SetLabel(filepath.Base(filename))
 	w.undoStates = []state{w.currentState()}
@@ -389,7 +396,7 @@ func (w *MainWindow) onSavePressed() {
 	w.saveProjectToFile(w.filename)
 }
 func (w *MainWindow) onSaveAsPressed() {
-	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "PP files (*.pp)", fltk.FileChooser_CREATE, "Select project file")
+	fileChooser := fltk.NewFileChooser(w.configuration.ProjectDirectory, "PP files (*.pp)", fltk.FileChooser_CREATE, "Select project file")
 	fileChooser.SetPreview(false)
 	if w.filename != "" {
 		fileChooser.SetValue(w.filename)
@@ -409,11 +416,19 @@ func (w *MainWindow) onSaveAsPressed() {
 			fltk.MessageBox("Directory selected", "Selected file "+filename+" is a directory")
 			return
 		}
+
 		answer := fltk.ChoiceDialog("File already exists.\nDo you want to overwrite it?", "Yes", "No")
 		if answer != 0 {
 			return
 		}
 	}
+
+	projectDir, _ := filepath.Split(filename)
+	w.configuration.ProjectDirectory = projectDir
+	if err := configuration.SaveConfiguration(w.configuration); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to save configuration (%v)\n", err)
+	}
+
 	w.saveProjectToFile(filename)
 }
 func (w *MainWindow) saveProjectToFile(filename string) {
@@ -427,6 +442,7 @@ func (w *MainWindow) saveProjectToFile(filename string) {
 		fltk.MessageBox("Error saving", "Error while saving to "+filename+"\n"+err.Error())
 		return
 	}
+
 	w.filename = filename
 	w.SetLabel(filepath.Base(filename))
 	w.undoStates = []state{w.currentState()}
@@ -632,7 +648,7 @@ func (w *MainWindow) onSearchDone() {
 	w.mapWindow.Redraw()
 }
 func (w *MainWindow) onExportPressed() {
-	fileChooser := fltk.NewFileChooser(w.configuration.PortalsDirectory, "JSON files (*.json)", fltk.FileChooser_CREATE, "Select draw tools file")
+	fileChooser := fltk.NewFileChooser(w.configuration.ExportDirectory, "JSON files (*.json)", fltk.FileChooser_CREATE, "Select draw tools file")
 	fileChooser.SetPreview(false)
 	defer fileChooser.Destroy()
 	fileChooser.Popup()
@@ -644,6 +660,12 @@ func (w *MainWindow) onExportPressed() {
 	w.onDrawToolsFileSelected(filename)
 }
 func (w *MainWindow) onDrawToolsFileSelected(filename string) {
+	exportDir, _ := filepath.Split(filename)
+	w.configuration.ExportDirectory = exportDir
+	if err := configuration.SaveConfiguration(w.configuration); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to save configuration (%v)\n", err)
+	}
+
 	file, err := os.Create(filename)
 	if err != nil {
 		fltk.MessageBox("Error exporting", "Couldn't create file "+filename+"\n"+err.Error())
