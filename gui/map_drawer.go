@@ -572,7 +572,7 @@ func (w *MapDrawer) drawAllPaths() {
 			y := float32(p.Y*w.zoomPow*256 - w.y0)
 			screenPath = append(screenPath, mgl32.Vec2{x, y})
 		}
-		w.renderer.AddPath(screenPath, 6, purple)
+		w.renderer.AddPath(screenPath, 18, purple)
 	}
 }
 func (w *MapDrawer) drawSelectionButton() {

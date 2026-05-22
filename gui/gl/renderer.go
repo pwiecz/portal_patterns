@@ -492,15 +492,6 @@ func (r *GLRenderer) AddLine(x0, y0, x1, y1, thickness float32, color Color) {
 	r.drawList.Commands = append(r.drawList.Commands, NewDrawMeshCommand(Triangles, matrix, r.drawList.unitRectOffset, 6, color, 2/thickness))
 }
 
-func rotate90CW(v mgl32.Vec2) mgl32.Vec2 {
-	return mgl32.Vec2{v.Y(), -v.X()}
-}
-func rotate90CCW(v mgl32.Vec2) mgl32.Vec2 {
-	return mgl32.Vec2{-v.Y(), v.X()}
-}
-func cross(v1, v2 mgl32.Vec2) float32 {
-	return v1.X()*v2.Y() - v1.Y()*v2.X()
-}
 func (r *GLRenderer) pushVertex(v mgl32.Vec3) {
 	r.drawList.Vertices = append(r.drawList.Vertices, v[0], v[1], v[2])
 }
@@ -510,7 +501,7 @@ func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) 
 	if len(path) <= 1 {
 		return
 	}
-	var prevPoint, prevSegment, prevDir, prevTranslation mgl32.Vec2
+	var prevPoint, prevPrevPoint, prevSegment, prevDir, prevTranslation mgl32.Vec2
 	for i, point := range path {
 		if i == 0 {
 			prevPoint = point
@@ -534,14 +525,12 @@ func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) 
 				bisector = sum.Normalize()
 			}
 			outerBisector := bisector.Mul(thickness / 2)
-
-			crossProduct := cross(prevSegment, segment)
-			clockwise := crossProduct < 0
+			clockwise := cross(prevSegment, segment) < 0
 
 			var lastVertex []float32
 			var outerJointPoint0, outerJointPoint1, outerJointPoint2 mgl32.Vec3
 			// Endpoints of segments to intersect to calculate the inner joint point
-			var prevInnerPoint0, innerPoint0 /*, innerPoint1*/ mgl32.Vec2
+			var p0, p2 mgl32.Vec2
 			lenV := len(r.drawList.Vertices)
 			if clockwise {
 				lastVertex = r.drawList.Vertices[lenV-3 : lenV]
@@ -549,25 +538,27 @@ func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) 
 				outerJointPoint1 = prevPoint.Sub(outerBisector).Vec3(1)
 				outerJointPoint2 = prevPoint.Sub(translation).Vec3(1)
 
-				prevInnerPoint0 = prevPoint.Add(prevTranslation).Sub(prevSegment)
-				innerPoint0 = prevPoint.Add(translation)
+				p0 = prevPrevPoint.Add(prevTranslation)
+				p2 = prevPoint.Add(translation)
 			} else {
 				lastVertex = r.drawList.Vertices[lenV-6 : lenV-3]
 				outerJointPoint0 = prevPoint.Add(prevTranslation).Vec3(-1)
 				outerJointPoint1 = prevPoint.Sub(outerBisector).Vec3(-1)
 				outerJointPoint2 = prevPoint.Add(translation).Vec3(-1)
 
-				prevInnerPoint0 = prevPoint.Sub(prevTranslation).Sub(prevSegment)
-				innerPoint0 = prevPoint.Sub(translation)
+				p0 = prevPrevPoint.Sub(prevTranslation)
+				p2 = prevPoint.Sub(translation)
 			}
-			t := ((prevInnerPoint0.X()-innerPoint0.X())*(-segment.Y()) - (prevInnerPoint0.Y()-innerPoint0.Y())*(-segment.X())) / crossProduct
+			p1 := p0.Add(prevSegment)
+			p3 := p2.Add(segment)
 			var innerJointPoint2 mgl32.Vec2
-			if t < 0 || t > 1 {
-				// If translated segments do not intersect draw line to the opposite of the outer joint point.
-				// It looks acceptable, but we should probably calculate more accurate intersection.
+			if t := segmentIntersection(p0, p1, p2, p3); t < 0 || t > 1 {
+				// If translated segments do not intersect, draw line to the opposite of the outer joint point.
+				// It's a proper solution when t > 1, when t < 0 it's hard to calculate the correct intersection
+				// between thickened lines, but it looks good enough.
 				innerJointPoint2 = prevPoint.Add(outerBisector)
 			} else {
-				innerJointPoint2 = prevInnerPoint0.Add(prevSegment.Mul(t))
+				innerJointPoint2 = p0.Add(prevSegment.Mul(t))
 			}
 			var innerJointPoint mgl32.Vec3
 			if clockwise {
@@ -597,6 +588,7 @@ func (r *GLRenderer) AddPath(path []mgl32.Vec2, thickness float32, color Color) 
 				r.pushVertex(innerJointPoint)
 			}
 		}
+		prevPrevPoint = prevPoint
 		prevPoint = point
 		prevSegment = segment
 		prevDir = dir
