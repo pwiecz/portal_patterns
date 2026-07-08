@@ -9,7 +9,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/pwiecz/go-fltk v0.0.0-20250717141518-883d000afe4c
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
-	golang.org/x/image v0.38.0
+	golang.org/x/image v0.41.0
 )
 
 // replace github.com/pwiecz/go-fltk v0.0.0-20250717141518-883d000afe4c => ../go-fltk
